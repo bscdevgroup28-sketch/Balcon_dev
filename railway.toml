@@ -1,0 +1,15 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "cd backend && node dist/indexEnhanced.js"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "always"
+
+[[services]]
+name = "backend"
+source = "backend/"
+
+[build.env]
+NODE_ENV = "production"

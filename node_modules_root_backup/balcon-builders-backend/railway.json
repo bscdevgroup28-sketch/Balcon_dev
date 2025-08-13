@@ -2,15 +2,12 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install && npm run build",
-    "watchPatterns": ["backend/**"]
+    "buildCommand": "npm ci && npm run build"
   },
   "deploy": {
     "numReplicas": 1,
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
-    "startCommand": "node dist/indexEnhanced.js",
-    "healthcheckPath": "/api/health",
-    "healthcheckTimeout": 100
+    "startCommand": "node dist/indexEnhanced.js"
   }
 }

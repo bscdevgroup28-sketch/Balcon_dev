@@ -8,7 +8,7 @@
     "frontend"
   ],
   "scripts": {
-    "start": "start-dev.cmd",
+    "start": "echo 'Please run from backend or frontend directory'",
     "dev": "start-dev.cmd",
     "test:backend": "npm run test --workspace backend",
     "test:frontend": "npm run test --workspace frontend --if-present -- --watchAll=false",
