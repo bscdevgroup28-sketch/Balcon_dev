@@ -9,7 +9,7 @@
     "numReplicas": 1,
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
-    "startCommand": "npm start",
+    "startCommand": "node dist/indexEnhanced.js",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 100
   }
