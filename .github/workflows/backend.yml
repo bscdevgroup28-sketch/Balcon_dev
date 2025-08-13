@@ -1,0 +1,80 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+
+env:
+  NODE_VERSION: 18
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+        
+    - name: Install dependencies
+      run: |
+        cd backend
+        npm ci
+        
+    - name: Run linting
+      run: |
+        cd backend
+        npm run lint
+        
+    - name: Run type checking
+      run: |
+        cd backend
+        npm run build
+        
+    - name: Run tests
+      run: |
+        cd backend
+        npm test
+        
+    - name: Run test coverage
+      run: |
+        cd backend
+        npm run test:coverage
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli
+      
+    - name: Deploy to Railway
+      run: |
+        cd backend
+        railway login --token ${{ secrets.RAILWAY_TOKEN }}
+        railway up --service ${{ secrets.RAILWAY_BACKEND_SERVICE_ID }}
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

@@ -1,0 +1,89 @@
+{
+  "name": "Bal-Con Builders - Project Management",
+  "short_name": "Bal-Con",
+  "description": "Professional construction and balcony installation project management system",
+  "version": "5.0.0",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "scope": "/",
+  "lang": "en-CA",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View project dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/shortcuts/dashboard.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "New Project",
+      "short_name": "New Project",
+      "description": "Create a new project",
+      "url": "/projects/new",
+      "icons": [
+        {
+          "src": "/shortcuts/new-project.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "short_name": "Analytics",
+      "description": "View business analytics",
+      "url": "/analytics",
+      "icons": [
+        {
+          "src": "/shortcuts/analytics.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "handle_links": "preferred",
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "file",
+          "accept": ["image/*", "application/pdf"]
+        }
+      ]
+    }
+  }
+}
