@@ -14,7 +14,6 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({ userRole, userName })
   const [activeTab, setActiveTab] = useState('overview');
   const [isMobile, setIsMobile] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [lastSync, setLastSync] = useState(new Date());
 
   useEffect(() => {
     // Check if mobile device
@@ -68,9 +67,6 @@ const MobileDashboard: React.FC<MobileDashboardProps> = ({ userRole, userName })
           <span className="flex items-center space-x-2">
             <div className={`h-2 w-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
             <span>{isOnline ? 'Online' : 'Offline'}</span>
-          </span>
-          <span className="text-xs">
-            Last sync: {lastSync.toLocaleTimeString()}
           </span>
         </div>
       </div>

@@ -1,6 +1,5 @@
-import React, { useState, useEffect, ReactNode } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Tooltip,
   Fab,
   Popover,
   Paper,
@@ -9,7 +8,6 @@ import {
   Box,
   IconButton,
   Zoom,
-  Fade,
   Backdrop,
 } from '@mui/material';
 import {
@@ -57,20 +55,20 @@ const FeatureDiscovery: React.FC<FeatureDiscoveryProps> = ({
     if (isActive && tips.length > 0) {
       showCurrentTip();
     }
-  }, [isActive, currentTipIndex, tips]);
+  }, [isActive, currentTipIndex, tips, showCurrentTip]);
 
   const startTour = () => {
     setCurrentTipIndex(0);
     setIsActive(true);
   };
 
-  const endTour = () => {
+  const endTour = useCallback(() => {
     setIsActive(false);
     setAnchorEl(null);
     localStorage.setItem('feature_discovery_seen', 'true');
-  };
+  }, []);
 
-  const showCurrentTip = () => {
+  const showCurrentTip = useCallback(() => {
     if (currentTipIndex >= tips.length) {
       endTour();
       return;
@@ -95,7 +93,7 @@ const FeatureDiscovery: React.FC<FeatureDiscoveryProps> = ({
       element.style.outlineOffset = '4px';
       element.style.backgroundColor = 'rgba(25, 118, 210, 0.1)';
     }
-  };
+  }, [currentTipIndex, tips, endTour]);
 
   const removeHighlight = () => {
     if (currentTipIndex < tips.length) {

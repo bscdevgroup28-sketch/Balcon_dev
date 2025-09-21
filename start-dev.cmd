@@ -44,7 +44,7 @@ if errorlevel 1 echo [WARN] Could not start frontend window.
 
 echo.
 echo Backend:   http://localhost:8082/api/health
-echo Frontend:  http://localhost:3000
+echo Frontend:  http://localhost:3002
 
 echo.
 echo Demo Login (all roles password = admin123):

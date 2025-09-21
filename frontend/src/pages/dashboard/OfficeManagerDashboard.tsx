@@ -431,6 +431,227 @@ const OfficeManagerDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Financial Overview */}
+        <Grid item xs={12} lg={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#7b1fa2', fontWeight: 600 }}>
+                Financial Overview
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="success.main" sx={{ fontWeight: 'bold' }}>
+                      $45.2K
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Accounts Receivable
+                    </Typography>
+                    <Typography variant="caption" color="success.main">
+                      +8.3% from last month
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="warning.main" sx={{ fontWeight: 'bold' }}>
+                      $12.8K
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Accounts Payable
+                    </Typography>
+                    <Typography variant="caption" color="warning.main">
+                      Due within 30 days
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>
+                      $8.9K
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Monthly Collections
+                    </Typography>
+                    <Typography variant="caption" color="info.main">
+                      94% collection rate
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="error.main" sx={{ fontWeight: 'bold' }}>
+                      $3.2K
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Overdue Payments
+                    </Typography>
+                    <Typography variant="caption" color="error.main">
+                      3 clients affected
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Document Management Status */}
+        <Grid item xs={12} lg={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#7b1fa2', fontWeight: 600 }}>
+                Document Management
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FileCopy color="primary" />
+                    <Typography variant="body2">Contracts Pending Review</Typography>
+                  </Box>
+                  <Chip label="7" color="warning" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FileCopy color="success" />
+                    <Typography variant="body2">Insurance Certificates</Typography>
+                  </Box>
+                  <Chip label="12" color="success" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FileCopy color="error" />
+                    <Typography variant="body2">Permits Expiring Soon</Typography>
+                  </Box>
+                  <Chip label="3" color="error" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FileCopy color="info" />
+                    <Typography variant="body2">Compliance Reports</Typography>
+                  </Box>
+                  <Chip label="5" color="info" size="small" />
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Client Communication Tracking */}
+        <Grid item xs={12} lg={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#7b1fa2', fontWeight: 600 }}>
+                Client Communications
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Email color="primary" />
+                    <Typography variant="body2">Unread Messages</Typography>
+                  </Box>
+                  <Chip label="23" color="primary" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Phone color="success" />
+                    <Typography variant="body2">Calls Today</Typography>
+                  </Box>
+                  <Chip label="8" color="success" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <EventNote color="warning" />
+                    <Typography variant="body2">Meetings Scheduled</Typography>
+                  </Box>
+                  <Chip label="5" color="warning" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Notifications color="info" />
+                    <Typography variant="body2">Follow-ups Due</Typography>
+                  </Box>
+                  <Chip label="12" color="info" size="small" />
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Process Efficiency Metrics */}
+        <Grid item xs={12} lg={8}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#7b1fa2', fontWeight: 600 }}>
+                Administrative Process Efficiency
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="success.main" sx={{ fontWeight: 'bold' }}>
+                      2.4 days
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Avg Quote Response
+                    </Typography>
+                    <Typography variant="caption" color="success.main">
+                      Target: &lt;3 days
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                      1.8 days
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Invoice Processing
+                    </Typography>
+                    <Typography variant="caption" color="primary.main">
+                      Target: &lt;2 days
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="warning.main" sx={{ fontWeight: 'bold' }}>
+                      4.2 hours
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Permit Approval
+                    </Typography>
+                    <Typography variant="caption" color="warning.main">
+                      Target: &lt;4 hours
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="info.main" sx={{ fontWeight: 'bold' }}>
+                      98.2%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Document Accuracy
+                    </Typography>
+                    <Typography variant="caption" color="info.main">
+                      Target: &gt;97%
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
     </BaseDashboard>
   );

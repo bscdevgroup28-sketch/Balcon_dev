@@ -461,6 +461,179 @@ const ProjectManagerDashboard: React.FC = () => {
           </Card>
         </Grid>
 
+        {/* Budget Performance */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
+                Budget Performance
+              </Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Project</TableCell>
+                      <TableCell>Budget</TableCell>
+                      <TableCell>Spent</TableCell>
+                      <TableCell>Utilization</TableCell>
+                      <TableCell>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {activeProjects.map((project) => (
+                      <TableRow key={project.id}>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="bold">
+                            {project.name}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {project.id} - {project.client}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {formatCurrency(project.budget)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {formatCurrency(project.spent)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <LinearProgress
+                            variant="determinate"
+                            value={Math.min((project.spent / project.budget) * 100, 100)}
+                            sx={{ 
+                              height: 10, 
+                              borderRadius: 5,
+                              '& .MuiLinearProgress-bar': {
+                                backgroundColor: (project.spent / project.budget) * 100 >= 80 ? '#4caf50' : (project.spent / project.budget) * 100 >= 50 ? '#ff9800' : '#f44336'
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={(project.spent / project.budget) * 100 >= 100 ? 'Over Budget' : 'On Track'}
+                            color={(project.spent / project.budget) * 100 >= 100 ? 'error' : 'success'}
+                            size="small"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Resource Allocation */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
+                Resource Allocation
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  Team Utilization Overview
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={78}
+                  sx={{
+                    height: 12,
+                    borderRadius: 6,
+                    '& .MuiLinearProgress-bar': {
+                      backgroundColor: '#4caf50'
+                    }
+                  }}
+                />
+                <Typography variant="caption" sx={{ mt: 0.5, display: 'block' }}>
+                  78% Average Utilization (Target: 85%)
+                </Typography>
+              </Box>
+              <List dense>
+                {teamOverview.slice(0, 3).map((member, index) => (
+                  <ListItem key={index} sx={{ px: 0 }}>
+                    <ListItemText
+                      primary={
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography variant="body2" fontWeight="medium">
+                            {member.name}
+                          </Typography>
+                          <Chip
+                            label={`${member.utilization}%`}
+                            size="small"
+                            color={member.utilization >= 85 ? 'success' : member.utilization >= 70 ? 'warning' : 'error'}
+                          />
+                        </Box>
+                      }
+                      secondary={`${member.role} • ${member.projects} active projects`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Client Communication */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
+                Client Communication
+              </Typography>
+              <List dense>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CalendarToday color="primary" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Weekly Progress Meeting"
+                    secondary="Heritage Mall Renovation - Tomorrow 2:00 PM"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Warning color="warning" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Change Order Pending"
+                    secondary="Downtown Office Complex - Awaiting approval"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Final Inspection Scheduled"
+                    secondary="Industrial Warehouse - Aug 25, 2025"
+                  />
+                </ListItem>
+              </List>
+              <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                <Typography variant="body2" fontWeight="medium" gutterBottom>
+                  Communication Summary
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • 3 meetings scheduled this week
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • 2 change orders pending approval
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • 5 client emails responded today
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Quick Actions */}
         <Grid item xs={12}>
           <Card>
@@ -572,6 +745,70 @@ const ProjectManagerDashboard: React.FC = () => {
                   </Box>
                 </Grid>
               </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Resource Allocation */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
+                Resource Allocation
+              </Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Team Member</TableCell>
+                      <TableCell>Role</TableCell>
+                      <TableCell>Utilization</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Projects</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {teamOverview.map((member) => (
+                      <TableRow key={member.name}>
+                        <TableCell>
+                          <Box display="flex" alignItems="center">
+                            <Avatar sx={{ mr: 2, bgcolor: '#1976d2' }}>
+                              {member.name.split(' ').map(n => n[0]).join('')}
+                            </Avatar>
+                            <Typography variant="body2" fontWeight="bold">
+                              {member.name}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{member.role}</TableCell>
+                        <TableCell>
+                          <LinearProgress
+                            variant="determinate"
+                            value={member.utilization}
+                            sx={{ 
+                              height: 10, 
+                              borderRadius: 5,
+                              '& .MuiLinearProgress-bar': {
+                                backgroundColor: member.utilization >= 80 ? '#4caf50' : member.utilization >= 50 ? '#ff9800' : '#f44336'
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={member.status}
+                            color={getTeamStatusColor(member.status) as any}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {member.projects} project{member.projects !== 1 ? 's' : ''}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </CardContent>
           </Card>
         </Grid>

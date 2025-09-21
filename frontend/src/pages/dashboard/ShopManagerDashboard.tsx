@@ -518,6 +518,247 @@ const ShopManagerDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Inventory & Materials Overview */}
+        <Grid item xs={12} lg={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#e65100', fontWeight: 600 }}>
+                Inventory & Materials
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="success.main" sx={{ fontWeight: 'bold' }}>
+                      1,247
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Items in Stock
+                    </Typography>
+                    <Typography variant="caption" color="success.main">
+                      +3.2% from last week
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="warning.main" sx={{ fontWeight: 'bold' }}>
+                      23
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Low Stock Items
+                    </Typography>
+                    <Typography variant="caption" color="warning.main">
+                      Requires attention
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>
+                      8
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Pending Orders
+                    </Typography>
+                    <Typography variant="caption" color="info.main">
+                      Expected this week
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="error.main" sx={{ fontWeight: 'bold' }}>
+                      $12.4K
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Inventory Value
+                    </Typography>
+                    <Typography variant="caption" color="error.main">
+                      -2.1% from budget
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Workforce & Scheduling */}
+        <Grid item xs={12} lg={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#e65100', fontWeight: 600 }}>
+                Workforce & Scheduling
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircle color="success" />
+                    <Typography variant="body2">Present Today</Typography>
+                  </Box>
+                  <Chip label="18/20" color="success" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Schedule color="warning" />
+                    <Typography variant="body2">On Leave</Typography>
+                  </Box>
+                  <Chip label="2" color="warning" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Engineering color="info" />
+                    <Typography variant="body2">Overtime Hours</Typography>
+                  </Box>
+                  <Chip label="24" color="info" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Assessment color="primary" />
+                    <Typography variant="body2">Training Due</Typography>
+                  </Box>
+                  <Chip label="5" color="primary" size="small" />
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Quality Control Trends */}
+        <Grid item xs={12} lg={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#e65100', fontWeight: 600 }}>
+                Quality Control Trends
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">First Pass Yield</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>94.2%</Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={94.2}
+                    sx={{ height: 8, borderRadius: 4 }}
+                    color="success"
+                  />
+                </Box>
+
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">Defect Rate</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>1.8%</Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={1.8}
+                    sx={{ height: 8, borderRadius: 4 }}
+                    color="warning"
+                  />
+                </Box>
+
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">Rework Rate</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>2.1%</Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={2.1}
+                    sx={{ height: 8, borderRadius: 4 }}
+                    color="error"
+                  />
+                </Box>
+
+                <Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography variant="body2">Customer Returns</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>0.3%</Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={0.3}
+                    sx={{ height: 8, borderRadius: 4 }}
+                    color="info"
+                  />
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Production Planning */}
+        <Grid item xs={12} lg={8}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#e65100', fontWeight: 600 }}>
+                Production Planning & Forecasting
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                      127
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Units Planned Today
+                    </Typography>
+                    <Typography variant="caption" color="primary.main">
+                      98% capacity utilization
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="success.main" sx={{ fontWeight: 'bold' }}>
+                      892
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Weekly Target
+                    </Typography>
+                    <Typography variant="caption" color="success.main">
+                      On track to meet
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="warning.main" sx={{ fontWeight: 'bold' }}>
+                      3,421
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Monthly Forecast
+                    </Typography>
+                    <Typography variant="caption" color="warning.main">
+                      +12% from last month
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="info.main" sx={{ fontWeight: 'bold' }}>
+                      $487K
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Production Value
+                    </Typography>
+                    <Typography variant="caption" color="info.main">
+                      This week's output
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
     </BaseDashboard>
   );

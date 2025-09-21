@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import integratedAPI from '../services/integratedAPI';
+import webSocketService from '../services/websocketService';
 
 // User interface matching backend user model
 interface User {
@@ -144,6 +145,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               type: 'LOGIN_SUCCESS',
               payload: { user: response.data, token },
             });
+
+            // Connect to WebSocket after successful auto-login
+            try {
+              await webSocketService.connect(token);
+              console.log('🔌 WebSocket connected after auto-login');
+            } catch (error) {
+              console.error('Failed to connect to WebSocket on auto-login:', error);
+            }
           } else {
             localStorage.removeItem('authToken');
             dispatch({ type: 'LOGOUT' });
@@ -175,6 +184,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             token: response.data.token,
           },
         });
+
+        // Connect to WebSocket after successful login
+        try {
+          await webSocketService.connect(response.data.token);
+          console.log('🔌 WebSocket connected after login');
+        } catch (error) {
+          console.error('Failed to connect to WebSocket:', error);
+          // Don't fail login if WebSocket fails, just log the error
+        }
+
         return true;
       } else {
         dispatch({
@@ -238,6 +257,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      // Disconnect WebSocket before clearing auth state
+      webSocketService.disconnect();
+      console.log('🔌 WebSocket disconnected on logout');
+
       localStorage.removeItem('authToken');
       dispatch({ type: 'LOGOUT' });
     }

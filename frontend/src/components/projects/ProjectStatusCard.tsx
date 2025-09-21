@@ -8,13 +8,11 @@ import {
   Chip,
   IconButton,
   Tooltip,
-  Avatar,
   Button,
 } from '@mui/material';
 import {
   Visibility,
   Chat,
-  Schedule,
   Person,
   LocationOn,
   CalendarToday,

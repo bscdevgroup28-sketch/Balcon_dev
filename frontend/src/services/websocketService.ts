@@ -1,5 +1,35 @@
+import { io, Socket } from 'socket.io-client';
+
+// Notification data interface
+export interface NotificationData {
+  type: 'project_update' | 'assignment' | 'status_change' | 'message' | 'system';
+  title: string;
+  message: string;
+  projectId?: number;
+  userId?: number;
+  metadata?: any;
+  timestamp: Date;
+}
+
+// Project activity interface
+export interface ProjectActivityData {
+  id: number;
+  activityType: string;
+  description: string;
+  metadata?: any;
+  timestamp: Date;
+  user: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
+  formattedMessage: string;
+}
+
+// WebSocket service class using Socket.IO
 class WebSocketService {
-  private ws: WebSocket | null = null;
+  private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval = 1000;
@@ -11,10 +41,10 @@ class WebSocketService {
     this.setupEventListeners();
   }
 
-  // Connect to WebSocket server
+  // Connect to Socket.IO server
   connect(token: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      if (this.socket && this.socket.connected) {
         resolve();
         return;
       }
@@ -28,49 +58,50 @@ class WebSocketService {
       this.token = token;
 
       try {
-        // Connect to Phase 5B WebSocket server
-        const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8082';
-        this.ws = new WebSocket(wsUrl);
+        // Connect to Socket.IO server
+        const serverUrl = process.env.REACT_APP_API_URL || 'http://localhost:8082';
+        this.socket = io(serverUrl, {
+          auth: {
+            token: token
+          },
+          transports: ['websocket', 'polling'],
+          timeout: 20000,
+          forceNew: true
+        });
 
-        // Send authentication token after connection
-        this.ws.onopen = () => {
-          console.log('✅ WebSocket connected');
+        // Connection event handlers
+        this.socket.on('connect', () => {
+          console.log('✅ Socket.IO connected');
           this.isConnecting = false;
           this.reconnectAttempts = 0;
-          
-          // Send authentication
-          this.send('authenticate', { token });
-          
           this.emit('connected');
           resolve();
-        };
+        });
 
-        this.ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            this.handleMessage(data);
-          } catch (error) {
-            console.error('Failed to parse WebSocket message:', error);
-          }
-        };
-
-        this.ws.onclose = (event) => {
-          console.log('🔌 WebSocket disconnected:', event.code, event.reason);
+        this.socket.on('disconnect', (reason) => {
+          console.log('🔌 Socket.IO disconnected:', reason);
           this.isConnecting = false;
-          this.ws = null;
-          this.emit('disconnected', event);
-          
-          if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.emit('disconnected', reason);
+
+          if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+            // Server disconnected, don't reconnect automatically
+            return;
+          }
+
+          if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.scheduleReconnect();
           }
-        };
+        });
 
-        this.ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
+        this.socket.on('connect_error', (error) => {
+          console.error('❌ Socket.IO connection error:', error);
           this.isConnecting = false;
           this.emit('error', error);
           reject(error);
-        };
+        });
+
+        // Setup message handlers
+        this.setupMessageHandlers();
 
       } catch (error) {
         this.isConnecting = false;
@@ -79,50 +110,62 @@ class WebSocketService {
     });
   }
 
-  // Disconnect from WebSocket
+  // Setup message event handlers
+  private setupMessageHandlers(): void {
+    if (!this.socket) return;
+
+    // Connection confirmation
+    this.socket.on('connected', (data) => {
+      console.log('🎉 Socket.IO authentication successful:', data);
+      this.emit('authenticated', data);
+    });
+
+    // Notifications
+    this.socket.on('notification', (notification: NotificationData) => {
+      this.emit('notification', notification);
+    });
+
+    // Project updates
+    this.socket.on('project_updated', (data) => {
+      this.emit('projectUpdate', data);
+    });
+
+    // Project activities
+    this.socket.on('project_activity', (activity: ProjectActivityData) => {
+      this.emit('projectActivity', activity);
+    });
+
+    // Typing indicators
+    this.socket.on('user_typing', (data) => {
+      this.emit('userTyping', data);
+    });
+
+    this.socket.on('user_stopped_typing', (data) => {
+      this.emit('userStoppedTyping', data);
+    });
+
+    // Error handling
+    this.socket.on('error', (error) => {
+      console.error('Socket.IO error:', error);
+      this.emit('socketError', error);
+    });
+  }
+
+  // Disconnect from Socket.IO
   disconnect(): void {
-    if (this.ws) {
-      this.ws.close(1000, 'Client disconnect');
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
     this.reconnectAttempts = this.maxReconnectAttempts; // Prevent reconnect
   }
 
   // Send message to server
-  send(event: string, data?: any): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
-      this.ws.send(message);
+  emit(event: string, data?: any): void {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit(event, data);
     } else {
-      console.warn('WebSocket not connected, message not sent:', event, data);
-    }
-  }
-
-  // Handle incoming messages
-  private handleMessage(message: any): void {
-    const { event, data } = message;
-    
-    switch (event) {
-      case 'connected':
-        console.log('🎉 WebSocket authentication successful');
-        break;
-      case 'project_update':
-        this.emit('projectUpdate', data);
-        break;
-      case 'new_notification':
-        this.emit('notification', data);
-        break;
-      case 'user_activity':
-        this.emit('userActivity', data);
-        break;
-      case 'analytics_update':
-        this.emit('analyticsUpdate', data);
-        break;
-      case 'system_alert':
-        this.emit('systemAlert', data);
-        break;
-      default:
-        this.emit(event, data);
+      console.warn('Socket.IO not connected, message not sent:', event, data);
     }
   }
 
@@ -140,7 +183,7 @@ class WebSocketService {
     }
   }
 
-  private emit(event: string, data?: any): void {
+  private emitLocal(event: string, data?: any): void {
     if (this.listeners[event]) {
       this.listeners[event].forEach(callback => {
         try {
@@ -156,15 +199,15 @@ class WebSocketService {
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error('❌ Max reconnection attempts reached');
-      this.emit('maxReconnectAttemptsReached');
+      this.emitLocal('maxReconnectAttemptsReached');
       return;
     }
 
     this.reconnectAttempts++;
     const delay = this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1);
-    
-    console.log(`🔄 Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
-    
+
+    console.log(`🔄 Attempting Socket.IO reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+
     setTimeout(() => {
       if (this.token) {
         this.connect(this.token).catch(error => {
@@ -176,56 +219,34 @@ class WebSocketService {
 
   // Project-specific methods
   joinProject(projectId: number): void {
-    this.send('join_project', projectId);
+    this.emit('join_project', projectId);
   }
 
   leaveProject(projectId: number): void {
-    this.send('leave_project', projectId);
+    this.emit('leave_project', projectId);
   }
 
-  sendProjectActivity(projectId: number, action: string, details: any): void {
-    this.send('project_activity', { projectId, action, details });
-  }
-
-  // Notification methods
-  markNotificationRead(notificationId: string): void {
-    this.send('notification_read', notificationId);
+  updateProject(projectId: number, update: any, activityType: string): void {
+    this.emit('project_update', { projectId, update, activityType });
   }
 
   // Typing indicators
-  sendTyping(projectId: number, isTyping: boolean): void {
-    this.send('typing', { projectId, isTyping });
+  startTyping(projectId: number): void {
+    this.emit('typing_start', { projectId });
   }
 
-  // Quote methods
-  joinQuote(quoteId: number): void {
-    this.send('join_quote', quoteId);
-  }
-
-  leaveQuote(quoteId: number): void {
-    this.send('leave_quote', quoteId);
+  stopTyping(projectId: number): void {
+    this.emit('typing_stop', { projectId });
   }
 
   // Connection status
   isConnected(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+    return this.socket !== null && this.socket.connected;
   }
 
   getConnectionState(): string {
-    if (!this.ws) return 'disconnected';
-    
-    switch (this.ws.readyState) {
-      case WebSocket.CONNECTING:
-        return 'connecting';
-      case WebSocket.OPEN:
-        return 'connected';
-      case WebSocket.CLOSING:
-        return 'disconnecting';
-      case WebSocket.CLOSED:
-        return 'disconnected';
-      default:
-        return 'unknown';
-    }
+    if (!this.socket) return 'disconnected';
+    return this.socket.connected ? 'connected' : 'disconnected';
   }
 
   // Setup browser event listeners
@@ -233,11 +254,9 @@ class WebSocketService {
     // Handle page visibility changes
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // Page is hidden, could pause reconnection attempts
-        console.log('📱 Page hidden - WebSocket activity reduced');
+        console.log('📱 Page hidden - Socket.IO activity reduced');
       } else {
-        // Page is visible again, ensure connection
-        console.log('📱 Page visible - WebSocket activity resumed');
+        console.log('📱 Page visible - Socket.IO activity resumed');
         if (!this.isConnected() && this.token) {
           this.connect(this.token).catch(console.error);
         }
@@ -246,14 +265,14 @@ class WebSocketService {
 
     // Handle network changes
     window.addEventListener('online', () => {
-      console.log('🌐 Network online - attempting WebSocket reconnection');
+      console.log('🌐 Network online - attempting Socket.IO reconnection');
       if (!this.isConnected() && this.token) {
         this.connect(this.token).catch(console.error);
       }
     });
 
     window.addEventListener('offline', () => {
-      console.log('🌐 Network offline - WebSocket will be disconnected');
+      console.log('🌐 Network offline - Socket.IO will be disconnected');
     });
 
     // Handle beforeunload
@@ -262,37 +281,9 @@ class WebSocketService {
     });
   }
 
-  // Mock real-time data for Phase 5C demo
-  startMockUpdates(): void {
-    // Simulate project updates
-    setInterval(() => {
-      if (this.isConnected()) {
-        this.emit('projectUpdate', {
-          projectId: Math.floor(Math.random() * 3) + 1,
-          type: 'progress',
-          progress: Math.floor(Math.random() * 100),
-          timestamp: new Date().toISOString()
-        });
-      }
-    }, 30000);
-
-    // Simulate notifications
-    setInterval(() => {
-      if (this.isConnected()) {
-        const notifications = [
-          { type: 'info', title: 'System Update', message: 'New features available' },
-          { type: 'success', title: 'Task Completed', message: 'Quality inspection passed' },
-          { type: 'warning', title: 'Weather Alert', message: 'Rain expected tomorrow' }
-        ];
-        
-        const notification = notifications[Math.floor(Math.random() * notifications.length)];
-        this.emit('notification', {
-          ...notification,
-          id: Date.now().toString(),
-          timestamp: new Date().toISOString()
-        });
-      }
-    }, 45000);
+  // Get socket instance for advanced usage
+  getSocket(): Socket | null {
+    return this.socket;
   }
 }
 

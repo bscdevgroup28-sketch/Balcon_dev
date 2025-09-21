@@ -2,6 +2,7 @@ import { User } from './User';
 import { Project } from './Project';
 import { Quote } from './Quote';
 import { Order } from './Order';
+import { Material } from './Material';
 import { ProjectFile, defineProjectFileAssociations } from './ProjectFile';
 
 // Define associations
@@ -36,6 +37,7 @@ export {
   Project,
   Quote,
   Order,
+  Material,
   ProjectFile,
 };
 
@@ -44,4 +46,5 @@ export default {
   Project,
   Quote,
   Order,
+  Material,
 };

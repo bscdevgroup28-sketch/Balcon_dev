@@ -1,545 +1,272 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
-  CardMedia,
-  Box,
+  CardActions,
   Typography,
-  Button,
+  Box,
   Chip,
-  Grid,
+  IconButton,
+  Avatar,
+  Tooltip,
+  Button,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Tabs,
-  Tab,
-  Alert,
-  Rating,
-  Badge,
+  Grid,
 } from '@mui/material';
 import {
-  Info,
-  Favorite,
-  FavoriteBorder,
+  Edit,
+  Delete,
+  ShoppingCart,
   Compare,
-  Download,
-  CheckCircle,
-  Build,
-  Security,
-  Speed,
-  Nature,
   AttachMoney,
-  Star,
-  Visibility,
+  Inventory,
+  Warning,
+  CheckCircle,
+  Error,
 } from '@mui/icons-material';
 
-interface MaterialSpecification {
-  property: string;
-  value: string;
-  description?: string;
-}
-
-interface Material {
-  id: string;
-  name: string;
-  category: string;
-  subcategory: string;
-  description: string;
-  image: string;
-  pricePerUnit: number;
-  unit: string;
-  availability: 'in-stock' | 'limited' | 'out-of-stock' | 'custom-order';
-  leadTime: string;
-  specifications: MaterialSpecification[];
-  features: string[];
-  applications: string[];
-  advantages: string[];
-  certifications: string[];
-  sustainability: {
-    rating: number;
-    description: string;
-  };
-  performance: {
-    durability: number;
-    maintenance: number;
-    weatherResistance: number;
-    fireResistance: number;
-  };
-  documents: {
-    name: string;
-    type: 'datasheet' | 'specification' | 'installation' | 'warranty';
-    url: string;
-  }[];
-  relatedProducts: string[];
-  customerRating: number;
-  reviewCount: number;
-}
+import { Material } from '../../types/material';
 
 interface MaterialCardProps {
   material: Material;
-  onViewDetails: (materialId: string) => void;
-  onAddToFavorites: (materialId: string) => void;
-  onCompare: (materialId: string) => void;
-  onRequestQuote: (materialId: string) => void;
-  isFavorite?: boolean;
-  isInComparison?: boolean;
+  onEdit: (material: Material) => void;
+  onDelete: (material: Material) => void;
+  onStockAdjust: (material: Material) => void;
+  onCompare?: (materialId: string) => void;
+  onRequestQuote?: (materialId: string) => void;
 }
 
 const MaterialCard: React.FC<MaterialCardProps> = ({
   material,
-  onViewDetails,
-  onAddToFavorites,
+  onEdit,
+  onDelete,
+  onStockAdjust,
   onCompare,
   onRequestQuote,
-  isFavorite = false,
-  isInComparison = false,
 }) => {
-  const [showDetails, setShowDetails] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+  const [showDetails, setShowDetails] = React.useState(false);
 
-  const getAvailabilityColor = (availability: string) => {
-    switch (availability) {
-      case 'in-stock': return 'success';
-      case 'limited': return 'warning';
-      case 'out-of-stock': return 'error';
-      case 'custom-order': return 'info';
-      default: return 'default';
-    }
+  const getStockStatusColor = () => {
+    if (material.currentStock <= material.reorderPoint) return 'error';
+    if (material.currentStock <= material.minimumStock) return 'warning';
+    return 'success';
   };
 
-  const getAvailabilityText = (availability: string) => {
-    switch (availability) {
-      case 'in-stock': return 'In Stock';
-      case 'limited': return 'Limited Stock';
-      case 'out-of-stock': return 'Out of Stock';
-      case 'custom-order': return 'Custom Order';
-      default: return 'Unknown';
-    }
+  const getStockStatusIcon = () => {
+    if (material.currentStock <= material.reorderPoint) return <Error />;
+    if (material.currentStock <= material.minimumStock) return <Warning />;
+    return <CheckCircle />;
   };
 
-  const PerformanceBar: React.FC<{ label: string; value: number; color?: string }> = ({ 
-    label, 
-    value, 
-    color = 'primary' 
-  }) => (
-    <Box sx={{ mb: 1 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-        <Typography variant="caption">{label}</Typography>
-        <Typography variant="caption">{value}/5</Typography>
-      </Box>
-      <Box sx={{ width: '100%', bgcolor: 'grey.200', borderRadius: 5, height: 8 }}>
-        <Box
-          sx={{
-            width: `${(value / 5) * 100}%`,
-            bgcolor: `${color}.main`,
-            borderRadius: 5,
-            height: 8,
-          }}
-        />
-      </Box>
-    </Box>
-  );
+  const getStockStatusText = () => {
+    if (material.currentStock <= material.reorderPoint) return 'Critical';
+    if (material.currentStock <= material.minimumStock) return 'Low';
+    return 'Normal';
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount);
+  };
 
   return (
     <>
-      <Card sx={{ 
-        height: '100%', 
-        display: 'flex', 
-        flexDirection: 'column',
-        position: 'relative',
-        '&:hover': { boxShadow: 3 }
-      }}>
-        {/* Favorite and Compare Badges */}
-        <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            {isFavorite && (
-              <Chip
-                icon={<Favorite />}
-                label="Favorite"
-                size="small"
-                color="error"
-                variant="filled"
-              />
-            )}
-            {isInComparison && (
-              <Badge badgeContent="✓" color="primary">
-                <Chip
-                  icon={<Compare />}
-                  label="Compare"
-                  size="small"
-                  color="info"
-                  variant="filled"
-                />
-              </Badge>
-            )}
-          </Box>
-        </Box>
-
-        <CardMedia
-          component="img"
-          height="200"
-          image={material.image || '/placeholder-material.jpg'}
-          alt={material.name}
-          sx={{ objectFit: 'cover' }}
-        />
-        
-        <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-          {/* Header */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="h6" component="div" noWrap>
-              {material.name}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {material.category} • {material.subcategory}
-            </Typography>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-              <Chip 
-                label={getAvailabilityText(material.availability)}
-                size="small"
-                color={getAvailabilityColor(material.availability) as any}
-              />
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Rating value={material.customerRating} size="small" readOnly />
-                <Typography variant="caption" color="text.secondary">
-                  ({material.reviewCount})
-                </Typography>
-              </Box>
+      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <CardContent sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Avatar sx={{ mr: 2, bgcolor: 'primary.main' }}>
+              <Inventory />
+            </Avatar>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                {material.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {material.category}
+              </Typography>
             </Box>
-          </Box>
-
-          {/* Description */}
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, flexGrow: 1 }}>
-            {material.description}
-          </Typography>
-
-          {/* Key Features */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" color="text.secondary" gutterBottom>
-              Key Features:
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {material.features.slice(0, 3).map((feature, index) => (
-                <Chip key={index} label={feature} size="small" variant="outlined" />
-              ))}
-              {material.features.length > 3 && (
-                <Chip label={`+${material.features.length - 3} more`} size="small" variant="outlined" />
-              )}
-            </Box>
-          </Box>
-
-          {/* Performance Indicators */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" color="text.secondary" gutterBottom>
-              Performance:
-            </Typography>
-            <Grid container spacing={1}>
-              <Grid item xs={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Security fontSize="small" color="primary" />
-                  <Typography variant="caption">Durability</Typography>
-                  <Typography variant="caption" fontWeight="bold">
-                    {material.performance.durability}/5
-                  </Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Nature fontSize="small" color="success" />
-                  <Typography variant="caption">Eco-Rating</Typography>
-                  <Typography variant="caption" fontWeight="bold">
-                    {material.sustainability.rating}/5
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-
-          {/* Pricing */}
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="h6" color="primary" fontWeight="bold">
-              ${material.pricePerUnit.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>per {material.unit}</span>
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Lead time: {material.leadTime}
-            </Typography>
-          </Box>
-
-          {/* Actions */}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 'auto' }}>
-            <Button
-              variant="outlined"
+            <Chip
+              label={material.status}
+              color={material.status === 'active' ? 'success' : 'default'}
               size="small"
-              startIcon={<Visibility />}
+            />
+          </Box>
+
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Current Stock
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {getStockStatusIcon()}
+              <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                {material.currentStock} {material.unitOfMeasure}
+              </Typography>
+              <Chip
+                label={getStockStatusText()}
+                color={getStockStatusColor() as any}
+                size="small"
+                variant="outlined"
+              />
+            </Box>
+          </Box>
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Min Stock:
+            </Typography>
+            <Typography variant="body2">
+              {material.minimumStock} {material.unitOfMeasure}
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Reorder Point:
+            </Typography>
+            <Typography variant="body2">
+              {material.reorderPoint} {material.unitOfMeasure}
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="body2" color="text.secondary">
+              Unit Cost:
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              {formatCurrency(material.unitCost)}
+            </Typography>
+          </Box>
+        </CardContent>
+
+        <CardActions sx={{ justifyContent: 'space-between' }}>
+          <Box>
+            <Tooltip title="Edit Material">
+              <IconButton size="small" onClick={() => onEdit(material)}>
+                <Edit />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete Material">
+              <IconButton size="small" onClick={() => onDelete(material)}>
+                <Delete />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Adjust Stock">
+              <IconButton size="small" onClick={() => onStockAdjust(material)}>
+                <Inventory />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Box>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<ShoppingCart />}
               onClick={() => setShowDetails(true)}
-              sx={{ flex: 1 }}
             >
               Details
             </Button>
-            
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={isFavorite ? <Favorite /> : <FavoriteBorder />}
-              onClick={() => onAddToFavorites(material.id)}
-              color={isFavorite ? 'error' : 'inherit'}
-            >
-              {isFavorite ? 'Saved' : 'Save'}
-            </Button>
-            
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<Compare />}
-              onClick={() => onCompare(material.id)}
-              color={isInComparison ? 'primary' : 'inherit'}
-            >
-              Compare
-            </Button>
           </Box>
-
-          <Button
-            variant="contained"
-            size="small"
-            fullWidth
-            startIcon={<AttachMoney />}
-            onClick={() => onRequestQuote(material.id)}
-            sx={{ mt: 1 }}
-          >
-            Request Quote
-          </Button>
-        </CardContent>
+        </CardActions>
       </Card>
 
       {/* Material Details Dialog */}
-      <Dialog open={showDetails} onClose={() => setShowDetails(false)} maxWidth="lg" fullWidth>
+      <Dialog
+        open={showDetails}
+        onClose={() => setShowDetails(false)}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {material.name}
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Chip 
-                label={getAvailabilityText(material.availability)}
-                size="small"
-                color={getAvailabilityColor(material.availability) as any}
-              />
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Rating value={material.customerRating} size="small" readOnly />
-                <Typography variant="body2">({material.reviewCount} reviews)</Typography>
-              </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Avatar sx={{ bgcolor: 'primary.main' }}>
+              <Inventory />
+            </Avatar>
+            <Box>
+              <Typography variant="h6">{material.name}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {material.category}
+              </Typography>
             </Box>
           </Box>
         </DialogTitle>
-        
+
         <DialogContent>
+          <Typography variant="body1" paragraph>
+            {material.description || 'No description available.'}
+          </Typography>
+
           <Grid container spacing={3}>
-            {/* Image and Basic Info */}
-            <Grid item xs={12} md={4}>
-              <CardMedia
-                component="img"
-                height="300"
-                image={material.image || '/placeholder-material.jpg'}
-                alt={material.name}
-                sx={{ borderRadius: 1, mb: 2 }}
-              />
-              
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h5" color="primary" fontWeight="bold">
-                  ${material.pricePerUnit.toLocaleString()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  per {material.unit} • Lead time: {material.leadTime}
-                </Typography>
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" gutterBottom>
+                Stock Information
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Current Stock:</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    {material.currentStock} {material.unitOfMeasure}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Minimum Stock:</Typography>
+                  <Typography variant="body2">
+                    {material.minimumStock} {material.unitOfMeasure}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Reorder Point:</Typography>
+                  <Typography variant="body2">
+                    {material.reorderPoint} {material.unitOfMeasure}
+                  </Typography>
+                </Box>
               </Box>
-
-              <Alert severity="info" sx={{ mb: 2 }}>
-                Contact our sales team for volume pricing and custom specifications.
-              </Alert>
-
-              <Button
-                variant="contained"
-                fullWidth
-                startIcon={<AttachMoney />}
-                onClick={() => onRequestQuote(material.id)}
-                sx={{ mb: 1 }}
-              >
-                Request Quote
-              </Button>
-              
-              <Button
-                variant="outlined"
-                fullWidth
-                startIcon={isFavorite ? <Favorite /> : <FavoriteBorder />}
-                onClick={() => onAddToFavorites(material.id)}
-                color={isFavorite ? 'error' : 'inherit'}
-              >
-                {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-              </Button>
             </Grid>
 
-            {/* Detailed Information */}
-            <Grid item xs={12} md={8}>
-              <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
-                  <Tab label="Overview" />
-                  <Tab label="Specifications" />
-                  <Tab label="Performance" />
-                  <Tab label="Documents" />
-                </Tabs>
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" gutterBottom>
+                Pricing Information
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Unit Cost:</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    {formatCurrency(material.unitCost)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Selling Price:</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    {formatCurrency(material.sellingPrice)}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2">Markup:</Typography>
+                  <Typography variant="body2">
+                    {material.markupPercentage}%
+                  </Typography>
+                </Box>
               </Box>
-
-              {/* Overview Tab */}
-              {activeTab === 0 && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6" gutterBottom>Description</Typography>
-                  <Typography paragraph>{material.description}</Typography>
-
-                  <Typography variant="h6" gutterBottom>Key Features</Typography>
-                  <List dense>
-                    {material.features.map((feature, index) => (
-                      <ListItem key={index}>
-                        <ListItemIcon><CheckCircle color="success" /></ListItemIcon>
-                        <ListItemText primary={feature} />
-                      </ListItem>
-                    ))}
-                  </List>
-
-                  <Typography variant="h6" gutterBottom>Applications</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
-                    {material.applications.map((app, index) => (
-                      <Chip key={index} label={app} variant="outlined" />
-                    ))}
-                  </Box>
-
-                  <Typography variant="h6" gutterBottom>Advantages</Typography>
-                  <List dense>
-                    {material.advantages.map((advantage, index) => (
-                      <ListItem key={index}>
-                        <ListItemIcon><Star color="primary" /></ListItemIcon>
-                        <ListItemText primary={advantage} />
-                      </ListItem>
-                    ))}
-                  </List>
-                </Box>
-              )}
-
-              {/* Specifications Tab */}
-              {activeTab === 1 && (
-                <Box sx={{ mt: 3 }}>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell><strong>Property</strong></TableCell>
-                          <TableCell><strong>Value</strong></TableCell>
-                          <TableCell><strong>Description</strong></TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {material.specifications.map((spec, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{spec.property}</TableCell>
-                            <TableCell>{spec.value}</TableCell>
-                            <TableCell>{spec.description || '-'}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-
-                  {material.certifications.length > 0 && (
-                    <Box sx={{ mt: 3 }}>
-                      <Typography variant="h6" gutterBottom>Certifications</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {material.certifications.map((cert, index) => (
-                          <Chip key={index} label={cert} color="success" variant="outlined" />
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-                </Box>
-              )}
-
-              {/* Performance Tab */}
-              {activeTab === 2 && (
-                <Box sx={{ mt: 3 }}>
-                  <Grid container spacing={3}>
-                    <Grid item xs={12} md={6}>
-                      <Typography variant="h6" gutterBottom>Performance Metrics</Typography>
-                      <PerformanceBar label="Durability" value={material.performance.durability} />
-                      <PerformanceBar label="Low Maintenance" value={material.performance.maintenance} color="success" />
-                      <PerformanceBar label="Weather Resistance" value={material.performance.weatherResistance} color="info" />
-                      <PerformanceBar label="Fire Resistance" value={material.performance.fireResistance} color="warning" />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <Typography variant="h6" gutterBottom>Sustainability</Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <Nature color="success" />
-                        <Typography variant="h5" color="success.main">
-                          {material.sustainability.rating}/5
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Eco Rating
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2">
-                        {material.sustainability.description}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Box>
-              )}
-
-              {/* Documents Tab */}
-              {activeTab === 3 && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6" gutterBottom>Available Documents</Typography>
-                  <List>
-                    {material.documents.map((doc, index) => (
-                      <ListItem key={index}>
-                        <ListItemIcon><Download /></ListItemIcon>
-                        <ListItemText 
-                          primary={doc.name}
-                          secondary={doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}
-                        />
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<Download />}
-                          href={doc.url}
-                          target="_blank"
-                        >
-                          Download
-                        </Button>
-                      </ListItem>
-                    ))}
-                  </List>
-                </Box>
-              )}
             </Grid>
           </Grid>
         </DialogContent>
-        
+
         <DialogActions>
           <Button onClick={() => setShowDetails(false)}>Close</Button>
-          <Button variant="outlined" startIcon={<Compare />} onClick={() => onCompare(material.id)}>
-            Add to Compare
-          </Button>
-          <Button variant="contained" startIcon={<AttachMoney />} onClick={() => onRequestQuote(material.id)}>
-            Request Quote
-          </Button>
+          {onCompare && (
+            <Button variant="outlined" startIcon={<Compare />} onClick={() => onCompare(material.id.toString())}>
+              Add to Compare
+            </Button>
+          )}
+          {onRequestQuote && (
+            <Button variant="contained" startIcon={<AttachMoney />} onClick={() => onRequestQuote(material.id.toString())}>
+              Request Quote
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </>

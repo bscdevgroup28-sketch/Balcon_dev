@@ -15,7 +15,6 @@ import {
   Select,
   MenuItem,
   FormHelperText,
-  Chip,
   Paper,
   List,
   ListItem,
@@ -29,12 +28,10 @@ import {
   Delete,
   AttachFile,
   CheckCircle,
-  Build,
   LocationOn,
   CalendarToday,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 
 interface ProjectFormData {
   // Basic Information
@@ -74,7 +71,6 @@ const steps = [
 
 const ProjectWizard: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState<ProjectFormData>({
     title: '',
@@ -171,7 +167,7 @@ const ProjectWizard: React.FC = () => {
                 fullWidth
                 label="Project Title"
                 value={formData.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('title', e.target.value)}
                 error={!!errors.title}
                 helperText={errors.title}
                 placeholder="e.g., Metal Warehouse Building"
@@ -184,7 +180,7 @@ const ProjectWizard: React.FC = () => {
                 rows={4}
                 label="Project Description"
                 value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('description', e.target.value)}
                 placeholder="Provide a detailed description of your project..."
               />
             </Grid>
@@ -230,7 +226,7 @@ const ProjectWizard: React.FC = () => {
                 fullWidth
                 label="Project Location"
                 value={formData.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('location', e.target.value)}
                 error={!!errors.location}
                 helperText={errors.location}
                 placeholder="City, State or Full Address"
@@ -244,7 +240,7 @@ const ProjectWizard: React.FC = () => {
                 fullWidth
                 label="Building Size (sq ft)"
                 value={formData.buildingSize}
-                onChange={(e) => handleInputChange('buildingSize', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('buildingSize', e.target.value)}
                 error={!!errors.buildingSize}
                 helperText={errors.buildingSize}
                 placeholder="e.g., 5000"
@@ -256,7 +252,7 @@ const ProjectWizard: React.FC = () => {
                 fullWidth
                 label="Building Type"
                 value={formData.buildingType}
-                onChange={(e) => handleInputChange('buildingType', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('buildingType', e.target.value)}
                 placeholder="e.g., Warehouse, Garage, Workshop"
               />
             </Grid>
@@ -288,7 +284,7 @@ const ProjectWizard: React.FC = () => {
                 label="Preferred Start Date"
                 type="date"
                 value={formData.startDate}
-                onChange={(e) => handleInputChange('startDate', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('startDate', e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 InputProps={{
                   startAdornment: <CalendarToday sx={{ mr: 1, color: 'text.secondary' }} />
@@ -301,7 +297,7 @@ const ProjectWizard: React.FC = () => {
                 label="Target Completion Date"
                 type="date"
                 value={formData.targetCompletionDate}
-                onChange={(e) => handleInputChange('targetCompletionDate', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('targetCompletionDate', e.target.value)}
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
@@ -328,7 +324,7 @@ const ProjectWizard: React.FC = () => {
                 fullWidth
                 label="Estimated Budget"
                 value={formData.estimatedValue}
-                onChange={(e) => handleInputChange('estimatedValue', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('estimatedValue', e.target.value)}
                 placeholder="Optional"
                 type="number"
                 InputProps={{
@@ -349,7 +345,7 @@ const ProjectWizard: React.FC = () => {
                 rows={3}
                 label="Special Requirements"
                 value={formData.specialRequirements}
-                onChange={(e) => handleInputChange('specialRequirements', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('specialRequirements', e.target.value)}
                 placeholder="Any special design requirements, equipment needs, etc."
               />
             </Grid>
@@ -360,7 +356,7 @@ const ProjectWizard: React.FC = () => {
                 rows={3}
                 label="Site Access Requirements"
                 value={formData.accessRequirements}
-                onChange={(e) => handleInputChange('accessRequirements', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('accessRequirements', e.target.value)}
                 placeholder="Site access limitations, utility requirements, etc."
               />
             </Grid>
@@ -371,7 +367,7 @@ const ProjectWizard: React.FC = () => {
                 rows={2}
                 label="Permit Requirements"
                 value={formData.permitRequirements}
-                onChange={(e) => handleInputChange('permitRequirements', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('permitRequirements', e.target.value)}
                 placeholder="Known permit requirements or restrictions"
               />
             </Grid>

@@ -1,7 +1,7 @@
 import { User, Project } from '@/models';
 import { generateInquiryNumber } from '@/services/salesAssignment';
 
-export const createTestUser = async (overrides: Partial<User['_creationAttributes']> = {}) => {
+export const createTestUser = async (overrides: any = {}) => {
   return User.create({
     firstName: 'Test',
     lastName: 'User',
@@ -14,7 +14,7 @@ export const createTestUser = async (overrides: Partial<User['_creationAttribute
   } as any);
 };
 
-export const createTestSalesRep = async (overrides: Partial<User['_creationAttributes']> = {}) => {
+export const createTestSalesRep = async (overrides: any = {}) => {
   return createTestUser({
     firstName: 'Rep',
     lastName: 'User',
@@ -25,10 +25,11 @@ export const createTestSalesRep = async (overrides: Partial<User['_creationAttri
   });
 };
 
-export const createTestProject = async (userId: number, overrides: Partial<Project['_creationAttributes']> = {}) => {
+export const createTestProject = async (overrides: any = {}) => {
+  const user = await createTestUser();
   const inquiryNumber = await generateInquiryNumber();
   return Project.create({
-    userId,
+    userId: user.id,
     inquiryNumber,
     title: 'Test Project',
     description: 'A project created for integration testing',

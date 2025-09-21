@@ -467,6 +467,120 @@ const TeamLeaderDashboard: React.FC = () => {
           </Card>
         </Grid>
 
+        {/* Time Tracking Overview */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#388e3c', fontWeight: 600 }}>
+                Time Tracking Overview
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  Today's Hours Logged
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#388e3c' }}>
+                  42.5 / 48 hours
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={88.5}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    mt: 1,
+                    '& .MuiLinearProgress-bar': {
+                      backgroundColor: '#4caf50'
+                    }
+                  }}
+                />
+              </Box>
+              <List dense>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemText
+                    primary="Billable Hours"
+                    secondary="38.5 hours (90.6% of total)"
+                  />
+                  <Chip label="90.6%" color="success" size="small" />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemText
+                    primary="Overtime Hours"
+                    secondary="4.5 hours this week"
+                  />
+                  <Chip label="4.5h" color="warning" size="small" />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemText
+                    primary="Break Time"
+                    secondary="Average 45 min/day"
+                  />
+                  <Chip label="45m" color="info" size="small" />
+                </ListItem>
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Safety & Equipment Status */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#388e3c', fontWeight: 600 }}>
+                Safety & Equipment
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  Safety Compliance Score
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#388e3c' }}>
+                  98.5%
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={98.5}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    mt: 1,
+                    '& .MuiLinearProgress-bar': {
+                      backgroundColor: '#4caf50'
+                    }
+                  }}
+                />
+              </Box>
+              <List dense>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="All PPE Checks Complete"
+                    secondary="Last inspection: 2 hours ago"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Warning color="warning" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Equipment Maintenance Due"
+                    secondary="2 welders need servicing"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Safety Training Up to Date"
+                    secondary="All team members certified"
+                  />
+                </ListItem>
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Quick Actions */}
         <Grid item xs={12}>
           <Card>
@@ -576,6 +690,65 @@ const TeamLeaderDashboard: React.FC = () => {
                       Alerts
                     </Typography>
                   </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Time Tracking & Safety */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#388e3c', fontWeight: 600 }}>
+                Time Tracking and Safety
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Time Tracking
+                      </Typography>
+                      <Divider sx={{ mb: 2 }} />
+                      <Box>
+                        {teamMembers.map((member) => (
+                          <Box key={member.id} display="flex" justifyContent="space-between" alignItems="center" py={1}>
+                            <Typography variant="body2">
+                              {member.name}
+                            </Typography>
+                            <Typography variant="body2" fontWeight="bold">
+                              {member.hoursToday}h
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Safety Compliance
+                      </Typography>
+                      <Divider sx={{ mb: 2 }} />
+                      <Box>
+                        {teamMembers.map((member) => (
+                          <Box key={member.id} display="flex" justifyContent="space-between" alignItems="center" py={1}>
+                            <Typography variant="body2">
+                              {member.name}
+                            </Typography>
+                            <Chip
+                              label={member.efficiency >= 90 ? 'Compliant' : 'At Risk'}
+                              color={member.efficiency >= 90 ? 'success' : 'error'}
+                              size="small"
+                            />
+                          </Box>
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
                 </Grid>
               </Grid>
             </CardContent>

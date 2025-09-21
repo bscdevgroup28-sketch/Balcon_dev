@@ -182,8 +182,12 @@ class IntegratedAPIService {
     });
 
     // Emit real-time event for project creation
-    if (response.success) {
-      webSocketService.send('project:created', response.data);
+    if (response.success && response.data) {
+      webSocketService.emit('project_update', {
+        projectId: (response.data as any).id,
+        update: response.data,
+        activityType: 'project_created'
+      });
     }
 
     return response;
@@ -197,7 +201,11 @@ class IntegratedAPIService {
 
     // Emit real-time event for project update
     if (response.success && response.data) {
-      webSocketService.send('project:updated', { id, ...response.data });
+      webSocketService.emit('project_update', {
+        projectId: id,
+        update: response.data,
+        activityType: 'project_updated'
+      });
     }
 
     return response;
@@ -210,7 +218,11 @@ class IntegratedAPIService {
 
     // Emit real-time event for project deletion
     if (response.success) {
-      webSocketService.send('project:deleted', { id });
+      webSocketService.emit('project_update', {
+        projectId: id,
+        update: { deleted: true },
+        activityType: 'project_deleted'
+      });
     }
 
     return response;
@@ -247,9 +259,14 @@ class IntegratedAPIService {
       body: JSON.stringify(quoteData),
     });
 
-    if (response.success) {
-      webSocketService.send('quote:created', response.data);
-    }
+    // Note: Quote real-time events not implemented in backend yet
+    // if (response.success) {
+    //   webSocketService.emit('quote_update', {
+    //     quoteId: response.data?.id,
+    //     update: response.data,
+    //     activityType: 'quote_created'
+    //   });
+    // }
 
     return response;
   }
@@ -260,9 +277,107 @@ class IntegratedAPIService {
       body: JSON.stringify(quoteData),
     });
 
-    if (response.success && response.data) {
-      webSocketService.send('quote:updated', { id, ...response.data });
+    // Note: Quote real-time events not implemented in backend yet
+    // if (response.success && response.data) {
+    //   webSocketService.emit('quote_update', {
+    //     quoteId: id,
+    //     update: response.data,
+    //     activityType: 'quote_updated'
+    //   });
+    // }
+
+    return response;
+  }
+
+  // Material Management API calls
+  async getMaterials(params?: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    category?: string;
+    status?: string;
+    stockStatus?: string;
+    supplierName?: string;
+    search?: string;
+  }): Promise<APIResponse<any>> {
+    const queryParams = new URLSearchParams();
+
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
     }
+
+    const endpoint = `/api/materials${queryParams.toString() ? `?${queryParams}` : ''}`;
+    return this.apiCall(endpoint);
+  }
+
+  async getMaterial(id: string): Promise<APIResponse<any>> {
+    return this.apiCall(`/api/materials/${id}`);
+  }
+
+  async createMaterial(materialData: any): Promise<APIResponse<any>> {
+    const response = await this.apiCall('/api/materials', {
+      method: 'POST',
+      body: JSON.stringify(materialData),
+    });
+
+    // Note: Material real-time events not implemented in backend yet
+    // if (response.success) {
+    //   // Could emit notification for material creation
+    // }
+
+    return response;
+  }
+
+  async updateMaterial(id: string, materialData: any): Promise<APIResponse<any>> {
+    const response = await this.apiCall(`/api/materials/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(materialData),
+    });
+
+    // Note: Material real-time events not implemented in backend yet
+    // if (response.success && response.data) {
+    //   // Could emit notification for material update
+    // }
+
+    return response;
+  }
+
+  async deleteMaterial(id: string): Promise<APIResponse<any>> {
+    const response = await this.apiCall(`/api/materials/${id}`, {
+      method: 'DELETE',
+    });
+
+    // Note: Material real-time events not implemented in backend yet
+    // if (response.success) {
+    //   // Could emit notification for material deletion
+    // }
+
+    return response;
+  }
+
+  async getMaterialCategories(): Promise<APIResponse<string[]>> {
+    return this.apiCall('/api/materials/categories');
+  }
+
+  async getLowStockMaterials(): Promise<APIResponse<any>> {
+    return this.apiCall('/api/materials/low-stock');
+  }
+
+  async updateMaterialStock(id: string, stockData: any): Promise<APIResponse<any>> {
+    const response = await this.apiCall(`/api/materials/${id}/stock`, {
+      method: 'PUT',
+      body: JSON.stringify(stockData),
+    });
+
+    // Note: Material real-time events not implemented in backend yet
+    // if (response.success && response.data) {
+    //   // Could emit notification for stock update
+    // }
 
     return response;
   }
@@ -401,20 +516,21 @@ class IntegratedAPIService {
     });
   }
 
-  // Real-time event subscriptions
+  // Real-time event subscriptions (adapted for current WebSocket implementation)
   subscribeToProjectUpdates(projectId: string, callback: (data: any) => void) {
-    webSocketService.on(`project:${projectId}:updated`, callback);
-    webSocketService.send('subscribe:project', { projectId });
+    // Use the WebSocket context for project updates instead
+    // webSocketService.on(`project:${projectId}:updated`, callback);
+    // webSocketService.emit('join_project', projectId);
   }
 
   subscribeToNotifications(callback: (notification: any) => void) {
-    webSocketService.on('notification:new', callback);
-    webSocketService.send('subscribe:notifications');
+    // Notifications are handled through WebSocket context
+    // webSocketService.on('notification', callback);
   }
 
   subscribeToAnalytics(callback: (data: any) => void) {
-    webSocketService.on('analytics:updated', callback);
-    webSocketService.send('subscribe:analytics');
+    // Analytics updates not implemented yet
+    // webSocketService.on('analytics:updated', callback);
   }
 
   // Health check

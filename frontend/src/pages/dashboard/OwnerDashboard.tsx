@@ -27,6 +27,8 @@ import {
   Warning,
   ArrowUpward,
   ArrowDownward,
+  Build,
+  AccountBalance,
 } from '@mui/icons-material';
 import { BaseDashboard } from '../../components/dashboard/BaseDashboard';
 import { BusinessMetricsCard } from '../../components/dashboard/BusinessDashboardComponents';
@@ -344,6 +346,226 @@ const OwnerDashboard: React.FC = () => {
                     </Box>
                   </Grid>
                 ))}
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Strategic Initiatives & Goals */}
+        <Grid item xs={12} lg={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Strategic Initiatives
+              </Typography>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Q4 Growth Target
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={78}
+                    sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    78%
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  $1.85M of $2.4M target achieved
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Market Expansion
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={65}
+                    sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
+                    color="secondary"
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    65%
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  3 of 5 target markets entered
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Digital Transformation
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={42}
+                    sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
+                    color="info"
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    42%
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  6 of 12 initiatives completed
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Team Performance Overview */}
+        <Grid item xs={12} lg={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Team Performance Overview
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="success.main" sx={{ fontWeight: 'bold' }}>
+                      94.2%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      On-Time Delivery
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                      4.8/5
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Customer Satisfaction
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="warning.main" sx={{ fontWeight: 'bold' }}>
+                      87%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Resource Utilization
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box sx={{ textAlign: 'center', p: 2, backgroundColor: 'background.default', borderRadius: 1 }}>
+                    <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>
+                      12
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Active Projects
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Risk Indicators */}
+        <Grid item xs={12} lg={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Risk Indicators
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Warning color="error" />
+                    <Typography variant="body2">High Risk Projects</Typography>
+                  </Box>
+                  <Chip label="2" color="error" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Warning color="warning" />
+                    <Typography variant="body2">Overdue Invoices</Typography>
+                  </Box>
+                  <Chip label="5" color="warning" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Warning color="info" />
+                    <Typography variant="body2">Low Stock Alerts</Typography>
+                  </Box>
+                  <Chip label="8" color="info" size="small" />
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircle color="success" />
+                    <Typography variant="body2">Compliance Status</Typography>
+                  </Box>
+                  <Chip label="Good" color="success" size="small" />
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Market Intelligence */}
+        <Grid item xs={12} lg={8}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Market Intelligence
+              </Typography>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={4}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="success.main" sx={{ fontWeight: 'bold' }}>
+                      +15.2%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Market Growth Rate
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Construction industry YOY
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                      3.2x
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Competitive Advantage
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      vs regional competitors
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="h3" color="warning.main" sx={{ fontWeight: 'bold' }}>
+                      89%
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Market Share
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Local market penetration
+                    </Typography>
+                  </Box>
+                </Grid>
               </Grid>
             </CardContent>
           </Card>

@@ -18,7 +18,6 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  Settings,
   Notifications,
   AccountCircle,
   Logout,
@@ -77,20 +76,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             aria-label="open drawer"
             edge="start"
             onClick={() => dispatch(toggleSidebar())}
-            sx={{ mr: 2 }}
+            sx={{ mr: 2, display: { sm: sidebarOpen ? 'none' : 'block' } }}
           >
             <MenuIcon />
           </IconButton>
-          
+
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Bal-Con Builders
           </Typography>
-          
-          <Typography variant="body2" sx={{ mr: 2, opacity: 0.8 }}>
+
+          {/* Mobile: Show role in smaller text */}
+          <Typography
+            variant="body2"
+            sx={{
+              mr: 2,
+              opacity: 0.8,
+              display: { xs: 'none', sm: 'block' }
+            }}
+          >
             {user ? getRoleDisplayName(user.role) : 'Guest'}
           </Typography>
 
-          <IconButton color="inherit">
+          <IconButton color="inherit" sx={{ display: { xs: 'none', sm: 'block' } }}>
             <Badge badgeContent={3} color="error">
               <Notifications />
             </Badge>
@@ -113,10 +120,58 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Side Drawer */}
       <Drawer
+        variant="temporary"
+        anchor="left"
+        open={sidebarOpen}
+        onClose={() => dispatch(toggleSidebar())}
+        sx={{
+          display: { xs: 'block', sm: 'none' },
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+          },
+        }}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile
+        }}
+      >
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div">
+            BC Builders
+          </Typography>
+        </Toolbar>
+        <Divider />
+
+        <List>
+          {menuItems.map((item) => {
+            const IconComponent = item.icon;
+            return (
+              <ListItem
+                button
+                key={item.text}
+                onClick={() => {
+                  navigate(item.path);
+                  dispatch(toggleSidebar()); // Close drawer on mobile after navigation
+                }}
+                selected={location.pathname === item.path}
+              >
+                <ListItemIcon>
+                  <IconComponent />
+                </ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItem>
+            );
+          })}
+        </List>
+      </Drawer>
+
+      {/* Desktop Drawer */}
+      <Drawer
         variant="persistent"
         anchor="left"
         open={sidebarOpen}
         sx={{
+          display: { xs: 'none', sm: 'block' },
           width: drawerWidth,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
@@ -131,7 +186,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Typography>
         </Toolbar>
         <Divider />
-        
+
         <List>
           {menuItems.map((item) => {
             const IconComponent = item.icon;
@@ -189,10 +244,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           width: { sm: `calc(100% - ${sidebarOpen ? drawerWidth : 0}px)` },
           ml: { sm: `${sidebarOpen ? drawerWidth : 0}px` },
           transition: 'width 0.3s, margin 0.3s',
+          p: { xs: 1, sm: 3 }, // Less padding on mobile
         }}
       >
         <Toolbar />
-        {children}
+        <Box sx={{
+          maxWidth: '100%',
+          overflowX: 'auto', // Allow horizontal scrolling on small screens if needed
+        }}>
+          {children}
+        </Box>
       </Box>
     </Box>
   );

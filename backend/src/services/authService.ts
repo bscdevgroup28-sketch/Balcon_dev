@@ -48,7 +48,7 @@ export class AuthService {
       expiresIn: JWT_EXPIRES_IN,
       issuer: 'balcon-builders',
       audience: 'balcon-builders-app'
-    };
+    } as SignOptions;
 
     return jwt.sign(payload, JWT_SECRET, options);
   }
@@ -71,7 +71,7 @@ export class AuthService {
       expiresIn: REFRESH_TOKEN_EXPIRES_IN,
       issuer: 'balcon-builders',
       audience: 'balcon-builders-app'
-    };
+    } as SignOptions;
 
     return jwt.sign(payload, JWT_SECRET, options);
   }

@@ -7,7 +7,7 @@ export const createUserSchema = z.object({
   lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50),
   phone: z.string().regex(/^[\+]?[1-9][\d]{0,15}$/, 'Invalid phone number format').optional(),
   company: z.string().max(100).optional(),
-  role: z.enum(['admin', 'user']).default('user'),
+  role: z.enum(['owner', 'office_manager', 'shop_manager', 'project_manager', 'team_leader', 'technician', 'customer']).default('customer'),
 });
 
 export const updateUserSchema = createUserSchema.partial();
@@ -61,6 +61,7 @@ export const updateQuoteSchema = createQuoteSchema.partial().extend({
 
 // Order schemas
 export const createOrderSchema = z.object({
+  userId: z.number().positive(),
   projectId: z.number().positive(),
   quoteId: z.number().positive().optional(),
   items: z.array(quoteItemSchema).min(1, 'At least one item is required'),
@@ -91,6 +92,29 @@ export const updateOrderSchema = createOrderSchema.partial().extend({
   actualDelivery: z.string().datetime().optional(),
 });
 
+// Material schemas
+export const createMaterialSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').max(200),
+  description: z.string().optional(),
+  category: z.string().min(2, 'Category must be at least 2 characters').max(100),
+  unitOfMeasure: z.string().min(1, 'Unit of measure is required').max(50),
+  currentStock: z.number().min(0, 'Current stock cannot be negative').default(0),
+  minimumStock: z.number().min(0, 'Minimum stock cannot be negative').default(0),
+  reorderPoint: z.number().min(0, 'Reorder point cannot be negative').default(0),
+  unitCost: z.number().min(0, 'Unit cost cannot be negative'),
+  markupPercentage: z.number().min(0, 'Markup percentage cannot be negative').max(999.99).default(0),
+  sellingPrice: z.number().min(0, 'Selling price cannot be negative'),
+  supplierName: z.string().max(200).optional(),
+  supplierContact: z.string().max(100).optional(),
+  supplierEmail: z.string().email('Invalid supplier email format').optional(),
+  leadTimeDays: z.number().int().min(0, 'Lead time cannot be negative').default(7),
+  location: z.string().max(100).optional(),
+  status: z.enum(['active', 'inactive', 'discontinued']).default('active'),
+  notes: z.string().optional(),
+});
+
+export const updateMaterialSchema = createMaterialSchema.partial();
+
 // Query schemas
 export const paginationSchema = z.object({
   page: z.string().transform(val => parseInt(val, 10)).refine(val => val > 0, 'Page must be positive').default('1'),
@@ -118,6 +142,15 @@ export const orderQuerySchema = paginationSchema.extend({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   projectId: z.string().transform(val => parseInt(val, 10)).refine(val => val > 0).optional(),
   userId: z.string().transform(val => parseInt(val, 10)).refine(val => val > 0).optional(),
+  search: z.string().optional(),
+});
+
+export const materialQuerySchema = paginationSchema.extend({
+  category: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'discontinued']).optional(),
+  stockStatus: z.enum(['normal', 'low', 'critical']).optional(),
+  supplierName: z.string().optional(),
+  search: z.string().optional(),
 });
 
 // ID parameter schema
@@ -141,6 +174,10 @@ export type QuoteQueryInput = z.infer<typeof quoteQuerySchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
 export type OrderQueryInput = z.infer<typeof orderQuerySchema>;
+
+export type CreateMaterialInput = z.infer<typeof createMaterialSchema>;
+export type UpdateMaterialInput = z.infer<typeof updateMaterialSchema>;
+export type MaterialQueryInput = z.infer<typeof materialQuerySchema>;
 
 export type PaginationInput = z.infer<typeof paginationSchema>;
 export type IdParamInput = z.infer<typeof idParamSchema>;

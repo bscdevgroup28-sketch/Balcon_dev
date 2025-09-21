@@ -301,7 +301,7 @@ export class WebSocketService {
           description: activityWithUser.description,
           metadata: activityWithUser.metadata,
           timestamp: activityWithUser.createdAt,
-          user: activityWithUser.user,
+          user: (activityWithUser as any).user,
           formattedMessage: activityWithUser.getFormattedMessage()
         });
       }

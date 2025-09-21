@@ -2,18 +2,11 @@ import React, { useEffect, useState } from 'react';
 import {
   Box,
   Grid,
-  Card,
-  CardContent,
   Typography,
   Button,
   Chip,
-  LinearProgress,
   Paper,
   List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
   Alert,
   Fab,
 } from '@mui/material';
@@ -21,17 +14,14 @@ import {
   Assignment,
   RequestQuote,
   ShoppingCart,
-  TrendingUp,
-  Schedule,
   CheckCircle,
-  Warning,
   Build,
   Add,
   Phone,
   Email,
   AttachMoney,
 } from '@mui/icons-material';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store/store';
 import OnboardingTour from '../../components/onboarding/OnboardingTour';
@@ -150,51 +140,6 @@ const CustomerDashboard: React.FC = () => {
       actionable: false
     }
   ]);
-
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'quote',
-      title: 'Quote #QT-2024-001 Approved',
-      description: 'Metal Warehouse Structure quote has been approved',
-      timestamp: '2 hours ago',
-      status: 'success',
-    },
-    {
-      id: 2,
-      type: 'project',
-      title: 'Project Update',
-      description: 'Residential Garage project moved to production phase',
-      timestamp: '1 day ago',
-      status: 'info',
-    },
-    {
-      id: 3,
-      type: 'order',
-      title: 'Delivery Scheduled',
-      description: 'Order #OR-2024-001 delivery scheduled for next week',
-      timestamp: '2 days ago',
-      status: 'warning',
-    },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success': return 'success';
-      case 'warning': return 'warning';
-      case 'info': return 'info';
-      default: return 'default';
-    }
-  };
-
-  const getStatusIcon = (type: string) => {
-    switch (type) {
-      case 'quote': return <RequestQuote />;
-      case 'project': return <Build />;
-      case 'order': return <ShoppingCart />;
-      default: return <CheckCircle />;
-    }
-  };
 
   const handleViewProject = (projectId: number) => {
     navigate(`/projects/${projectId}`);

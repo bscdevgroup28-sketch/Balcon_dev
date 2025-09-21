@@ -24,7 +24,6 @@ import UsersPage from './pages/admin/UsersPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotificationProvider from './components/feedback/NotificationProvider';
 import HelpCenter from './components/help/HelpCenter';
-import DemoAccountSelector from './components/demo/DemoAccountSelector';
 import { RootState } from './store/store';
 import { getDashboardPath } from './utils/roleUtils';
 

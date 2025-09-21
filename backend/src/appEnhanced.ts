@@ -26,6 +26,9 @@ import authRoutes from './routes/authEnhanced';
 import projectRoutes from './routes/projects';
 import quoteRoutes from './routes/quotes';
 import fileRoutes from './routes/files';
+import orderRoutes from './routes/orders';
+import userRoutes from './routes/users';
+import materialsRoutes from './routes/materials';
 import testRoutes from './routes/test';
 
 // Enhanced Express Application with WebSocket support
@@ -129,6 +132,9 @@ export class BalConBuildersApp {
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/projects', projectRoutes);
     this.app.use('/api/quotes', quoteRoutes);
+    this.app.use('/api/orders', orderRoutes);
+    this.app.use('/api/users', userRoutes);
+    this.app.use('/api/materials', materialsRoutes);
     this.app.use('/api/files', fileRoutes);
     this.app.use('/api/test', testRoutes);
 

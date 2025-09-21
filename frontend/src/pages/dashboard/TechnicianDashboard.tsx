@@ -30,7 +30,8 @@ import {
   SettingsApplications,
   Notifications,
   AccessTime,
-  CameraAlt
+  CameraAlt,
+  Warning
 } from '@mui/icons-material';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
 
@@ -110,6 +111,19 @@ const TechnicianDashboard: React.FC = () => {
     { name: 'Take Photo', icon: CameraAlt, color: '#388e3c' },
     { name: 'Report Issue', icon: Notifications, color: '#f57c00' },
     { name: 'Request Help', icon: Build, color: '#7b1fa2' }
+  ];
+
+  const equipmentStatus = [
+    { id: 1, name: 'Welding Machine', status: 'Operational', lastServiced: '2023-10-01' },
+    { id: 2, name: 'Air Compressor', status: 'Maintenance Required', lastServiced: '2023-09-15' },
+    { id: 3, name: 'Forklift', status: 'Operational', lastServiced: '2023-08-20' }
+  ];
+
+  const safetyChecklist = [
+    { id: 1, item: 'Safety glasses', checked: true },
+    { id: 2, item: 'Gloves', checked: true },
+    { id: 3, item: 'Helmet', checked: false },
+    { id: 4, item: 'Ear protection', checked: true }
   ];
 
   const getStatusColor = (status: string) => {
@@ -343,6 +357,108 @@ const TechnicianDashboard: React.FC = () => {
           </Card>
         </Grid>
 
+        {/* Equipment Status */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#d32f2f', fontWeight: 600 }}>
+                Equipment Status
+              </Typography>
+              <List dense>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Welding Machine #3"
+                    secondary="Last serviced: Yesterday - All systems green"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Warning color="warning" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Grinder Station 2"
+                    secondary="Maintenance due in 3 days - Schedule service"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Safety Gear"
+                    secondary="All PPE checked and compliant"
+                  />
+                </ListItem>
+              </List>
+              <Box sx={{ mt: 2, p: 2, bgcolor: '#fff3e0', borderRadius: 1 }}>
+                <Typography variant="body2" fontWeight="medium" gutterBottom>
+                  Equipment Notes
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • New welding tips available in storage
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • Crane inspection scheduled for Friday
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Safety Checklist */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#d32f2f', fontWeight: 600 }}>
+                Daily Safety Checklist
+              </Typography>
+              <List dense>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="PPE Inspection"
+                    secondary="Hard hat, gloves, safety glasses - All checked"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Work Area Safety"
+                    secondary="No hazards identified, area cleared"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Equipment Safety"
+                    secondary="All tools inspected and safe to use"
+                  />
+                </ListItem>
+              </List>
+              <Box sx={{ mt: 2, p: 2, bgcolor: '#e8f5e8', borderRadius: 1 }}>
+                <Typography variant="body2" fontWeight="medium" gutterBottom>
+                  Safety Score: 98/100
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • Perfect attendance on safety meetings
+                </Typography>
+                <Typography variant="caption" display="block">
+                  • No safety incidents this month
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Current Tasks */}
         <Grid item xs={12} lg={8}>
           <Card>
@@ -515,6 +631,61 @@ const TechnicianDashboard: React.FC = () => {
               </Card>
             </Grid>
           </Grid>
+        </Grid>
+
+        {/* Equipment & Safety */}
+        <Grid item xs={12}>
+          <Typography variant="h5" gutterBottom sx={{ color: '#d32f2f', fontWeight: 600, mt: 4 }}>
+            Equipment Status & Safety Checklist
+          </Typography>
+        </Grid>
+
+        {/* Equipment Status */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#d32f2f', fontWeight: 600 }}>
+                Equipment Status
+              </Typography>
+              <List dense>
+                {equipmentStatus.map((equipment) => (
+                  <ListItem key={equipment.id}>
+                    <ListItemIcon>
+                      <Build fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={equipment.name}
+                      secondary={`Status: ${equipment.status} - Last Serviced: ${equipment.lastServiced}`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Safety Checklist */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#d32f2f', fontWeight: 600 }}>
+                Safety Checklist
+              </Typography>
+              <List dense>
+                {safetyChecklist.map((item) => (
+                  <ListItem key={item.id}>
+                    <ListItemIcon>
+                      {item.checked ? <CheckCircle color="success" fontSize="small" /> : <Build fontSize="small" />}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.item}
+                      secondary={item.checked ? 'Checked' : 'Not Checked'}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
         </Grid>
       </Grid>
     </BaseDashboard>

@@ -6,11 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { 
   BarChart3, 
   TrendingUp, 
-  TrendingDown, 
   DollarSign, 
   Users, 
   Calendar,
-  Download,
   RefreshCw,
   Eye,
   ArrowUpRight,
@@ -41,15 +39,8 @@ interface AnalyticsData {
   };
 }
 
-interface ChartData {
-  labels: string[];
-  revenue: number[];
-  projects: number[];
-}
-
 const AnalyticsDashboard: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
-  const [chartData, setChartData] = useState<ChartData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeframe, setSelectedTimeframe] = useState('30d');
   const [isRealTimeEnabled, setIsRealTimeEnabled] = useState(false);
@@ -92,14 +83,7 @@ const AnalyticsDashboard: React.FC = () => {
         }
       };
 
-      const mockChartData: ChartData = {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-        revenue: [45000, 52000, 48000, 61000, 55000, 67000],
-        projects: [5, 7, 6, 9, 8, 10]
-      };
-
       setAnalyticsData(mockData);
-      setChartData(mockChartData);
     } catch (error) {
       console.error('Failed to load analytics data:', error);
     } finally {

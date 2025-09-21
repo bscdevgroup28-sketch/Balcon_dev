@@ -48,14 +48,6 @@ class ErrorBoundary extends Component<Props, State> {
 
   private handleReportError = () => {
     const { error, errorInfo } = this.state;
-    const errorReport = {
-      error: error?.toString(),
-      stack: error?.stack,
-      componentStack: errorInfo?.componentStack,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href
-    };
     
     // Error report generated
     // TODO: Send to error reporting service

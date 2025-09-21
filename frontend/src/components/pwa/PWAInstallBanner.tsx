@@ -19,7 +19,6 @@ export const PWAInstallBanner: React.FC<PWAInstallBannerProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
     // Check initial state

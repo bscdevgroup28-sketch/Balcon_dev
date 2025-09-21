@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   Grid,
@@ -20,28 +20,31 @@ import {
   ListItemIcon,
   Avatar,
   IconButton,
+  LinearProgress,
 } from '@mui/material';
 import {
   People,
   Assignment,
   RequestQuote,
-  ShoppingCart,
   TrendingUp,
   AttachMoney,
   Visibility,
   Edit,
-  Delete,
   Warning,
   CheckCircle,
   Schedule,
+  Security,
+  Storage,
+  Cloud,
+  Settings,
+  Assessment
 } from '@mui/icons-material';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store/store';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useSelector((state: RootState) => state.auth);
 
   // Mock data for demonstration
   const adminStats = {
@@ -90,15 +93,10 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Admin Dashboard
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          System overview and management tools
-        </Typography>
-      </Box>
+      {/* System Overview */}
+      <Typography variant="h5" gutterBottom sx={{ color: '#424242', fontWeight: 600, mb: 3 }}>
+        System Administration Center
+      </Typography>
 
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -329,6 +327,242 @@ const AdminDashboard: React.FC = () => {
             </List>
           </Paper>
         </Grid>
+
+        {/* System Health & Security */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#424242', fontWeight: 600 }}>
+                System Health
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  Overall System Status
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#4caf50' }}>
+                  98.5% Uptime
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={98.5}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    mt: 1,
+                    '& .MuiLinearProgress-bar': {
+                      backgroundColor: '#4caf50'
+                    }
+                  }}
+                />
+              </Box>
+              <List dense>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Database"
+                    secondary="All systems operational"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <CheckCircle color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="API Services"
+                    secondary="Response time: 45ms"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Warning color="warning" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Backup System"
+                    secondary="Last backup: 2 hours ago"
+                  />
+                </ListItem>
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Security & Audit */}
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#424242', fontWeight: 600 }}>
+                Security Overview
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="textSecondary" gutterBottom>
+                  Security Score
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#2196f3' }}>
+                  94/100
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={94}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    mt: 1,
+                    '& .MuiLinearProgress-bar': {
+                      backgroundColor: '#2196f3'
+                    }
+                  }}
+                />
+              </Box>
+              <List dense>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Security color="primary" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Failed Login Attempts"
+                    secondary="3 attempts in last 24h"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Storage color="info" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Data Encryption"
+                    secondary="All sensitive data encrypted"
+                  />
+                </ListItem>
+                <ListItem sx={{ px: 0 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Cloud color="success" fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Cloud Services"
+                    secondary="All integrations active"
+                  />
+                </ListItem>
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Quick Admin Actions */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom sx={{ color: '#424242', fontWeight: 600 }}>
+                Administrative Tools
+              </Typography>
+              <Grid container spacing={2} mt={1}>
+                <Grid item xs={6} sm={3} md={2}>
+                  <Box textAlign="center">
+                    <IconButton
+                      sx={{
+                        bgcolor: '#e3f2fd',
+                        color: '#1976d2',
+                        mb: 1,
+                        '&:hover': { bgcolor: '#bbdefb' }
+                      }}
+                    >
+                      <People />
+                    </IconButton>
+                    <Typography variant="caption" display="block">
+                      User Management
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={3} md={2}>
+                  <Box textAlign="center">
+                    <IconButton
+                      sx={{
+                        bgcolor: '#e3f2fd',
+                        color: '#1976d2',
+                        mb: 1,
+                        '&:hover': { bgcolor: '#bbdefb' }
+                      }}
+                    >
+                      <Security />
+                    </IconButton>
+                    <Typography variant="caption" display="block">
+                      Security
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={3} md={2}>
+                  <Box textAlign="center">
+                    <IconButton
+                      sx={{
+                        bgcolor: '#e3f2fd',
+                        color: '#1976d2',
+                        mb: 1,
+                        '&:hover': { bgcolor: '#bbdefb' }
+                      }}
+                    >
+                      <Storage />
+                    </IconButton>
+                    <Typography variant="caption" display="block">
+                      Database
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={3} md={2}>
+                  <Box textAlign="center">
+                    <IconButton
+                      sx={{
+                        bgcolor: '#e3f2fd',
+                        color: '#1976d2',
+                        mb: 1,
+                        '&:hover': { bgcolor: '#bbdefb' }
+                      }}
+                    >
+                      <Settings />
+                    </IconButton>
+                    <Typography variant="caption" display="block">
+                      Settings
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={3} md={2}>
+                  <Box textAlign="center">
+                    <IconButton
+                      sx={{
+                        bgcolor: '#e3f2fd',
+                        color: '#1976d2',
+                        mb: 1,
+                        '&:hover': { bgcolor: '#bbdefb' }
+                      }}
+                    >
+                      <Assessment />
+                    </IconButton>
+                    <Typography variant="caption" display="block">
+                      Reports
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={3} md={2}>
+                  <Box textAlign="center">
+                    <IconButton
+                      sx={{
+                        bgcolor: '#e3f2fd',
+                        color: '#1976d2',
+                        mb: 1,
+                        '&:hover': { bgcolor: '#bbdefb' }
+                      }}
+                    >
+                      <Cloud />
+                    </IconButton>
+                    <Typography variant="caption" display="block">
+                      Integrations
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
       </Grid>
     </Box>
   );

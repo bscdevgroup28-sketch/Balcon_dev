@@ -370,16 +370,22 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
                   </TableRow>
                 ))}
                 <TableRow>
-                  <TableCell colSpan={3} align="right"><strong>Subtotal:</strong></TableCell>
-                  <TableCell align="right"><strong>${quote.subtotal.toLocaleString()}</strong></TableCell>
+                  <TableCell></TableCell>
+                  <TableCell></TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>Subtotal:</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>${quote.subtotal.toLocaleString()}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell colSpan={3} align="right"><strong>Tax:</strong></TableCell>
-                  <TableCell align="right"><strong>${quote.taxAmount.toLocaleString()}</strong></TableCell>
+                  <TableCell></TableCell>
+                  <TableCell></TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>Tax:</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>${quote.taxAmount.toLocaleString()}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell colSpan={3} align="right"><strong>Total:</strong></TableCell>
-                  <TableCell align="right"><strong>${quote.totalAmount.toLocaleString()}</strong></TableCell>
+                  <TableCell></TableCell>
+                  <TableCell></TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>Total:</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>${quote.totalAmount.toLocaleString()}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -458,7 +464,7 @@ const QuoteCard: React.FC<QuoteCardProps> = ({
             rows={3}
             label="Reason for declining"
             value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRejectReason(e.target.value)}
             placeholder="e.g., Budget constraints, timeline doesn't work, need modifications..."
           />
         </DialogContent>

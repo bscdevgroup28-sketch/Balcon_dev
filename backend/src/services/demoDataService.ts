@@ -15,12 +15,18 @@ interface DemoProjectData {
   startDate?: Date;
   targetCompletionDate?: Date;
   location?: string;
-  requirements: any;
+  requirements?: any;
   notes?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  budget?: number;
+  endDate?: Date;
+  address?: string;
 }
 
 interface DemoQuoteData {
-  projectId: number;
+  projectId?: number;
   userId: number;
   quoteNumber: string;
   status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
@@ -28,9 +34,10 @@ interface DemoQuoteData {
   taxAmount: number;
   totalAmount: number;
   validUntil: Date;
-  items: any;
+  items?: any;
   terms?: string;
   notes?: string;
+  laborCost?: number;
 }
 
 export class DemoDataService {
@@ -39,14 +46,44 @@ export class DemoDataService {
    * Create demo projects with realistic data for all role types
    */
   static async createDemoProjects(): Promise<void> {
+    // First create some demo users if they don't exist
+    const demoUsers = await User.findAll({ limit: 5 });
+    if (demoUsers.length === 0) {
+      // Create basic demo users
+      const user1 = await User.create({
+        firstName: 'Demo',
+        lastName: 'Customer',
+        email: 'demo.customer@balconbuilders.com',
+        phone: '555-1000',
+        role: 'user',
+        isActive: true,
+        isSalesRep: false,
+        salesCapacity: 0
+      });
+      const user2 = await User.create({
+        firstName: 'Demo',
+        lastName: 'Sales',
+        email: 'demo.sales@balconbuilders.com',
+        phone: '555-1001',
+        role: 'sales',
+        isActive: true,
+        isSalesRep: true,
+        salesCapacity: 10
+      });
+      demoUsers.push(user1, user2);
+    }
+
     const demoProjects: DemoProjectData[] = [
       {
+        userId: demoUsers[0]?.id || 1,
+        inquiryNumber: 'DEMO-001',
         title: 'Heritage Mall Renovation',
         description: 'Complete structural renovation of heritage shopping mall including new steel framework, modern HVAC integration, and seismic upgrades.',
         clientName: 'Johnson Construction',
         clientEmail: 'project.manager@johnsonconstruction.com',
         clientPhone: '+1-555-2001',
         status: 'in_progress',
+        priority: 'high',
         budget: 850000,
         startDate: new Date('2025-06-15'),
         endDate: new Date('2025-09-15'),
@@ -54,91 +91,112 @@ export class DemoDataService {
         projectType: 'commercial'
       },
       {
+        userId: demoUsers[0]?.id || 1,
+        inquiryNumber: 'DEMO-002',
         title: 'Downtown Office Complex',
         description: 'New 12-story office building with advanced steel and glass curtain wall system, underground parking structure, and rooftop amenities.',
         clientName: 'Metro Development Group',
         clientEmail: 'development@metrogroup.com',
         clientPhone: '+1-555-2002',
         status: 'in_progress',
+        priority: 'high',
         budget: 1200000,
         startDate: new Date('2025-07-01'),
         endDate: new Date('2025-11-30'),
         address: '789 Business District Blvd, Metro City',
-        projectType: 'New Construction'
+        projectType: 'commercial'
       },
       {
+        userId: demoUsers[0]?.id || 1,
+        inquiryNumber: 'DEMO-003',
         title: 'Industrial Warehouse Expansion',
         description: 'Large-scale warehouse expansion including automated storage systems, loading dock improvements, and office space integration.',
         clientName: 'Storage Solutions Inc',
         clientEmail: 'operations@storagesolutions.com',
         clientPhone: '+1-555-2003',
         status: 'in_progress',
+        priority: 'medium',
         budget: 650000,
         startDate: new Date('2025-05-20'),
         endDate: new Date('2025-08-30'),
         address: '3456 Industrial Park Way, Metro City',
-        projectType: 'Industrial Expansion'
+        projectType: 'industrial'
       },
       {
+        userId: demoUsers[0]?.id || 1,
+        inquiryNumber: 'DEMO-004',
         title: 'Luxury Residential High-Rise',
         description: 'Premium 24-story residential tower with luxury amenities, underground parking, and sustainable building features.',
         clientName: 'Prestige Properties',
         clientEmail: 'projects@prestigeproperties.com',
         clientPhone: '+1-555-2004',
         status: 'approved',
+        priority: 'high',
         budget: 2100000,
         startDate: new Date('2025-09-01'),
         endDate: new Date('2026-02-28'),
         address: '567 Luxury Lane, Uptown Metro City',
-        projectType: 'Residential Construction'
+        projectType: 'residential'
       },
       {
+        userId: demoUsers[0]?.id || 1,
+        inquiryNumber: 'DEMO-005',
         title: 'Municipal Bridge Repair',
         description: 'Critical structural repairs and reinforcement of main city bridge including deck replacement and expansion joint renewal.',
         clientName: 'Metro City Public Works',
         clientEmail: 'engineering@metrocity.gov',
         clientPhone: '+1-555-2005',
-        status: 'quote_sent',
+        status: 'quoted',
+        priority: 'urgent',
         budget: 950000,
         address: 'Main Street Bridge, Metro City',
-        projectType: 'Infrastructure Repair'
+        projectType: 'commercial'
       },
       {
+        userId: demoUsers[0]?.id || 1,
+        inquiryNumber: 'DEMO-006',
         title: 'University Science Building',
         description: 'New 6-story science and research facility with specialized laboratory spaces, clean rooms, and advanced ventilation systems.',
         clientName: 'Metro University',
         clientEmail: 'facilities@metrouniversity.edu',
         clientPhone: '+1-555-2006',
         status: 'inquiry',
+        priority: 'medium',
         budget: 1750000,
         address: '123 University Campus Dr, Metro City',
-        projectType: 'Educational Facility'
+        projectType: 'commercial'
       },
       {
+        userId: demoUsers[0]?.id || 1,
+        inquiryNumber: 'DEMO-007',
         title: 'Retail Shopping Center',
         description: 'Modern open-air shopping center with anchor stores, restaurant spaces, and covered pedestrian walkways.',
         clientName: 'Retail Ventures LLC',
         clientEmail: 'development@retailventures.com',
         clientPhone: '+1-555-2007',
         status: 'completed',
+        priority: 'medium',
         budget: 780000,
         startDate: new Date('2025-02-01'),
         endDate: new Date('2025-06-30'),
         address: '890 Shopping Plaza Dr, Suburb Metro City',
-        projectType: 'Retail Construction'
+        projectType: 'commercial'
       },
       {
+        userId: demoUsers[0]?.id || 1,
+        inquiryNumber: 'DEMO-008',
         title: 'Hospital Emergency Wing',
         description: 'Critical care facility expansion including emergency departments, surgical suites, and patient recovery areas.',
         clientName: 'Metro General Hospital',
         clientEmail: 'construction@metrohospital.org',
         clientPhone: '+1-555-2008',
         status: 'approved',
+        priority: 'high',
         budget: 1450000,
         startDate: new Date('2025-08-15'),
         endDate: new Date('2025-12-15'),
         address: '456 Medical Center Dr, Metro City',
-        projectType: 'Healthcare Facility'
+        projectType: 'commercial'
       }
     ];
 
@@ -158,66 +216,82 @@ export class DemoDataService {
     
     const demoQuotes: Omit<DemoQuoteData, 'projectId'>[] = [
       {
-        totalAmount: 850000,
-        laborCost: 425000,
-        materialCost: 425000,
-        status: 'approved',
+        userId: 2,
+        quoteNumber: 'Q-2025-001',
+        status: 'accepted',
+        subtotal: 850000,
+        taxAmount: 68000,
+        totalAmount: 918000,
         validUntil: new Date('2025-09-01'),
         notes: 'Includes all materials, labor, and project management. Payment terms: 30% upfront, 40% at 50% completion, 30% upon completion.'
       },
       {
-        totalAmount: 1200000,
-        laborCost: 600000,
-        materialCost: 600000,
-        status: 'approved',
+        userId: 2,
+        quoteNumber: 'Q-2025-002',
+        status: 'accepted',
+        subtotal: 1200000,
+        taxAmount: 96000,
+        totalAmount: 1296000,
         validUntil: new Date('2025-09-15'),
         notes: 'Premium steel and glass systems. Includes 2-year warranty on all structural components.'
       },
       {
-        totalAmount: 650000,
-        laborCost: 300000,
-        materialCost: 350000,
-        status: 'approved',
+        userId: 2,
+        quoteNumber: 'Q-2025-003',
+        status: 'accepted',
+        subtotal: 650000,
+        taxAmount: 52000,
+        totalAmount: 702000,
         validUntil: new Date('2025-08-15'),
         notes: 'Industrial-grade materials and specialized equipment installation included.'
       },
       {
-        totalAmount: 2100000,
-        laborCost: 1050000,
-        materialCost: 1050000,
+        userId: 2,
+        quoteNumber: 'Q-2025-004',
         status: 'sent',
+        subtotal: 2100000,
+        taxAmount: 168000,
+        totalAmount: 2268000,
         validUntil: new Date('2025-09-30'),
         notes: 'Luxury finishes and premium materials. Expedited timeline available for additional 10%.'
       },
       {
-        totalAmount: 950000,
-        laborCost: 475000,
-        materialCost: 475000,
+        userId: 2,
+        quoteNumber: 'Q-2025-005',
         status: 'sent',
+        subtotal: 950000,
+        taxAmount: 76000,
+        totalAmount: 1026000,
         validUntil: new Date('2025-08-25'),
         notes: 'Municipal project with prevailing wage requirements. Timeline subject to weather conditions.'
       },
       {
-        totalAmount: 1750000,
-        laborCost: 875000,
-        materialCost: 875000,
+        userId: 2,
+        quoteNumber: 'Q-2025-006',
         status: 'draft',
+        subtotal: 1750000,
+        taxAmount: 140000,
+        totalAmount: 1890000,
         validUntil: new Date('2025-10-01'),
         notes: 'Educational facility with specialized laboratory infrastructure requirements.'
       },
       {
-        totalAmount: 780000,
-        laborCost: 390000,
-        materialCost: 390000,
-        status: 'approved',
+        userId: 2,
+        quoteNumber: 'Q-2025-007',
+        status: 'accepted',
+        subtotal: 780000,
+        taxAmount: 62400,
+        totalAmount: 842400,
         validUntil: new Date('2025-07-01'),
         notes: 'Project completed successfully with client satisfaction. Available as reference.'
       },
       {
-        totalAmount: 1450000,
-        laborCost: 725000,
-        materialCost: 725000,
-        status: 'approved',
+        userId: 2,
+        quoteNumber: 'Q-2025-008',
+        status: 'accepted',
+        subtotal: 1450000,
+        taxAmount: 116000,
+        totalAmount: 1566000,
         validUntil: new Date('2025-10-15'),
         notes: 'Healthcare facility with strict regulatory compliance requirements and sterile construction protocols.'
       }

@@ -330,7 +330,7 @@ const ProjectsPage: React.FC = () => {
                 fullWidth
                 placeholder="Search projects..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -420,7 +420,7 @@ const ProjectsPage: React.FC = () => {
                     </Box>
                   </Box>
                   <IconButton
-                    onClick={(e) => handleMenuClick(e, project)}
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => handleMenuClick(e, project)}
                     size="small"
                   >
                     <MoreVert />

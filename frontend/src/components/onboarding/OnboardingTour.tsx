@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,6 @@ import {
   Step,
   StepLabel,
   StepContent,
-  Paper,
   List,
   ListItem,
   ListItemIcon,
@@ -19,7 +18,6 @@ import {
   Avatar,
   IconButton,
   Fade,
-  Slide,
 } from '@mui/material';
 import {
   Close,
@@ -32,7 +30,7 @@ import {
   NavigateNext,
   NavigateBefore,
 } from '@mui/icons-material';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 
 interface OnboardingStep {

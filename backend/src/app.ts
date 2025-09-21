@@ -17,6 +17,8 @@ import filesRoutes from './routes/files';
 import uploadsRoutes from './routes/uploads';
 import testRoutes from './routes/test';
 import demoRoutes from './routes/demo';
+import quotesRoutes from './routes/quotes';
+import materialsRoutes from './routes/materials';
 
 const app = express();
 
@@ -89,6 +91,8 @@ app.use('/api/demo', demoRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/quotes', quotesRoutes);
+app.use('/api/materials', materialsRoutes);
 
 // Error handling
 app.use(notFoundHandler);

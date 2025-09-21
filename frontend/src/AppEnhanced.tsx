@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 // Context providers for Phase 5D integration
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
+import { WebSocketProvider } from './contexts/WebSocketContext';
 
 // Enhanced components and pages
 import Layout from './components/layout/Layout';
@@ -34,6 +35,7 @@ import UsersPage from './pages/admin/UsersPage';
 // Phase 5C Enhanced Components
 import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
 import NotificationsPanel from './components/notifications/NotificationsPanel';
+import RealTimeNotifications from './components/notifications/RealTimeNotifications';
 import EnhancedProjectManagement from './components/projects/EnhancedProjectManagement';
 import MobileDashboard from './components/mobile/MobileDashboard';
 import Phase5CTestSuite from './components/testing/Phase5CTestSuite';
@@ -45,7 +47,6 @@ import OnboardingTour from './components/onboarding/OnboardingTour';
 import FeatureDiscovery from './components/help/FeatureDiscovery';
 import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
 import HelpCenter from './components/help/HelpCenter';
-import DemoAccountSelector from './components/demo/DemoAccountSelector';
 
 import { RootState } from './store/store';
 import { getDashboardPath } from './utils/roleUtils';
@@ -53,7 +54,7 @@ import { UserRole } from './types/auth';
 
 // Enhanced App Router with Phase 5D integration
 const EnhancedAppRouter: React.FC = () => {
-  const { user: authUser, isAuthenticated } = useAuth();
+  const { user: authUser } = useAuth();
   const { user: reduxUser } = useSelector((state: RootState) => state.auth);
   
   // Use integrated auth user if available, fallback to Redux user
@@ -243,6 +244,7 @@ const EnhancedAppRouter: React.FC = () => {
               </Routes>
               
               {/* Enhanced Global Components */}
+              <RealTimeNotifications />
               <HelpCenter />
               <OnboardingTour 
                 open={false} 
@@ -263,11 +265,13 @@ const EnhancedAppRouter: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppProvider>
-        <NotificationProvider>
-          <EnhancedAppRouter />
-        </NotificationProvider>
-      </AppProvider>
+      <WebSocketProvider>
+        <AppProvider>
+          <NotificationProvider>
+            <EnhancedAppRouter />
+          </NotificationProvider>
+        </AppProvider>
+      </WebSocketProvider>
     </AuthProvider>
   );
 };

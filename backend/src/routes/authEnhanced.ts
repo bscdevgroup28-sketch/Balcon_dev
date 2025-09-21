@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
-import { AuthService, AuthenticatedRequest, authenticateToken, requireRole, requirePermission } from '../services/authService';
+import { AuthService } from '../services/authService';
+import { authenticateToken, requireRole, requirePermission } from '../middleware/authEnhanced';
 import { User } from '../models/UserEnhanced';
 import { logger } from '../utils/logger';
 import { body, validationResult } from 'express-validator';
@@ -99,7 +100,7 @@ router.post('/login', loginValidation, async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/register (requires admin privileges)
-router.post('/register', authenticateToken, requirePermission('canManageUsers'), registerValidation, async (req: Request, res: Response) => {
+router.post('/register', authenticateToken, requirePermission('canManageUsers'), registerValidation, async (req: any, res: Response) => {
   try {
     if (!handleValidationErrors(req, res)) return;
 
@@ -222,7 +223,7 @@ router.post('/logout', async (req: Request, res: Response) => {
 });
 
 // GET /api/auth/me
-router.get('/me', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/me', authenticateToken, async (req: any, res: Response) => {
   try {
     const user = req.user!;
 
@@ -259,7 +260,7 @@ router.get('/me', authenticateToken, async (req: AuthenticatedRequest, res: Resp
 });
 
 // PUT /api/auth/change-password
-router.put('/change-password', authenticateToken, changePasswordValidation, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/change-password', authenticateToken, changePasswordValidation, async (req: any, res: Response) => {
   try {
     if (!handleValidationErrors(req, res)) return;
 
@@ -290,7 +291,7 @@ router.put('/change-password', authenticateToken, changePasswordValidation, asyn
 });
 
 // PUT /api/auth/reset-password/:userId (admin only)
-router.put('/reset-password/:userId', authenticateToken, requirePermission('canManageUsers'), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/reset-password/:userId', authenticateToken, requirePermission('canManageUsers'), async (req: any, res: Response) => {
   try {
     const { userId } = req.params;
     const { newPassword } = req.body;
@@ -326,7 +327,7 @@ router.put('/reset-password/:userId', authenticateToken, requirePermission('canM
 });
 
 // GET /api/auth/users (admin only)
-router.get('/users', authenticateToken, requirePermission('canManageUsers'), async (req: AuthenticatedRequest, res: Response) => {
+router.get('/users', authenticateToken, requirePermission('canManageUsers'), async (req: any, res: Response) => {
   try {
     const users = await User.findAll({
       attributes: { exclude: ['passwordHash', 'passwordResetToken', 'emailVerificationToken'] },
@@ -362,7 +363,7 @@ router.get('/users', authenticateToken, requirePermission('canManageUsers'), asy
 });
 
 // PUT /api/auth/users/:userId/status (admin only)
-router.put('/users/:userId/status', authenticateToken, requirePermission('canManageUsers'), async (req: AuthenticatedRequest, res: Response) => {
+router.put('/users/:userId/status', authenticateToken, requirePermission('canManageUsers'), async (req: any, res: Response) => {
   try {
     const { userId } = req.params;
     const { isActive } = req.body;

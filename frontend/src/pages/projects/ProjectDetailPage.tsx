@@ -642,7 +642,7 @@ const ProjectDetailPage: React.FC = () => {
                   rows={3}
                   placeholder="Add a comment..."
                   value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewComment(e.target.value)}
                   sx={{ mb: 2 }}
                 />
                 <Button

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Fab,
   Dialog,
@@ -18,7 +18,6 @@ import {
   TextField,
   InputAdornment,
   Chip,
-  Avatar,
   Divider,
   Alert,
   Tabs,
@@ -30,13 +29,10 @@ import {
   Search,
   QuestionAnswer,
   VideoLibrary,
-  Assignment,
   Phone,
   Email,
   Chat,
   PlayCircle,
-  Description,
-  Lightbulb,
   BugReport,
 } from '@mui/icons-material';
 
@@ -208,7 +204,7 @@ const HelpCenter: React.FC = () => {
                   fullWidth
                   placeholder="Search frequently asked questions..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">

@@ -28,8 +28,10 @@ async function startEnhancedApplication(): Promise<void> {
     logger.info('🌐 API Endpoints:');
     logger.info('   📋 Health: /api/health');
     logger.info('   🔐 Auth: /api/auth/*');
-    logger.info('   📊 Projects: /api/projects/*');
+    logger.info('   � Users: /api/users/*');
+    logger.info('   �📊 Projects: /api/projects/*');
     logger.info('   💰 Quotes: /api/quotes/*');
+    logger.info('   📦 Orders: /api/orders/*');
     logger.info('   📁 Files: /api/files/*');
     logger.info('   🧪 Test: /api/test/*');
     logger.info('');
