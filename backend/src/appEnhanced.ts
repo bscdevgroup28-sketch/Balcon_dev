@@ -19,6 +19,8 @@ import { notFoundHandler } from './middleware/notFoundHandler';
 // Import services
 import { initializeWebSocket } from './services/webSocketService';
 import { setupEnhancedDatabase } from './scripts/setupEnhancedDatabase';
+import { config } from './config/environment';
+import { sequelize } from './config/database';
 
 // Import routes
 import healthRoutes from './routes/health';
@@ -44,6 +46,12 @@ export class BalConBuildersApp {
     this.initializeMiddleware();
     this.initializeRoutes();
     this.initializeErrorHandling();
+    // Startup diagnostics
+    const maskedDb = (config.database.url || '').replace(/:[^:@/]+@/, ':****@');
+    logger.info(`[startup] NODE_ENV=${config.server.nodeEnv} PORT=${this.port}`);
+    logger.info(`[startup] Database URL (masked): ${maskedDb}`);
+  const dbUrl = config.database.url || 'sqlite:./enhanced_database.sqlite';
+  logger.info(`[startup] Using dialect: ${dbUrl.startsWith('sqlite') ? 'sqlite' : 'postgres'}`);
   }
 
   // Initialize middleware
@@ -128,6 +136,9 @@ export class BalConBuildersApp {
   // Initialize routes
   private initializeRoutes(): void {
     // API routes
+    this.app.get('/api/health/simple', (req: Request, res: Response) => {
+      res.json({ status: 'ok', time: new Date().toISOString() });
+    });
     this.app.use('/api/health', healthRoutes);
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/projects', projectRoutes);
