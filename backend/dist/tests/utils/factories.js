@@ -27,10 +27,11 @@ const createTestSalesRep = async (overrides = {}) => {
     });
 };
 exports.createTestSalesRep = createTestSalesRep;
-const createTestProject = async (userId, overrides = {}) => {
+const createTestProject = async (overrides = {}) => {
+    const user = await (0, exports.createTestUser)();
     const inquiryNumber = await (0, salesAssignment_1.generateInquiryNumber)();
     return models_1.Project.create({
-        userId,
+        userId: user.id,
         inquiryNumber,
         title: 'Test Project',
         description: 'A project created for integration testing',

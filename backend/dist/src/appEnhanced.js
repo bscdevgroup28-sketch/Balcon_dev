@@ -30,6 +30,7 @@ const quotes_1 = __importDefault(require("./routes/quotes"));
 const files_1 = __importDefault(require("./routes/files"));
 const orders_1 = __importDefault(require("./routes/orders"));
 const users_1 = __importDefault(require("./routes/users"));
+const materials_1 = __importDefault(require("./routes/materials"));
 const test_1 = __importDefault(require("./routes/test"));
 // Enhanced Express Application with WebSocket support
 class BalConBuildersApp {
@@ -118,6 +119,7 @@ class BalConBuildersApp {
         this.app.use('/api/quotes', quotes_1.default);
         this.app.use('/api/orders', orders_1.default);
         this.app.use('/api/users', users_1.default);
+        this.app.use('/api/materials', materials_1.default);
         this.app.use('/api/files', files_1.default);
         this.app.use('/api/test', test_1.default);
         // API status endpoint

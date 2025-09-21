@@ -2,17 +2,10 @@ import { Sequelize } from 'sequelize';
 import { logger } from '../utils/logger';
 
 // Enhanced database configuration for Phase 5
-const isDevelopment = process.env.NODE_ENV !== 'production';
+const databaseUrl = process.env.DATABASE_URL || 'sqlite:./enhanced_database.sqlite';
 
-// Use a separate database for enhanced features
-const databasePath = isDevelopment ? 
-  './enhanced_database.sqlite' : 
-  process.env.DATABASE_URL || './enhanced_database.sqlite';
-
-export const enhancedSequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: databasePath,
-  logging: isDevelopment ? (msg) => logger.debug(msg) : false,
+export const enhancedSequelize = new Sequelize(databaseUrl, {
+  logging: process.env.NODE_ENV !== 'production' ? (msg) => logger.debug(msg) : false,
   define: {
     timestamps: true,
     underscored: true,
