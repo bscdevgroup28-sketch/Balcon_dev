@@ -49,7 +49,8 @@ const envSchema = zod_1.z.object({
     // Include 'test' to support Jest environment without failing validation
     NODE_ENV: zod_1.z.enum(['development', 'staging', 'production', 'test']).default('development'),
     PORT: zod_1.z.string().default('8082'),
-    DATABASE_URL: zod_1.z.string(),
+    // Make DATABASE_URL optional; we'll apply a fallback after parse
+    DATABASE_URL: zod_1.z.string().optional(),
     REDIS_URL: zod_1.z.string().optional(),
     JWT_SECRET: zod_1.z.string(),
     JWT_EXPIRES_IN: zod_1.z.string().default('7d'),
@@ -76,7 +77,14 @@ const envSchema = zod_1.z.object({
 });
 const parseEnv = () => {
     try {
-        return envSchema.parse(process.env);
+        const parsed = envSchema.parse(process.env);
+        // Apply fallback for missing DATABASE_URL
+        if (!parsed.DATABASE_URL) {
+            const fallback = 'sqlite:./enhanced_database.sqlite';
+            console.warn(`⚠️  DATABASE_URL not set. Falling back to ${fallback}`);
+            parsed.DATABASE_URL = fallback;
+        }
+        return parsed;
     }
     catch (error) {
         console.error('❌ Invalid environment variables:', error);

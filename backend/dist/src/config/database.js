@@ -37,7 +37,7 @@ exports.closeDatabase = exports.connectDatabase = exports.sequelize = void 0;
 const sequelize_1 = require("sequelize");
 const environment_1 = require("./environment");
 const logger_1 = require("../utils/logger");
-const databaseUrl = environment_1.config.database.url;
+const databaseUrl = environment_1.config.database.url || 'sqlite:./enhanced_database.sqlite';
 const isSQLite = databaseUrl.startsWith('sqlite://') || databaseUrl.startsWith('sqlite:');
 exports.sequelize = new sequelize_1.Sequelize(databaseUrl, {
     dialect: isSQLite ? 'sqlite' : 'postgres',

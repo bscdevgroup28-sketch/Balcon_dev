@@ -2,7 +2,7 @@ import { Sequelize } from 'sequelize';
 import { config } from './environment';
 import { logger } from '../utils/logger';
 
-const databaseUrl = config.database.url;
+const databaseUrl: string = config.database.url || 'sqlite:./enhanced_database.sqlite';
 const isSQLite = databaseUrl.startsWith('sqlite://') || databaseUrl.startsWith('sqlite:');
 
 export const sequelize = new Sequelize(databaseUrl, {
