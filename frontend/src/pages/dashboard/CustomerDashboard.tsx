@@ -31,6 +31,7 @@ import {
   NotificationItem,
   SalesRepContactCard,
 } from '../../components/dashboard/BusinessDashboardComponents';
+import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 
 const CustomerDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -185,8 +186,8 @@ const CustomerDashboard: React.FC = () => {
       </Box>
 
       {/* Business Metrics */}
-      <Grid container spacing={3} sx={{ mb: 4 }} data-testid="dashboard-stats">
-        <Grid item xs={12} sm={6} md={3}>
+      <Box sx={{ mb: 4 }} data-testid="dashboard-stats">
+        <ResponsiveCardGrid minWidth={260} gap={3}>
           <BusinessMetricsCard
             title="Active Projects"
             value={dashboardStats.activeProjects}
@@ -199,9 +200,6 @@ const CustomerDashboard: React.FC = () => {
               onClick: () => navigate('/projects')
             }}
           />
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
           <BusinessMetricsCard
             title="Pending Quotes"
             value={dashboardStats.pendingQuotes}
@@ -213,9 +211,6 @@ const CustomerDashboard: React.FC = () => {
               onClick: () => navigate('/quotes')
             }}
           />
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
           <BusinessMetricsCard
             title="Active Orders"
             value={dashboardStats.activeOrders}
@@ -227,9 +222,6 @@ const CustomerDashboard: React.FC = () => {
               onClick: () => navigate('/orders')
             }}
           />
-        </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
           <BusinessMetricsCard
             title="Project Value"
             value="$245K"
@@ -238,8 +230,8 @@ const CustomerDashboard: React.FC = () => {
             color="info"
             trend={{ direction: 'up', percentage: 8 }}
           />
-        </Grid>
-      </Grid>
+        </ResponsiveCardGrid>
+      </Box>
 
   <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Active Projects Section */}

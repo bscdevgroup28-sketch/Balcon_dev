@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { BaseDashboard } from '../../components/dashboard/BaseDashboard';
 import { BusinessMetricsCard } from '../../components/dashboard/BusinessDashboardComponents';
+import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 
 const OwnerDashboard: React.FC = () => {
   // Mock data for demonstration - will be replaced with API calls
@@ -158,51 +159,40 @@ const OwnerDashboard: React.FC = () => {
           <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
             Executive KPI Overview
           </Typography>
-          <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <BusinessMetricsCard
-                title="Total Revenue"
-                value={`$${(executiveKPIs.totalRevenue / 1000000).toFixed(1)}M`}
-                subtitle="Year to date"
-                icon={<AttachMoney />}
-                color="success"
-                trend={{ direction: 'up', percentage: executiveKPIs.yearlyGrowth }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <BusinessMetricsCard
-                title="Monthly Revenue"
-                value={`$${(executiveKPIs.monthlyRevenue / 1000).toFixed(0)}K`}
-                subtitle="Current month"
-                icon={<TrendingUp />}
-                color="primary"
-                trend={{ direction: 'up', percentage: 12.5 }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <BusinessMetricsCard
-                title="Profit Margin"
-                value={`${executiveKPIs.profitMargin}%`}
-                subtitle="Company average"
-                icon={<Business />}
-                color="info"
-                trend={{ direction: 'up', percentage: 2.1 }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <BusinessMetricsCard
-                title="Pipeline Value"
-                value={`$${(executiveKPIs.pipelineValue / 1000000).toFixed(1)}M`}
-                subtitle="Active opportunities"
-                icon={<Assignment />}
-                color="warning"
-                trend={{ direction: 'up', percentage: 25.3 }}
-              />
-            </Grid>
-          </Grid>
+          <ResponsiveCardGrid minWidth={260} gap={3}>
+            <BusinessMetricsCard
+              title="Total Revenue"
+              value={`$${(executiveKPIs.totalRevenue / 1000000).toFixed(1)}M`}
+              subtitle="Year to date"
+              icon={<AttachMoney />}
+              color="success"
+              trend={{ direction: 'up', percentage: executiveKPIs.yearlyGrowth }}
+            />
+            <BusinessMetricsCard
+              title="Monthly Revenue"
+              value={`$${(executiveKPIs.monthlyRevenue / 1000).toFixed(0)}K`}
+              subtitle="Current month"
+              icon={<TrendingUp />}
+              color="primary"
+              trend={{ direction: 'up', percentage: 12.5 }}
+            />
+            <BusinessMetricsCard
+              title="Profit Margin"
+              value={`${executiveKPIs.profitMargin}%`}
+              subtitle="Company average"
+              icon={<Business />}
+              color="info"
+              trend={{ direction: 'up', percentage: 2.1 }}
+            />
+            <BusinessMetricsCard
+              title="Pipeline Value"
+              value={`$${(executiveKPIs.pipelineValue / 1000000).toFixed(1)}M`}
+              subtitle="Active opportunities"
+              icon={<Assignment />}
+              color="warning"
+              trend={{ direction: 'up', percentage: 25.3 }}
+            />
+          </ResponsiveCardGrid>
         </Grid>
 
         {/* Recent Performance Metrics */}

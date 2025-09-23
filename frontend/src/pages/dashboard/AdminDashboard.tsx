@@ -21,6 +21,7 @@ import {
   Avatar,
   IconButton,
   LinearProgress,
+  Divider
 } from '@mui/material';
 import {
   People,
@@ -41,6 +42,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
+import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -97,122 +99,71 @@ const AdminDashboard: React.FC = () => {
         System Administration Center
       </Typography>
 
-      {/* Stats Cards */}
-      <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <People color="primary" sx={{ mr: 1 }} />
-                <Typography variant="h6" component="div">
-                  Total Users
-                </Typography>
-              </Box>
-              <Typography variant="h3" color="primary">
-                {adminStats.totalUsers}
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                sx={{ mt: 2 }}
-                onClick={() => navigate('/admin/users')}
-              >
-                Manage Users
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Stats Cards - full width responsive auto-fill grid */}
+      <ResponsiveCardGrid minWidth={250} gap={3}>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <People color="primary" sx={{ mr: 1 }} />
+              <Typography variant="h6">Total Users</Typography>
+            </Box>
+            <Typography variant="h3" color="primary">{adminStats.totalUsers}</Typography>
+            <Button variant="outlined" size="small" sx={{ mt: 2 }} onClick={() => navigate('/admin/users')}>
+              Manage Users
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Assignment color="secondary" sx={{ mr: 1 }} />
+              <Typography variant="h6">Active Projects</Typography>
+            </Box>
+            <Typography variant="h3" color="secondary">{adminStats.activeProjects}</Typography>
+            <Button variant="outlined" size="small" sx={{ mt: 2 }} onClick={() => navigate('/admin/projects')}>
+              View Projects
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <RequestQuote color="warning" sx={{ mr: 1 }} />
+              <Typography variant="h6">Pending Quotes</Typography>
+            </Box>
+            <Typography variant="h3" color="warning.main">{adminStats.pendingQuotes}</Typography>
+            <Button variant="outlined" size="small" sx={{ mt: 2 }} onClick={() => navigate('/admin/quotes')}>
+              Review Quotes
+            </Button>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <AttachMoney color="success" sx={{ mr: 1 }} />
+              <Typography variant="h6">Revenue (MTD)</Typography>
+            </Box>
+            <Typography variant="h3" color="success.main">${adminStats.totalRevenue.toLocaleString()}</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Month to date</Typography>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <TrendingUp color="info" sx={{ mr: 1 }} />
+              <Typography variant="h6">Growth</Typography>
+            </Box>
+            <Typography variant="h3" color="info.main">+{adminStats.monthlyGrowth}%</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>vs last month</Typography>
+          </CardContent>
+        </Card>
+      </ResponsiveCardGrid>
 
-  <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Assignment color="secondary" sx={{ mr: 1 }} />
-                <Typography variant="h6" component="div">
-                  Active Projects
-                </Typography>
-              </Box>
-              <Typography variant="h3" color="secondary">
-                {adminStats.activeProjects}
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                sx={{ mt: 2 }}
-                onClick={() => navigate('/admin/projects')}
-              >
-                View Projects
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
+      <Divider sx={{ my: 4 }} />
 
-  <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <RequestQuote color="warning" sx={{ mr: 1 }} />
-                <Typography variant="h6" component="div">
-                  Pending Quotes
-                </Typography>
-              </Box>
-              <Typography variant="h3" color="warning.main">
-                {adminStats.pendingQuotes}
-              </Typography>
-              <Button
-                variant="outlined"
-                size="small"
-                sx={{ mt: 2 }}
-                onClick={() => navigate('/admin/quotes')}
-              >
-                Review Quotes
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-
-  <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AttachMoney color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6" component="div">
-                  Revenue (MTD)
-                </Typography>
-              </Box>
-              <Typography variant="h3" color="success.main">
-                ${adminStats.totalRevenue.toLocaleString()}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Month to date
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-  <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <TrendingUp color="info" sx={{ mr: 1 }} />
-                <Typography variant="h6" component="div">
-                  Growth
-                </Typography>
-              </Box>
-              <Typography variant="h3" color="info.main">
-                +{adminStats.monthlyGrowth}%
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                vs last month
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-  <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
+  <Grid container spacing={3} columns={{ xs: 12 }}>
         {/* Recent Users */}
-        <Grid item xs={12} md={6}>
+  <Grid item xs={12} md={6} lg={5}>
           <Paper sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h6">
@@ -275,7 +226,7 @@ const AdminDashboard: React.FC = () => {
         </Grid>
 
         {/* Urgent Tasks */}
-        <Grid item xs={12} md={6}>
+  <Grid item xs={12} md={6} lg={5}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               Urgent Tasks
@@ -328,7 +279,7 @@ const AdminDashboard: React.FC = () => {
         </Grid>
 
         {/* System Health & Security */}
-        <Grid item xs={12} md={6}>
+  <Grid item xs={12} md={6} lg={5}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ color: '#424242', fontWeight: 600 }}>
@@ -388,7 +339,7 @@ const AdminDashboard: React.FC = () => {
         </Grid>
 
         {/* Security & Audit */}
-        <Grid item xs={12} md={6}>
+  <Grid item xs={12} md={6} lg={5}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ color: '#424242', fontWeight: 600 }}>
