@@ -1,42 +1,18 @@
-import React from 'react';
-import {
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Box,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Chip,
-  LinearProgress,
-  Avatar,
-  IconButton,
-  Divider,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper
-} from '@mui/material';
-import {
-  Assignment,
-  Timeline,
-  Groups,
-  Schedule,
-  Warning,
-  CheckCircle,
-  AttachMoney,
-  TrendingUp,
-  CalendarToday,
-  Build,
-  AccountBalance,
-  Flag
-} from '@mui/icons-material';
+import React, { Suspense, lazy } from 'react';
+import { Grid, Card, CardContent, Typography, Box } from '@mui/material';
+import { Assignment, Groups, Schedule, AttachMoney, TrendingUp, Flag } from '@mui/icons-material';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
+import PanelSkeleton from '../../components/loading/PanelSkeleton';
+
+// Lazy-loaded panel components (granular code splitting)
+const ActiveProjectsPanel = lazy(() => import('./projectManagerPanels/ActiveProjectsPanel'));
+const UpcomingMilestonesPanel = lazy(() => import('./projectManagerPanels/UpcomingMilestonesPanel'));
+const TeamOverviewPanel = lazy(() => import('./projectManagerPanels/TeamOverviewPanel'));
+const RiskAlertsPanel = lazy(() => import('./projectManagerPanels/RiskAlertsPanel'));
+const BudgetPerformancePanel = lazy(() => import('./projectManagerPanels/BudgetPerformancePanel'));
+const ResourceAllocationPanel = lazy(() => import('./projectManagerPanels/ResourceAllocationPanel'));
+const ClientCommunicationPanel = lazy(() => import('./projectManagerPanels/ClientCommunicationPanel'));
+const ProjectToolsPanel = lazy(() => import('./projectManagerPanels/ProjectToolsPanel'));
 
 const ProjectManagerDashboard: React.FC = () => {
   // Mock data for Project Manager specific metrics
@@ -128,14 +104,6 @@ const ProjectManagerDashboard: React.FC = () => {
     }
   };
 
-  const getRiskSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'high': return 'error';
-      case 'medium': return 'warning';
-      case 'low': return 'info';
-      default: return 'default';
-    }
-  };
 
   const getTeamStatusColor = (status: string) => {
     switch (status) {
@@ -158,7 +126,7 @@ const ProjectManagerDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="project_manager" title="Project Manager Dashboard">
-      <Grid container spacing={3}>
+  <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Project Overview */}
         <Grid item xs={12}>
           <Typography variant="h5" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
@@ -275,543 +243,107 @@ const ProjectManagerDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        {/* Active Projects Table */}
-        <Grid item xs={12} lg={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Active Projects
-              </Typography>
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Project</TableCell>
-                      <TableCell>Progress</TableCell>
-                      <TableCell>Budget</TableCell>
-                      <TableCell>Team</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Deadline</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {activeProjects.map((project) => (
-                      <TableRow key={project.id}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold">
-                            {project.name}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {project.id} - {project.client}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Box display="flex" alignItems="center">
-                            <LinearProgress
-                              variant="determinate"
-                              value={project.progress}
-                              sx={{ 
-                                width: 60, 
-                                mr: 1,
-                                '& .MuiLinearProgress-bar': {
-                                  backgroundColor: project.progress >= 80 ? '#4caf50' : project.progress >= 50 ? '#ff9800' : '#f44336'
-                                }
-                              }}
-                            />
-                            <Typography variant="caption">
-                              {project.progress}%
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {formatCurrency(project.spent)}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            of {formatCurrency(project.budget)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{project.team} members</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={project.status}
-                            color={getProjectStatusColor(project.status) as any}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>{project.deadline}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Upcoming Milestones */}
-        <Grid item xs={12} lg={4}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Upcoming Milestones
-              </Typography>
-              <List sx={{ maxHeight: '280px', overflow: 'auto' }}>
-                {upcomingMilestones.map((milestone, index) => (
-                  <React.Fragment key={index}>
-                    <ListItem>
-                      <ListItemIcon>
-                        <Flag color={getMilestoneStatusColor(milestone.status) as any} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={milestone.milestone}
-                        secondary={`${milestone.project} - ${milestone.date}`}
-                      />
-                      <Chip
-                        label={milestone.status}
-                        color={getMilestoneStatusColor(milestone.status) as any}
-                        size="small"
-                      />
-                    </ListItem>
-                    {index < upcomingMilestones.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Team Overview */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Team Overview
-              </Typography>
-              <List>
-                {teamOverview.map((member, index) => (
-                  <React.Fragment key={index}>
-                    <ListItem>
-                      <Avatar sx={{ mr: 2, bgcolor: '#1976d2' }}>
-                        {member.name.split(' ').map(n => n[0]).join('')}
-                      </Avatar>
-                      <ListItemText
-                        primary={member.name}
-                        secondary={`${member.role} - ${member.projects} projects`}
-                      />
-                      <Box display="flex" flexDirection="column" alignItems="flex-end">
-                        <Chip
-                          label={member.status}
-                          color={getTeamStatusColor(member.status) as any}
-                          size="small"
-                          sx={{ mb: 0.5 }}
-                        />
-                        <Typography variant="caption">
-                          {member.utilization}% util.
-                        </Typography>
-                      </Box>
-                    </ListItem>
-                    {index < teamOverview.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Risk Alerts */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Risk Alerts
-              </Typography>
-              <List sx={{ maxHeight: '280px', overflow: 'auto' }}>
-                {riskAlerts.map((risk, index) => (
-                  <React.Fragment key={risk.id}>
-                    <ListItem>
-                      <ListItemIcon>
-                        <Warning color={getRiskSeverityColor(risk.severity) as any} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={risk.risk}
-                        secondary={
-                          <Box>
-                            <Typography variant="caption" color="textSecondary">
-                              {risk.project}
-                            </Typography>
-                            <br />
-                            <Typography variant="caption">
-                              Impact: {risk.impact}
-                            </Typography>
-                          </Box>
-                        }
-                      />
-                      <Chip
-                        label={risk.severity}
-                        color={getRiskSeverityColor(risk.severity) as any}
-                        size="small"
-                      />
-                    </ListItem>
-                    {index < riskAlerts.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Budget Performance */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Budget Performance
-              </Typography>
-              <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Project</TableCell>
-                      <TableCell>Budget</TableCell>
-                      <TableCell>Spent</TableCell>
-                      <TableCell>Utilization</TableCell>
-                      <TableCell>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {activeProjects.map((project) => (
-                      <TableRow key={project.id}>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="bold">
-                            {project.name}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {project.id} - {project.client}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {formatCurrency(project.budget)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {formatCurrency(project.spent)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <LinearProgress
-                            variant="determinate"
-                            value={Math.min((project.spent / project.budget) * 100, 100)}
-                            sx={{ 
-                              height: 10, 
-                              borderRadius: 5,
-                              '& .MuiLinearProgress-bar': {
-                                backgroundColor: (project.spent / project.budget) * 100 >= 80 ? '#4caf50' : (project.spent / project.budget) * 100 >= 50 ? '#ff9800' : '#f44336'
-                              }
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={(project.spent / project.budget) * 100 >= 100 ? 'Over Budget' : 'On Track'}
-                            color={(project.spent / project.budget) * 100 >= 100 ? 'error' : 'success'}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Resource Allocation */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Resource Allocation
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="textSecondary" gutterBottom>
-                  Team Utilization Overview
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={78}
-                  sx={{
-                    height: 12,
-                    borderRadius: 6,
-                    '& .MuiLinearProgress-bar': {
-                      backgroundColor: '#4caf50'
-                    }
-                  }}
-                />
-                <Typography variant="caption" sx={{ mt: 0.5, display: 'block' }}>
-                  78% Average Utilization (Target: 85%)
-                </Typography>
+        {/* Active Projects Panel (lazy) */}
+  <Grid item xs={12} lg={8} data-prefetch-panel="pm:active-projects" aria-labelledby="active-projects-heading">
+          <Suspense 
+            fallback={
+              <Box role="status" aria-live="polite" aria-busy="true">
+                <PanelSkeleton variant="table" lines={5} />
               </Box>
-              <List dense>
-                {teamOverview.slice(0, 3).map((member, index) => (
-                  <ListItem key={index} sx={{ px: 0 }}>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                          <Typography variant="body2" fontWeight="medium">
-                            {member.name}
-                          </Typography>
-                          <Chip
-                            label={`${member.utilization}%`}
-                            size="small"
-                            color={member.utilization >= 85 ? 'success' : member.utilization >= 70 ? 'warning' : 'error'}
-                          />
-                        </Box>
-                      }
-                      secondary={`${member.role} • ${member.projects} active projects`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
-          </Card>
+            }>
+            <ActiveProjectsPanel
+              projects={activeProjects as any}
+              formatCurrency={formatCurrency}
+              getProjectStatusColor={getProjectStatusColor}
+            />
+          </Suspense>
         </Grid>
 
-        {/* Client Communication */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Client Communication
-              </Typography>
-              <List dense>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <CalendarToday color="primary" fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Weekly Progress Meeting"
-                    secondary="Heritage Mall Renovation - Tomorrow 2:00 PM"
-                  />
-                </ListItem>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <Warning color="warning" fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Change Order Pending"
-                    secondary="Downtown Office Complex - Awaiting approval"
-                  />
-                </ListItem>
-                <ListItem sx={{ px: 0 }}>
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    <CheckCircle color="success" fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Final Inspection Scheduled"
-                    secondary="Industrial Warehouse - Aug 25, 2025"
-                  />
-                </ListItem>
-              </List>
-              <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                <Typography variant="body2" fontWeight="medium" gutterBottom>
-                  Communication Summary
-                </Typography>
-                <Typography variant="caption" display="block">
-                  • 3 meetings scheduled this week
-                </Typography>
-                <Typography variant="caption" display="block">
-                  • 2 change orders pending approval
-                </Typography>
-                <Typography variant="caption" display="block">
-                  • 5 client emails responded today
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
+        {/* Upcoming Milestones Panel (lazy) */}
+  <Grid item xs={12} lg={4} data-prefetch-panel="pm:milestones" aria-labelledby="milestones-heading">
+          <Suspense fallback={<Box role="status" aria-live="polite" aria-busy="true"><PanelSkeleton variant="list" lines={4} /></Box>}>        
+            <UpcomingMilestonesPanel
+              milestones={upcomingMilestones as any}
+              getMilestoneStatusColor={getMilestoneStatusColor}
+            />
+          </Suspense>
         </Grid>
 
-        {/* Quick Actions */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Project Management Tools
-              </Typography>
-              <Grid container spacing={2} mt={1}>
-                <Grid item xs={6} sm={3} md={2}>
-                  <Box textAlign="center">
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: '#e3f2fd', 
-                        color: '#1976d2', 
-                        mb: 1,
-                        '&:hover': { bgcolor: '#bbdefb' }
-                      }}
-                    >
-                      <Assignment />
-                    </IconButton>
-                    <Typography variant="caption" display="block">
-                      New Project
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <Box textAlign="center">
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: '#e3f2fd', 
-                        color: '#1976d2', 
-                        mb: 1,
-                        '&:hover': { bgcolor: '#bbdefb' }
-                      }}
-                    >
-                      <Timeline />
-                    </IconButton>
-                    <Typography variant="caption" display="block">
-                      Timeline
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <Box textAlign="center">
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: '#e3f2fd', 
-                        color: '#1976d2', 
-                        mb: 1,
-                        '&:hover': { bgcolor: '#bbdefb' }
-                      }}
-                    >
-                      <Groups />
-                    </IconButton>
-                    <Typography variant="caption" display="block">
-                      Team
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <Box textAlign="center">
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: '#e3f2fd', 
-                        color: '#1976d2', 
-                        mb: 1,
-                        '&:hover': { bgcolor: '#bbdefb' }
-                      }}
-                    >
-                      <AttachMoney />
-                    </IconButton>
-                    <Typography variant="caption" display="block">
-                      Budget
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <Box textAlign="center">
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: '#e3f2fd', 
-                        color: '#1976d2', 
-                        mb: 1,
-                        '&:hover': { bgcolor: '#bbdefb' }
-                      }}
-                    >
-                      <CalendarToday />
-                    </IconButton>
-                    <Typography variant="caption" display="block">
-                      Calendar
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6} sm={3} md={2}>
-                  <Box textAlign="center">
-                    <IconButton 
-                      sx={{ 
-                        bgcolor: '#e3f2fd', 
-                        color: '#1976d2', 
-                        mb: 1,
-                        '&:hover': { bgcolor: '#bbdefb' }
-                      }}
-                    >
-                      <Warning />
-                    </IconButton>
-                    <Typography variant="caption" display="block">
-                      Risks
-                    </Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+        {/* Team Overview Panel (lazy) */}
+  <Grid item xs={12} md={6} data-prefetch-panel="pm:team" aria-labelledby="team-overview-heading">
+          <Suspense fallback={<Box role="status" aria-live="polite" aria-busy="true"><PanelSkeleton variant="list" lines={4} /></Box>}>        
+            <TeamOverviewPanel
+              team={teamOverview as any}
+              getTeamStatusColor={getTeamStatusColor}
+            />
+          </Suspense>
         </Grid>
 
-        {/* Resource Allocation */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
-                Resource Allocation
-              </Typography>
-              <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Team Member</TableCell>
-                      <TableCell>Role</TableCell>
-                      <TableCell>Utilization</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Projects</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {teamOverview.map((member) => (
-                      <TableRow key={member.name}>
-                        <TableCell>
-                          <Box display="flex" alignItems="center">
-                            <Avatar sx={{ mr: 2, bgcolor: '#1976d2' }}>
-                              {member.name.split(' ').map(n => n[0]).join('')}
-                            </Avatar>
-                            <Typography variant="body2" fontWeight="bold">
-                              {member.name}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>{member.role}</TableCell>
-                        <TableCell>
-                          <LinearProgress
-                            variant="determinate"
-                            value={member.utilization}
-                            sx={{ 
-                              height: 10, 
-                              borderRadius: 5,
-                              '& .MuiLinearProgress-bar': {
-                                backgroundColor: member.utilization >= 80 ? '#4caf50' : member.utilization >= 50 ? '#ff9800' : '#f44336'
-                              }
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={member.status}
-                            color={getTeamStatusColor(member.status) as any}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {member.projects} project{member.projects !== 1 ? 's' : ''}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
+        {/* Risk Alerts Panel (lazy) */}
+  <Grid item xs={12} md={6} data-prefetch-panel="pm:risks" aria-labelledby="risk-alerts-heading">
+          <Suspense fallback={<Box role="status" aria-live="polite" aria-busy="true"><PanelSkeleton variant="list" lines={3} /></Box>}>        
+            <RiskAlertsPanel
+              risks={riskAlerts.map(r => ({ project: r.project, risk: r.risk, level: (r.severity.charAt(0).toUpperCase()+r.severity.slice(1)) as any, owner: 'N/A', due: '—' })) as any}
+              getRiskColor={(level: string) => {
+                const l = level.toLowerCase();
+                if (l === 'critical') return 'error';
+                if (l === 'high') return 'error';
+                if (l === 'medium') return 'warning';
+                if (l === 'low') return 'info';
+                return 'default';
+              }}
+            />
+          </Suspense>
         </Grid>
+
+        {/* Budget Performance Panel (lazy) */}
+        <Grid item xs={12} aria-labelledby="budget-performance-heading">
+          <Suspense fallback={<Box role="status" aria-live="polite" aria-busy="true"><PanelSkeleton variant="table" lines={4} /></Box>}>        
+            <BudgetPerformancePanel
+              budgets={activeProjects.map(p => ({ project: p.name, budget: p.budget, spent: p.spent, variance: p.budget - p.spent })) as any}
+              formatCurrency={formatCurrency}
+            />
+          </Suspense>
+        </Grid>
+
+        {/* Resource Allocation Panel (lazy) */}
+        <Grid item xs={12} md={6} aria-labelledby="resource-allocation-heading">
+          <Suspense fallback={<Box role="status" aria-live="polite" aria-busy="true"><PanelSkeleton variant="table" lines={3} /></Box>}>        
+            <ResourceAllocationPanel
+              resources={teamOverview.map(m => ({ resource: m.name, type: m.role, allocated: Math.round(m.utilization * 0.4), capacity: 40, critical: m.utilization > 90 })) as any}
+            />
+          </Suspense>
+        </Grid>
+
+        {/* Client Communication Panel (lazy) */}
+        <Grid item xs={12} md={6} aria-labelledby="client-communication-heading">
+          <Suspense fallback={<Box role="status" aria-live="polite" aria-busy="true"><PanelSkeleton variant="list" lines={3} /></Box>}>        
+            <ClientCommunicationPanel
+              communications={[
+                { client: 'Heritage Mall Renovation', topic: 'Weekly Progress Meeting', lastContact: 'Today', nextAction: 'Meeting Tomorrow 2PM', status: 'In Progress' },
+                { client: 'Downtown Office Complex', topic: 'Change Order Pending', lastContact: 'Yesterday', nextAction: 'Awaiting Approval', status: 'Pending' },
+                { client: 'Industrial Warehouse', topic: 'Final Inspection Scheduled', lastContact: 'Today', nextAction: 'Prepare Documentation', status: 'Completed' }
+              ] as any}
+              getCommStatusColor={(s: string) => {
+                const k = s.toLowerCase();
+                if (k === 'pending') return 'warning';
+                if (k === 'in progress') return 'info';
+                if (k === 'completed') return 'success';
+                if (k === 'escalated') return 'error';
+                return 'default';
+              }}
+            />
+          </Suspense>
+        </Grid>
+
+        {/* Project Tools Panel (lazy) */}
+        <Grid item xs={12} aria-labelledby="project-tools-heading">
+          <Suspense fallback={<Box role="status" aria-live="polite" aria-busy="true"><PanelSkeleton variant="tools" lines={6} /></Box>}>        
+            <ProjectToolsPanel onAction={() => { /* placeholder */ }} />
+          </Suspense>
+        </Grid>
+
+        {/* Detailed Resource Table removed for code-split (can reintroduce if needed) */}
       </Grid>
     </BaseDashboard>
   );

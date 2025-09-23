@@ -15,14 +15,11 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Fab,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  LinearProgress,
-  Avatar,
-  Tooltip,
+  LinearProgress
 } from '@mui/material';
 import {
   Add,
@@ -33,13 +30,14 @@ import {
   Delete,
   Visibility,
   Assignment,
+  TrendingUp,
   Schedule,
   LocationOn,
-  Person,
-  TrendingUp,
+  Person
 } from '@mui/icons-material';
+import { Fab } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import FeatureDiscovery, { projectPageTips } from '../../components/help/FeatureDiscovery';
 
@@ -117,8 +115,7 @@ const mockProjects: Project[] = [
 
 const ProjectsPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { user } = useSelector((state: RootState) => state.auth);
+  useSelector((state: RootState) => state.auth); // Access auth state if needed later
   
   const [projects, setProjects] = useState<Project[]>(mockProjects);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>(mockProjects);

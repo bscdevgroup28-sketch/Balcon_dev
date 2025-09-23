@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional, Association } from 'sequelize';
-import { enhancedSequelize } from '../config/enhancedDatabase';
+import { sequelize } from '../config/database';
 
 // Project Activity interface for real-time tracking
 export interface ProjectActivityAttributes {
@@ -139,7 +139,7 @@ ProjectActivity.init({
     defaultValue: {},
   },
 }, {
-  sequelize: enhancedSequelize,
+  sequelize,
   modelName: 'ProjectActivity',
   tableName: 'enhanced_project_activities',
   underscored: true,

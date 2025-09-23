@@ -39,9 +39,8 @@ import {
   Settings,
   Assessment
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { RootState } from '../../store/store';
+import BaseDashboard from '../../components/dashboard/BaseDashboard';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -92,15 +91,15 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, p: 3 }}>
+    <BaseDashboard role="admin" title="Admin Dashboard" subtitle="System administration center and operational overview">
       {/* System Overview */}
       <Typography variant="h5" gutterBottom sx={{ color: '#424242', fontWeight: 600, mb: 3 }}>
         System Administration Center
       </Typography>
 
       {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={2.4}>
+      <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -124,7 +123,7 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2.4}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -148,7 +147,7 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2.4}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -172,7 +171,7 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2.4}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -191,7 +190,7 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={2.4}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -211,7 +210,7 @@ const AdminDashboard: React.FC = () => {
         </Grid>
       </Grid>
 
-      <Grid container spacing={3}>
+  <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Recent Users */}
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
@@ -564,7 +563,7 @@ const AdminDashboard: React.FC = () => {
         </Grid>
 
       </Grid>
-    </Box>
+    </BaseDashboard>
   );
 };
 

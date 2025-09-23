@@ -19,10 +19,7 @@ interface SocketUser {
 }
 
 // Extended socket interface
-interface AuthenticatedSocket extends SocketIOServer {
-  user?: SocketUser;
-  userId?: number;
-}
+// Removed unused AuthenticatedSocket interface
 
 // Real-time notification types
 export interface NotificationData {

@@ -9,7 +9,7 @@ const http_1 = require("http");
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
-const morgan_1 = __importDefault(require("morgan"));
+// Removed morgan in favor of custom requestLoggingMiddleware
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const express_rate_limit_1 = require("express-rate-limit");
@@ -17,6 +17,7 @@ const express_rate_limit_1 = require("express-rate-limit");
 dotenv_1.default.config();
 // Import utilities and middleware
 const logger_1 = require("./utils/logger");
+const metrics_1 = require("./monitoring/metrics");
 const errorHandler_1 = require("./middleware/errorHandler");
 const notFoundHandler_1 = require("./middleware/notFoundHandler");
 // Import services
@@ -62,44 +63,33 @@ class BalConBuildersApp {
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
         }));
-        // Rate limiting
+        // Rate limiting (general)
         const limiter = (0, express_rate_limit_1.rateLimit)({
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 1000, // limit each IP to 1000 requests per windowMs
-            message: {
-                error: 'Too many requests from this IP, please try again later.'
-            },
+            windowMs: 15 * 60 * 1000,
+            max: 1000,
+            message: { error: 'Too many requests from this IP, please try again later.' },
             standardHeaders: true,
             legacyHeaders: false,
         });
         this.app.use(limiter);
-        // More strict rate limiting for auth routes
+        // Stricter auth limiter
         const authLimiter = (0, express_rate_limit_1.rateLimit)({
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 5, // limit each IP to 5 auth requests per windowMs
-            message: {
-                error: 'Too many authentication attempts, please try again later.'
-            },
+            windowMs: 15 * 60 * 1000,
+            max: 5,
+            message: { error: 'Too many authentication attempts, please try again later.' },
             standardHeaders: true,
             legacyHeaders: false,
         });
-        this.app.use('/api/auth/login', authLimiter);
-        this.app.use('/api/auth/register', authLimiter);
+        this.app.use('/api/auth', authLimiter);
+        // Metrics middleware early
+        this.app.use(metrics_1.metricsMiddleware);
         // Body parsing middleware
         this.app.use(express_1.default.json({ limit: '10mb' }));
         this.app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
-        // Compression middleware
+        // Compression
         this.app.use((0, compression_1.default)());
-        // Logging middleware
-        if (process.env.NODE_ENV !== 'test') {
-            this.app.use((0, morgan_1.default)('combined', {
-                stream: {
-                    write: (message) => {
-                        logger_1.logger.info(message.trim());
-                    }
-                }
-            }));
-        }
+        // Structured request logging
+        this.app.use(logger_1.requestLoggingMiddleware);
         // Static file serving
         this.app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '..', 'uploads')));
         // Trust proxy for accurate IP addresses (important for rate limiting)
@@ -109,6 +99,7 @@ class BalConBuildersApp {
     // Initialize routes
     initializeRoutes() {
         // API routes
+        this.app.use('/api/metrics', require('./routes/metrics').default);
         this.app.use('/api/health', health_1.default);
         this.app.use('/api/auth', authEnhanced_1.default);
         this.app.use('/api/projects', projects_1.default);
@@ -185,6 +176,7 @@ class BalConBuildersApp {
                 if (process.env.NODE_ENV === 'development') {
                     logger_1.logger.info(`🔧 Development mode: API test interface available`);
                 }
+                (0, metrics_1.initSentry)(logger_1.logger);
             });
             // Graceful shutdown handling
             this.setupGracefulShutdown();

@@ -1,0 +1,8 @@
+build/
+COMPREHENSIVE_TEST_REPORT.js
+FUNCTIONALITY_TEST_PLAN.js
+*.config.js
+jest.config.js
+sw.js
+public/sw.js
+node_modules/

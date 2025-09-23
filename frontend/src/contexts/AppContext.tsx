@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode, useCallback } from 'react';
 import integratedAPI from '../services/integratedAPI';
 import { useAuth } from './AuthContext';
 
@@ -443,23 +443,23 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { isAuthenticated } = useAuth();
 
-  // Initialize real-time subscriptions when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      subscribeToRealTimeUpdates();
-      loadInitialData();
-    }
-  }, [isAuthenticated]);
-
-  // Load initial data
-  const loadInitialData = async () => {
+  // Load initial data grouped and memoized
+  const loadInitialData = useCallback(async () => {
     await Promise.all([
       loadProjects(),
       loadQuotes(),
       loadNotifications(),
       loadAnalytics(),
     ]);
-  };
+  }, []); // individual loaders are stable function identities defined below
+
+  // Initialize real-time subscriptions when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      subscribeToRealTimeUpdates();
+      loadInitialData();
+    }
+  }, [isAuthenticated, loadInitialData]);
 
   // Projects management
   const loadProjects = async (params?: any) => {

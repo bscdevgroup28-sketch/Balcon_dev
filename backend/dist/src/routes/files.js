@@ -8,15 +8,12 @@ const models_1 = require("../models");
 const fileUpload_1 = require("../middleware/fileUpload");
 const validation_1 = require("../middleware/validation");
 const zod_1 = require("zod");
+// path not used
 const fs_1 = __importDefault(require("fs"));
 const logger_1 = require("../utils/logger");
 const router = (0, express_1.Router)();
 // Validation schemas
-const uploadFilesSchema = zod_1.z.object({
-    projectId: zod_1.z.string().transform(val => parseInt(val, 10)),
-    description: zod_1.z.string().optional(),
-    isPublic: zod_1.z.string().transform(val => val === 'true').optional(),
-});
+// removed unused uploadFilesSchema definition
 // POST /api/files/upload - Upload files for a project
 router.post('/upload', fileUpload_1.upload.array('files', 10), fileUpload_1.checkTotalFileSize, async (req, res) => {
     try {

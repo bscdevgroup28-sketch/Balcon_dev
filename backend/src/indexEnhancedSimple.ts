@@ -32,10 +32,9 @@ async function startEnhancedApplication(): Promise<void> {
     logger.info('   📁 Files: /api/files/*');
     logger.info('   🧪 Test: /api/test/*');
     logger.info('');
-    logger.info('🔑 Default Admin Credentials:');
-    logger.info('   📧 Email: owner@balconbuilders.com');
-    logger.info('   🔒 Password: admin123');
-    logger.info('');
+  logger.info('🔑 Admin bootstrap: if SEED_ON_START=true a temporary password is generated unless DEFAULT_USER_PASSWORD is set.');
+  logger.info('   📧 Default seeded owner email: owner@balconbuilders.com');
+  logger.info('');
     logger.info('🔄 To reset database: npm run db:reset:enhanced');
     logger.info('🌱 To seed data: npm run db:seed:enhanced');
 

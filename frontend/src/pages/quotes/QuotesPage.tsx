@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { Avatar, Tooltip, Fab } from '@mui/material';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -15,24 +16,18 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Fab,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   LinearProgress,
-  Avatar,
-  Tooltip,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Divider,
-  Alert,
-  Badge,
+  Alert
 } from '@mui/material';
 import {
   Add,
@@ -45,18 +40,13 @@ import {
   Send,
   CheckCircle,
   Cancel,
-  Schedule,
   TrendingUp,
   Assignment,
-  Email,
-  Public,
-  Warning,
-  Error,
   Pending,
-  Build,
+  Warning
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import FeatureDiscovery from '../../components/help/FeatureDiscovery';
 import CreateQuoteDialog from '../../components/quotes/CreateQuoteDialog';
@@ -105,7 +95,6 @@ interface Quote {
 
 const QuotesPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -127,7 +116,7 @@ const QuotesPage: React.FC = () => {
     { id: 3, title: 'Commercial Office Building', projectType: 'commercial', status: 'in_progress' },
   ];
 
-  const mockQuotes: Quote[] = [
+  const mockQuotes: Quote[] = useMemo(() => [
     {
       id: 1,
       quoteNumber: 'Q24090001',
@@ -289,7 +278,7 @@ const QuotesPage: React.FC = () => {
         },
       ],
     },
-  ];
+  ], []);
 
   useEffect(() => {
     // Simulate API call
@@ -304,7 +293,7 @@ const QuotesPage: React.FC = () => {
     };
 
     loadQuotes();
-  }, []);
+  }, [mockQuotes]);
 
   useEffect(() => {
     let filtered = quotes;

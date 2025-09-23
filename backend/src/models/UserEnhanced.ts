@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional, Association, Op } from 'sequelize';
-import { enhancedSequelize } from '../config/enhancedDatabase';
+import { sequelize } from '../config/database';
 import bcrypt from 'bcryptjs';
 
 // Enhanced User interface with authentication and business fields
@@ -44,6 +44,7 @@ export interface UserAttributes {
   projectsCompleted?: number;
   totalRevenue?: number;
   performanceRating?: number;
+  mustChangePassword?: boolean;
   
   // Timestamps
   createdAt?: Date;
@@ -93,6 +94,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public projectsCompleted?: number;
   public totalRevenue?: number;
   public performanceRating?: number;
+  public mustChangePassword?: boolean;
   
   // Timestamps
   public readonly createdAt!: Date;
@@ -401,8 +403,14 @@ User.init({
       max: 5,
     },
   },
+  mustChangePassword: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    field: 'must_change_password'
+  },
 }, {
-  sequelize: enhancedSequelize,
+  sequelize,
   modelName: 'User',
   tableName: 'enhanced_users',
   underscored: true,

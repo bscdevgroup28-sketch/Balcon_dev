@@ -1,6 +1,5 @@
 // Supabase Authentication Service
 import { supabase, User } from './supabase'
-import { AuthError, User as SupabaseUser } from '@supabase/supabase-js'
 
 export interface AuthUser extends User {
   email: string

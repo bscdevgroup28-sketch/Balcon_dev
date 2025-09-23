@@ -7,20 +7,15 @@ import {
   Grid,
   Chip,
   Button,
-  Tabs,
-  Tab,
-  Paper,
   List,
   ListItem,
   ListItemText,
   ListItemIcon,
   Divider,
   LinearProgress,
-  Avatar,
   Breadcrumbs,
   Link,
   IconButton,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -30,27 +25,25 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Stack,
+  Stack
 } from '@mui/material';
 import {
   ArrowBack,
   Edit,
   AttachFile,
   Download,
+  MonetizationOn,
+  Assignment,
+  CheckCircle,
+  RadioButtonUnchecked,
+  Info,
   Person,
   LocationOn,
   Schedule,
-  MonetizationOn,
-  Assignment,
-  Comment,
-  Notifications,
-  CheckCircle,
-  RadioButtonUnchecked,
-  Warning,
-  Error,
-  Info,
-  LocalShipping,
+  LocalShipping
 } from '@mui/icons-material';
+import { Tabs, Tab, Paper, Tooltip, Avatar } from '@mui/material';
+import ErrorIcon from '@mui/icons-material/Error';
 import { useParams, useNavigate } from 'react-router-dom';
 
 interface ProjectDetail {
@@ -260,18 +253,6 @@ const ProjectDetailPage: React.FC = () => {
     }
   };
 
-  const getTimelineIcon = (type: string, status: string) => {
-    if (status === 'completed') return <CheckCircle />;
-    if (status === 'in_progress') return <RadioButtonUnchecked color="primary" />;
-    if (status === 'delayed') return <Error color="error" />;
-    
-    switch (type) {
-      case 'milestone': return <Assignment />;
-      case 'review': return <Info />;
-      case 'delivery': return <LocalShipping />;
-      default: return <RadioButtonUnchecked />;
-    }
-  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -551,7 +532,7 @@ const ProjectDetailPage: React.FC = () => {
                         >
                           {item.status === 'completed' ? <CheckCircle /> :
                            item.status === 'in_progress' ? <RadioButtonUnchecked /> :
-                           item.status === 'delayed' ? <Error /> :
+                           item.status === 'delayed' ? <ErrorIcon /> :
                            item.type === 'milestone' ? <Assignment /> :
                            item.type === 'review' ? <Info /> :
                            item.type === 'delivery' ? <LocalShipping /> :

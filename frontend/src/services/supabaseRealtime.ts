@@ -1,5 +1,5 @@
 // Supabase Real-time Data Service
-import { supabase, Project, Quote, User } from './supabase';
+import { supabase, Project, Quote } from './supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface RealtimeSubscription {

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
+import { logSecurityEvent } from '../utils/securityAudit';
 
 // Extend Express Request interface to include user
 declare global {
@@ -31,6 +32,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
+    logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'missing' } });
     res.status(401).json({ 
       error: 'Access token required',
       message: 'Please provide a valid authentication token'
@@ -42,6 +44,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
       logger.error('JWT_SECRET not configured');
+      logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'misconfiguration' } });
       res.status(500).json({ 
         error: 'Server configuration error',
         message: 'Authentication system not properly configured'
@@ -57,21 +60,25 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
       permissions: decoded.permissions || []
     };
 
-    logger.info(`✅ Authenticated user: ${decoded.email} (${decoded.role})`);
+  logger.info(`✅ Authenticated user: ${decoded.email} (${decoded.role})`);
+  logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'success', meta: { userId: decoded.id, role: decoded.role } });
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
+      logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'expired' } });
       res.status(401).json({ 
         error: 'Token expired',
         message: 'Your session has expired. Please log in again.'
       });
     } else if (error instanceof jwt.JsonWebTokenError) {
+      logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'invalid' } });
       res.status(401).json({ 
         error: 'Invalid token',
         message: 'The provided authentication token is invalid.'
       });
     } else {
       logger.error('Authentication error:', error);
+      logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'error' } });
       res.status(401).json({ 
         error: 'Authentication failed',
         message: 'Unable to authenticate the request.'

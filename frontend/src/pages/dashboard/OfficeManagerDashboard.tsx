@@ -22,7 +22,6 @@ import {
   AttachMoney,
   TrendingUp,
   Warning,
-  CheckCircle,
   Phone,
   Email,
   EventNote,
@@ -94,7 +93,7 @@ const OfficeManagerDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="office_manager" title="Office Manager Dashboard">
-      <Grid container spacing={3}>
+      <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Administrative Metrics */}
         <Grid item xs={12}>
           <Typography variant="h5" gutterBottom sx={{ color: '#7b1fa2', fontWeight: 600 }}>
@@ -103,7 +102,7 @@ const OfficeManagerDashboard: React.FC = () => {
         </Grid>
 
         {/* Key Metrics Cards */}
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e1bee7 0%, #ce93d8 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -121,7 +120,7 @@ const OfficeManagerDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -139,7 +138,7 @@ const OfficeManagerDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">

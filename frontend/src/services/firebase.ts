@@ -20,4 +20,5 @@ export const firebaseConfig: FirebaseConfig = {
   appId: "local-app-id"
 };
 
-export default {};
+const firebaseStub = {};
+export default firebaseStub;

@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { Op } from 'sequelize';
 import { User } from '../models/UserEnhanced';
 import { validate, ValidatedRequest } from '../middleware/validation';
 import {
@@ -12,7 +11,8 @@ import {
 } from '../utils/validation';
 import { logger } from '../utils/logger';
 import { authenticateToken, requireRole } from '../middleware/authEnhanced';
-import bcrypt from 'bcryptjs';
+import { logSecurityEvent } from '../utils/securityAudit';
+// removed unused bcrypt import
 
 const router = Router();
 
@@ -91,6 +91,7 @@ router.post(
       // Check if user already exists
       const existingUser = await User.findByEmail(userData.email);
       if (existingUser) {
+        logSecurityEvent(req, { action: 'user.create', outcome: 'failure', meta: { reason: 'email_exists', email: userData.email.toLowerCase() } });
         return res.status(409).json({
           success: false,
           message: 'User with this email already exists',
@@ -104,7 +105,8 @@ router.post(
       const userResponse = { ...user.toJSON() };
       delete (userResponse as any).passwordHash;
 
-      logger.info(`User created: ${user.email} by user ${(req as any).user.id}`);
+  logger.info(`User created: ${user.email} by user ${(req as any).user.id}`);
+  logSecurityEvent(req, { action: 'user.create', outcome: 'success', meta: { newUserId: user.id, email: user.email } });
 
       res.status(201).json({
         success: true,
@@ -138,6 +140,7 @@ router.put(
 
       const user = await User.findByPk(id);
       if (!user) {
+        logSecurityEvent(req, { action: 'user.update', outcome: 'failure', meta: { reason: 'not_found', targetId: id } });
         return res.status(404).json({
           success: false,
           message: 'User not found',
@@ -146,6 +149,7 @@ router.put(
 
       // Check permissions - users can update themselves, admins can update anyone
       if (user.id !== (req as any).user.id && userRole !== 'owner') {
+        logSecurityEvent(req, { action: 'user.update', outcome: 'denied', targetUserId: user.id, meta: { reason: 'insufficient_scope' } });
         return res.status(403).json({
           success: false,
           message: 'Insufficient permissions to update this user',
@@ -154,11 +158,14 @@ router.put(
 
       // Only admins can change roles
       if (updateData.role && userRole !== 'owner') {
+        logSecurityEvent(req, { action: 'user.role.change', outcome: 'denied', targetUserId: user.id, meta: { attemptedRole: updateData.role } });
         return res.status(403).json({
           success: false,
           message: 'Insufficient permissions to change user role',
         });
       }
+
+      const roleChanged = updateData.role && updateData.role !== user.role;
 
       await user.update(updateData);
 
@@ -167,6 +174,10 @@ router.put(
       delete (userResponse as any).passwordHash;
 
       logger.info(`User updated: ${user.email} by user ${(req as any).user.id}`);
+      logSecurityEvent(req, { action: 'user.update', outcome: 'success', targetUserId: user.id, meta: { fields: Object.keys(updateData) } });
+      if (roleChanged) {
+        logSecurityEvent(req, { action: 'user.role.change', outcome: 'success', targetUserId: user.id, meta: { newRole: user.role } });
+      }
 
       res.json({
         success: true,
@@ -195,6 +206,7 @@ router.delete(
 
       const user = await User.findByPk(id);
       if (!user) {
+        logSecurityEvent(req, { action: 'user.delete', outcome: 'failure', meta: { reason: 'not_found', targetId: id } });
         return res.status(404).json({
           success: false,
           message: 'User not found',
@@ -203,6 +215,7 @@ router.delete(
 
       // Prevent deleting self
       if (user.id === (req as any).user.id) {
+        logSecurityEvent(req, { action: 'user.delete', outcome: 'denied', targetUserId: user.id, meta: { reason: 'self_delete_blocked' } });
         return res.status(400).json({
           success: false,
           message: 'Cannot delete your own account',
@@ -211,7 +224,8 @@ router.delete(
 
       await user.destroy();
 
-      logger.info(`User deleted: ${user.email} by user ${(req as any).user.id}`);
+  logger.info(`User deleted: ${user.email} by user ${(req as any).user.id}`);
+  logSecurityEvent(req, { action: 'user.delete', outcome: 'success', targetUserId: user.id });
 
       res.json({
         success: true,

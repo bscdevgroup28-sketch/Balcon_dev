@@ -2,9 +2,9 @@ import express, { Application, Request, Response } from 'express';
 import { createServer } from 'http';
 // import { Server as SocketIOServer } from 'socket.io'; // Commented out for now
 import cors from 'cors';
+import { buildCorsOptions } from './config/corsConfig';
 import helmet from 'helmet';
 import compression from 'compression';
-import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import { rateLimit } from 'express-rate-limit';
@@ -13,14 +13,15 @@ import { rateLimit } from 'express-rate-limit';
 dotenv.config();
 
 // Import utilities and middleware
-import { logger } from './utils/logger';
+import { logger, requestLoggingMiddleware } from './utils/logger';
+import { metricsMiddleware, initSentry } from './monitoring/metrics';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import { authenticateToken } from './middleware/authEnhanced';
 
 // Import services
 import { setupEnhancedDatabase } from './scripts/setupEnhancedDatabase';
-import WebSocketHandler from './services/websocketHandler';
+// websocket handler not directly referenced here
 
 // Import routes
 import healthRoutes from './routes/health';
@@ -62,24 +63,16 @@ export class BalConBuildersApp5B {
       },
     }));
 
-    // Enable CORS for all routes
-    this.app.use(cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
-    }));
+    // Centralized CORS policy
+    this.app.use(cors(buildCorsOptions()));
 
-    // Request logging
-    this.app.use(morgan('combined', {
-      stream: {
-        write: (message: string) => {
-          logger.info(message.trim());
-        }
-      }
-    }));
+    // Request logging with requestId + structured metadata
+    this.app.use(requestLoggingMiddleware);
 
-    // Body parsing middleware
+  // Metrics collection (attach early)
+  this.app.use(metricsMiddleware);
+
+  // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -107,7 +100,10 @@ export class BalConBuildersApp5B {
 
   // Initialize routes
   private initializeRoutes(): void {
-    // Health check (no auth required)
+  // Metrics endpoints (no auth) - JSON + Prometheus
+  this.app.use('/api/metrics', require('./routes/metrics').default);
+
+  // Health check (no auth required)
     this.app.use('/api/health', healthRoutes);
 
     // Authentication routes (no auth required)
@@ -243,7 +239,7 @@ export class BalConBuildersApp5B {
       // Create HTTP server
       this.server = createServer(this.app);
 
-      // Initialize WebSocket
+  // Initialize WebSocket
       this.initializeWebSocket();
 
       // Initialize database first
@@ -274,10 +270,9 @@ export class BalConBuildersApp5B {
         logger.info(`   ❤️  Health Check: http://localhost:${this.port}/api/health`);
         logger.info(`   🔌 WebSocket: ws://localhost:${this.port}`);
         logger.info('');
-        logger.info('🔑 Default Admin Credentials:');
-        logger.info('   📧 Email: owner@balconbuilders.com');
-        logger.info('   🔒 Password: admin123');
-        logger.info('');
+  logger.info('🔑 Admin bootstrap: seeded owner user uses DEFAULT_USER_PASSWORD or a generated temporary password (masked in logs).');
+  logger.info('   📧 Owner email: owner@balconbuilders.com');
+  logger.info('');
         logger.info('🛠️  Management Commands:');
         logger.info('   🔄 Reset database: npm run db:reset:enhanced');
         logger.info('   🌱 Seed data: npm run db:seed:enhanced');
@@ -287,6 +282,7 @@ export class BalConBuildersApp5B {
           logger.info('🔧 Development mode: API test interface available');
           logger.info(`   🧪 Test API: http://localhost:${this.port}/api/test`);
         }
+        initSentry(logger);
       });
 
       // Graceful shutdown handling

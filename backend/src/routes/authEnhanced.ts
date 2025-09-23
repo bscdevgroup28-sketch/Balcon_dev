@@ -1,9 +1,11 @@
 import express, { Request, Response } from 'express';
 import { AuthService } from '../services/authService';
-import { authenticateToken, requireRole, requirePermission } from '../middleware/authEnhanced';
+import { authenticateToken, requirePermission } from '../middleware/authEnhanced';
 import { User } from '../models/UserEnhanced';
 import { logger } from '../utils/logger';
 import { body, validationResult } from 'express-validator';
+import { bruteForceProtector } from '../middleware/bruteForceProtector';
+import { logSecurityEvent } from '../utils/securityAudit';
 
 const router = express.Router();
 
@@ -22,9 +24,10 @@ const registerValidation = [
     .withMessage('Valid role is required')
 ];
 
+// Change password validation: currentPassword optional to support first-login forced change
 const changePasswordValidation = [
-  body('currentPassword').notEmpty().withMessage('Current password is required'),
-  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters')
+  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
+  body('currentPassword').optional()
 ];
 
 // Helper function to handle validation errors
@@ -42,7 +45,7 @@ const handleValidationErrors = (req: Request, res: Response): boolean => {
 };
 
 // POST /api/auth/login
-router.post('/login', loginValidation, async (req: Request, res: Response) => {
+router.post('/login', bruteForceProtector, loginValidation, async (req: Request, res: Response) => {
   try {
     if (!handleValidationErrors(req, res)) return;
 
@@ -51,6 +54,12 @@ router.post('/login', loginValidation, async (req: Request, res: Response) => {
     const result = await AuthService.authenticateUser(email, password);
     
     if (!result) {
+      if ((req as any).recordAuthFailure) (req as any).recordAuthFailure();
+      logSecurityEvent(req, {
+        action: 'auth.login',
+        outcome: 'failure',
+        meta: { email: email.toLowerCase() }
+      });
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -67,6 +76,12 @@ router.post('/login', loginValidation, async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
+    if ((req as any).clearAuthFailures) (req as any).clearAuthFailures();
+    logSecurityEvent(req, {
+      action: 'auth.login',
+      outcome: 'success',
+      meta: { userId: user.id, email: user.email, role: user.role }
+    });
     res.json({
       success: true,
       message: 'Login successful',
@@ -84,7 +99,8 @@ router.post('/login', loginValidation, async (req: Request, res: Response) => {
             canManageUsers: user.canManageUsers
           },
           isVerified: user.isVerified,
-          lastLoginAt: user.lastLoginAt
+          lastLoginAt: user.lastLoginAt,
+          mustChangePassword: (user as any).mustChangePassword === true
         },
         accessToken
       }
@@ -109,6 +125,11 @@ router.post('/register', authenticateToken, requirePermission('canManageUsers'),
     // Check if user already exists
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
+      logSecurityEvent(req, {
+        action: 'user.register',
+        outcome: 'failure',
+        meta: { reason: 'email_exists', email: email.toLowerCase() }
+      });
       return res.status(409).json({
         success: false,
         message: 'User with this email already exists'
@@ -125,12 +146,22 @@ router.post('/register', authenticateToken, requirePermission('canManageUsers'),
     }, password);
 
     if (!user) {
+      logSecurityEvent(req, {
+        action: 'user.register',
+        outcome: 'failure',
+        meta: { reason: 'creation_failed', email: email.toLowerCase() }
+      });
       return res.status(500).json({
         success: false,
         message: 'Failed to create user'
       });
     }
 
+    logSecurityEvent(req, {
+      action: 'user.register',
+      outcome: 'success',
+      meta: { newUserId: user.id, email: user.email, role: user.role }
+    });
     res.status(201).json({
       success: true,
       message: 'User created successfully',
@@ -208,7 +239,10 @@ router.post('/logout', async (req: Request, res: Response) => {
   try {
     // Clear refresh token cookie
     res.clearCookie('refreshToken');
-
+    logSecurityEvent(req, {
+      action: 'auth.logout',
+      outcome: 'success'
+    });
     res.json({
       success: true,
       message: 'Logout successful'
@@ -246,7 +280,8 @@ router.get('/me', authenticateToken, async (req: any, res: Response) => {
           isActive: user.isActive,
           isVerified: user.isVerified,
           lastLoginAt: user.lastLoginAt,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          mustChangePassword: (user as any).mustChangePassword === true
         }
       }
     });
@@ -266,20 +301,59 @@ router.put('/change-password', authenticateToken, changePasswordValidation, asyn
 
     const { currentPassword, newPassword } = req.body;
     const userId = req.userId!;
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
 
-    const success = await AuthService.changePassword(userId, currentPassword, newPassword);
-
-    if (!success) {
-      return res.status(400).json({
-        success: false,
-        message: 'Current password is incorrect'
+    // If user is flagged to change password and currentPassword not provided, allow direct change
+    if ((user as any).mustChangePassword === true && !currentPassword) {
+      await user.updatePassword(newPassword);
+      (user as any).mustChangePassword = false;
+      await user.save();
+      logSecurityEvent(req, {
+        action: 'user.password.first_set',
+        outcome: 'success',
+        meta: { userId }
+      });
+      return res.json({
+        success: true,
+        message: 'Password set successfully',
+        data: { mustChangePassword: false }
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Password changed successfully'
+    if (!currentPassword) {
+      logSecurityEvent(req, {
+        action: 'user.password.change',
+        outcome: 'failure',
+        meta: { reason: 'missing_current_password', userId }
+      });
+      return res.status(400).json({ success: false, message: 'Current password is required' });
+    }
+
+    const success = await AuthService.changePassword(userId, currentPassword, newPassword);
+    if (!success) {
+      logSecurityEvent(req, {
+        action: 'user.password.change',
+        outcome: 'failure',
+        meta: { reason: 'incorrect_current_password', userId }
+      });
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    // Ensure flag cleared if it was still set
+    if ((user as any).mustChangePassword === true) {
+      (user as any).mustChangePassword = false;
+      await user.save();
+    }
+
+    logSecurityEvent(req, {
+      action: 'user.password.change',
+      outcome: 'success',
+      meta: { userId }
     });
+    res.json({ success: true, message: 'Password changed successfully', data: { mustChangePassword: false } });
 
   } catch (error) {
     logger.error('Change password error:', error);
@@ -303,19 +377,22 @@ router.put('/reset-password/:userId', authenticateToken, requirePermission('canM
       });
     }
 
-    const success = await AuthService.resetPassword(parseInt(userId), newPassword);
-
-    if (!success) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+    const targetId = parseInt(userId);
+    const user = await User.findByPk(targetId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-
-    res.json({
-      success: true,
-      message: 'Password reset successfully'
+    await user.updatePassword(newPassword);
+    // Force password rotation after admin reset
+    (user as any).mustChangePassword = true;
+    await user.save();
+    logSecurityEvent(req, {
+      action: 'user.password.reset',
+      outcome: 'success',
+      targetUserId: user.id,
+      meta: { adminUserId: req.userId }
     });
+    res.json({ success: true, message: 'Password reset successfully (rotation required)', data: { mustChangePassword: true } });
 
   } catch (error) {
     logger.error('Reset password error:', error);
@@ -348,7 +425,8 @@ router.get('/users', authenticateToken, requirePermission('canManageUsers'), asy
           isActive: user.isActive,
           isVerified: user.isVerified,
           lastLoginAt: user.lastLoginAt,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          mustChangePassword: (user as any).mustChangePassword === true
         }))
       }
     });
@@ -378,7 +456,12 @@ router.put('/users/:userId/status', authenticateToken, requirePermission('canMan
 
     user.isActive = isActive;
     await user.save();
-
+    logSecurityEvent(req, {
+      action: 'user.status.change',
+      outcome: 'success',
+      targetUserId: user.id,
+      meta: { isActive }
+    });
     res.json({
       success: true,
       message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,

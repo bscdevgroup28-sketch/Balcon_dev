@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogActions,
   Slide,
-  SlideProps,
 } from '@mui/material';
 import { TransitionProps } from '@mui/material/transitions';
 

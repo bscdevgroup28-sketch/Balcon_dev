@@ -1,7 +1,6 @@
 // Enhanced AuthContext with Supabase Integration
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { authService, AuthUser } from '../services/supabaseAuth';
-import { supabase } from '../services/supabase';
 
 // Auth State Interface
 interface AuthState {
@@ -193,8 +192,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string): Promise<void> => {
     try {
       dispatch({ type: 'AUTH_LOADING' });
-      const user = await authService.signIn(email, password);
-      // State will be updated through the auth listener
+      await authService.signIn(email, password); // state updated via listener
     } catch (error: any) {
       dispatch({ type: 'AUTH_ERROR', payload: error.message });
       throw error;
@@ -209,8 +207,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   ): Promise<void> => {
     try {
       dispatch({ type: 'AUTH_LOADING' });
-      const user = await authService.signUp(email, password, fullName, role);
-      // State will be updated through the auth listener
+  await authService.signUp(email, password, fullName, role); // state updated via listener
     } catch (error: any) {
       dispatch({ type: 'AUTH_ERROR', payload: error.message });
       throw error;

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProjectActivity = void 0;
 const sequelize_1 = require("sequelize");
-const enhancedDatabase_1 = require("../config/enhancedDatabase");
+const database_1 = require("../config/database");
 class ProjectActivity extends sequelize_1.Model {
     // Instance methods
     getFormattedMessage() {
@@ -101,7 +101,7 @@ ProjectActivity.init({
         defaultValue: {},
     },
 }, {
-    sequelize: enhancedDatabase_1.enhancedSequelize,
+    sequelize: database_1.sequelize,
     modelName: 'ProjectActivity',
     tableName: 'enhanced_project_activities',
     underscored: true,

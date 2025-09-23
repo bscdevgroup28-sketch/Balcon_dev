@@ -1,15 +1,9 @@
 import React from 'react';
-import {
-  Box,
-  Typography,
-  Paper,
-  Breadcrumbs,
-  Link,
-  Chip,
-} from '@mui/material';
+import { Box, Typography, Paper, Breadcrumbs, Link, Chip } from '@mui/material';
 import { Home, NavigateNext } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
+import DashboardContainer from './DashboardContainer';
 import { UserRole } from '../../types/auth';
 import { getRoleDisplayName } from '../../utils/roleUtils';
 
@@ -40,7 +34,7 @@ export const BaseDashboard: React.FC<BaseDashboardProps> = ({
   const allBreadcrumbs = breadcrumbs.length > 0 ? breadcrumbs : defaultBreadcrumbs;
 
   return (
-    <Box sx={{ flexGrow: 1, p: 3 }}>
+    <DashboardContainer fullHeight>
       {/* Breadcrumb Navigation */}
       <Breadcrumbs
         separator={<NavigateNext fontSize="small" />}
@@ -78,7 +72,7 @@ export const BaseDashboard: React.FC<BaseDashboardProps> = ({
       <DashboardContent role={role}>
         {children}
       </DashboardContent>
-    </Box>
+    </DashboardContainer>
   );
 };
 
@@ -194,11 +188,12 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   };
 
   return (
-    <Paper 
+    <Paper
       elevation={0}
       sx={{
-        p: 0,
-        minHeight: 'calc(100vh - 200px)',
+        p: { xs: 1, sm: 2 },
+        borderRadius: 2,
+        minHeight: '100%',
         ...getRoleSpecificStyles(role)
       }}
     >

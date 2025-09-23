@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { Op } from 'sequelize';
+// removed unused Op import
 import { z } from 'zod';
 import { Quote, User, Project } from '../models';
 import { validate, ValidatedRequest } from '../middleware/validation';

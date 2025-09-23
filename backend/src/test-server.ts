@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
-import { config } from './config/environment';
-import { logger } from './utils/logger';
+// Removed morgan in favor of custom requestLoggingMiddleware
+// removed unused config import
+import { logger, requestLoggingMiddleware } from './utils/logger';
 import demoRoutes from './routes/demo';
 
 const app = express();
@@ -18,12 +18,8 @@ app.use(cors({
   credentials: true
 }));
 
-// Logging
-app.use(morgan('combined', {
-  stream: {
-    write: (message: string) => logger.info(message.trim())
-  }
-}));
+// Structured request logging with request IDs
+app.use(requestLoggingMiddleware);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -63,13 +59,15 @@ app.get('/api/test/data', (req, res) => {
       { id: 2, title: 'Residential Garage', type: 'residential', status: 'quoted' }
     ],
     quotes: [
-      { id: 1, projectId: 1, amount: 25000, status: 'accepted' },
-      { id: 2, projectId: 2, amount: 8500, status: 'sent' }
+      { id: 1, projectId: 1, amount: 25000, status: 'accepted' }
     ]
   });
 });
 
-// Add demo routes
+// Structured logging
+app.use(requestLoggingMiddleware);
+
+// Demo routes
 app.use('/api/demo', demoRoutes);
 
 // Basic 404 handler

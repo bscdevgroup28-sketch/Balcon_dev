@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -29,8 +29,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Divider,
 } from '@mui/material';
 import {
   Add,
@@ -41,17 +39,15 @@ import {
   Delete,
   Visibility,
   Assignment,
-  Schedule,
   LocalShipping,
   CheckCircle,
-  Warning,
-  Error,
   Pending,
   TrendingUp,
   Build,
+  Error
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import FeatureDiscovery from '../../components/help/FeatureDiscovery';
 import CreateOrderDialog from '../../components/orders/CreateOrderDialog';
@@ -100,7 +96,6 @@ interface Order {
 
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -125,7 +120,7 @@ const OrdersPage: React.FC = () => {
     { id: 2, quoteNumber: 'QT-2024-002', projectId: 2, totalAmount: 35000 },
   ];
 
-  const mockOrders: Order[] = [
+  const mockOrders: Order[] = useMemo(() => [
     {
       id: 1,
       orderNumber: 'ORD-1703123456789-ABC12',
@@ -216,7 +211,7 @@ const OrdersPage: React.FC = () => {
         },
       ],
     },
-  ];
+  ], []);
 
   useEffect(() => {
     // Simulate API call
@@ -231,7 +226,7 @@ const OrdersPage: React.FC = () => {
     };
 
     loadOrders();
-  }, []);
+  }, [mockOrders]);
 
   useEffect(() => {
     let filtered = orders;

@@ -1,8 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setupEnhancedDatabase = exports.createEnhancedSeedData = exports.resetDatabase = exports.initializeDatabase = void 0;
-const enhancedDatabase_1 = require("../config/enhancedDatabase");
+// DEPRECATION: This script formerly targeted a separate enhancedSequelize instance.
+// It now reuses the unified sequelize instance. Plan to remove after migration-driven init is stable.
+const database_1 = require("../config/database");
 const logger_1 = require("../utils/logger");
+// removed unused bcrypt import
 // Import enhanced models
 const UserEnhanced_1 = require("../models/UserEnhanced");
 const ProjectEnhanced_1 = require("../models/ProjectEnhanced");
@@ -29,8 +32,11 @@ const initializeDatabase = async () => {
         logger_1.logger.info('🔄 Initializing enhanced database...');
         // Setup associations
         setupAssociations();
-        // Create tables (force: true for clean start with enhanced models)
-        await enhancedDatabase_1.enhancedSequelize.sync({ force: true, alter: false });
+        const forceSync = process.env.DB_FORCE_SYNC === 'true';
+        if (forceSync) {
+            logger_1.logger.warn('⚠️  DB_FORCE_SYNC=true - performing destructive sync (force: true)');
+        }
+        await database_1.sequelize.sync({ force: forceSync, alter: false });
         logger_1.logger.info('✅ Enhanced database tables created/updated successfully');
     }
     catch (error) {
@@ -46,7 +52,7 @@ const resetDatabase = async () => {
         // Setup associations
         setupAssociations();
         // Drop and recreate all tables
-        await enhancedDatabase_1.enhancedSequelize.sync({ force: true });
+        await database_1.sequelize.sync({ force: true });
         logger_1.logger.info('✅ Database reset completed');
     }
     catch (error) {
@@ -58,7 +64,11 @@ exports.resetDatabase = resetDatabase;
 // Create enhanced seed data
 const createEnhancedSeedData = async () => {
     try {
-        logger_1.logger.info('🌱 Creating enhanced seed data...');
+        if (process.env.SEED_ON_START !== 'true') {
+            logger_1.logger.info('🌱 Skipping seed data creation (SEED_ON_START!=true)');
+            return;
+        }
+        logger_1.logger.info('🌱 Creating enhanced seed data (SEED_ON_START=true)...');
         // Create admin users for each role
         const adminUsers = [
             {
@@ -154,10 +164,24 @@ const createEnhancedSeedData = async () => {
         ];
         // Create users with default password
         const createdUsers = [];
+        const defaultPassword = process.env.DEFAULT_USER_PASSWORD || Math.random().toString(36).slice(-12);
+        if (!process.env.DEFAULT_USER_PASSWORD) {
+            logger_1.logger.warn('🔐 DEFAULT_USER_PASSWORD not set. Generated a temporary random password for seeded users.');
+        }
+        const forcePassword = !!process.env.DEFAULT_USER_PASSWORD;
         for (const userData of adminUsers) {
             const existingUser = await UserEnhanced_1.User.findByEmail(userData.email);
             if (!existingUser) {
-                const user = await UserEnhanced_1.User.createWithPassword(userData, 'admin123');
+                const user = await UserEnhanced_1.User.createWithPassword(userData, defaultPassword);
+                if (!forcePassword) {
+                    // Require password change on first login when using generated password
+                    user.mustChangePassword = true;
+                    await user.save();
+                }
+                else {
+                    user.mustChangePassword = false;
+                    await user.save();
+                }
                 createdUsers.push(user);
                 logger_1.logger.info(`✅ Created user: ${user.email} (${user.role})`);
             }
@@ -278,11 +302,11 @@ const createEnhancedSeedData = async () => {
             }
         }
         logger_1.logger.info('✅ Enhanced seed data created successfully');
-        logger_1.logger.info('ℹ️  Default admin password for all users: admin123');
         logger_1.logger.info('ℹ️  Users created:');
         createdUsers.forEach(user => {
             logger_1.logger.info(`   - ${user.email} (${user.getDisplayRole()})`);
         });
+        logger_1.logger.info('🔑 Seed password (masking last 4 chars): ' + defaultPassword.replace(/.(?=.{4})/g, '*'));
     }
     catch (error) {
         logger_1.logger.error('❌ Seed data creation failed:', error);

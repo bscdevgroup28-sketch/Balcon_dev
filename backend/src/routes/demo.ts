@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { User } from '../models/User';
+// removed unused User import
 
 const router = Router();
 

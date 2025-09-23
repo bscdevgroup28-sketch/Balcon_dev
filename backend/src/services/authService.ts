@@ -1,8 +1,9 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+// removed unused bcrypt import
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/UserEnhanced';
 import { logger } from '../utils/logger';
+import { logSecurityEvent } from '../utils/securityAudit';
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'balcon-builders-secret-key-2025';
@@ -102,12 +103,14 @@ export class AuthService {
       const user = await User.findByEmail(email);
       if (!user) {
         logger.warn(`Authentication failed: User not found for email ${email}`);
+        logSecurityEvent(undefined, { action: 'auth.login', outcome: 'failure', meta: { reason: 'user_not_found', email: email.toLowerCase() } });
         return null;
       }
 
       // Check if user is active
       if (!user.isActive) {
         logger.warn(`Authentication failed: User ${email} is inactive`);
+        logSecurityEvent(undefined, { action: 'auth.login', outcome: 'failure', meta: { reason: 'inactive', userId: user.id } });
         return null;
       }
 
@@ -115,6 +118,7 @@ export class AuthService {
       const isPasswordValid = await user.validatePassword(password);
       if (!isPasswordValid) {
         logger.warn(`Authentication failed: Invalid password for user ${email}`);
+        logSecurityEvent(undefined, { action: 'auth.login', outcome: 'failure', meta: { reason: 'bad_password', userId: user.id } });
         return null;
       }
 
@@ -125,7 +129,8 @@ export class AuthService {
       const accessToken = this.generateAccessToken(user);
       const refreshToken = this.generateRefreshToken(user);
 
-      logger.info(`User authenticated successfully: ${email} (${user.role})`);
+  logger.info(`User authenticated successfully: ${email} (${user.role})`);
+  logSecurityEvent(undefined, { action: 'auth.login', outcome: 'success', meta: { userId: user.id, email: user.email, role: user.role } });
 
       return {
         user,

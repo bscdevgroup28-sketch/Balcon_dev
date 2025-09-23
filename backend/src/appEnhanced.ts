@@ -1,9 +1,9 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { Application, Request, Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import morgan from 'morgan';
+// Removed morgan in favor of custom requestLoggingMiddleware
 import dotenv from 'dotenv';
 import path from 'path';
 import { rateLimit } from 'express-rate-limit';
@@ -12,7 +12,8 @@ import { rateLimit } from 'express-rate-limit';
 dotenv.config();
 
 // Import utilities and middleware
-import { logger } from './utils/logger';
+import { logger, requestLoggingMiddleware } from './utils/logger';
+import { metricsMiddleware, initSentry } from './monitoring/metrics';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 
@@ -20,7 +21,7 @@ import { notFoundHandler } from './middleware/notFoundHandler';
 import { initializeWebSocket } from './services/webSocketService';
 import { setupEnhancedDatabase } from './scripts/setupEnhancedDatabase';
 import { config } from './config/environment';
-import { sequelize } from './config/database';
+// removed unused sequelize import
 
 // Import routes
 import healthRoutes from './routes/health';
@@ -81,50 +82,40 @@ export class BalConBuildersApp {
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     }));
 
-    // Rate limiting
+    // Rate limiting (general)
     const limiter = rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 1000, // limit each IP to 1000 requests per windowMs
-      message: {
-        error: 'Too many requests from this IP, please try again later.'
-      },
+      windowMs: 15 * 60 * 1000,
+      max: 1000,
+      message: { error: 'Too many requests from this IP, please try again later.' },
       standardHeaders: true,
       legacyHeaders: false,
     });
     this.app.use(limiter);
 
-    // More strict rate limiting for auth routes
+    // Stricter auth limiter
     const authLimiter = rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5, // limit each IP to 5 auth requests per windowMs
-      message: {
-        error: 'Too many authentication attempts, please try again later.'
-      },
+      windowMs: 15 * 60 * 1000,
+      max: 5,
+      message: { error: 'Too many authentication attempts, please try again later.' },
       standardHeaders: true,
       legacyHeaders: false,
     });
-    this.app.use('/api/auth/login', authLimiter);
-    this.app.use('/api/auth/register', authLimiter);
+    this.app.use('/api/auth', authLimiter);
 
-    // Body parsing middleware
+  // Metrics middleware early
+  this.app.use(metricsMiddleware);
+
+  // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-    // Compression middleware
+    // Compression
     this.app.use(compression());
 
-    // Logging middleware
-    if (process.env.NODE_ENV !== 'test') {
-      this.app.use(morgan('combined', {
-        stream: {
-          write: (message: string) => {
-            logger.info(message.trim());
-          }
-        }
-      }));
-    }
+    // Structured request logging with request IDs
+    this.app.use(requestLoggingMiddleware);
 
-    // Static file serving
+  // Static file serving
     this.app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
     
     // Trust proxy for accurate IP addresses (important for rate limiting)
@@ -139,7 +130,8 @@ export class BalConBuildersApp {
     this.app.get('/api/health/simple', (req: Request, res: Response) => {
       res.json({ status: 'ok', time: new Date().toISOString() });
     });
-    this.app.use('/api/health', healthRoutes);
+  this.app.use('/api/metrics', require('./routes/metrics').default);
+  this.app.use('/api/health', healthRoutes);
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/projects', projectRoutes);
     this.app.use('/api/quotes', quoteRoutes);
@@ -244,6 +236,7 @@ export class BalConBuildersApp {
         if (process.env.NODE_ENV === 'development') {
           logger.info(`🔧 Development mode: API test interface available`);
         }
+        initSentry(logger);
       });
 
       // Graceful shutdown handling

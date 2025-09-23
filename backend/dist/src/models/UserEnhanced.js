@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 const sequelize_1 = require("sequelize");
-const enhancedDatabase_1 = require("../config/enhancedDatabase");
+const database_1 = require("../config/database");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 class User extends sequelize_1.Model {
     // Instance methods
@@ -289,8 +289,14 @@ User.init({
             max: 5,
         },
     },
+    mustChangePassword: {
+        type: sequelize_1.DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+        field: 'must_change_password'
+    },
 }, {
-    sequelize: enhancedDatabase_1.enhancedSequelize,
+    sequelize: database_1.sequelize,
     modelName: 'User',
     tableName: 'enhanced_users',
     underscored: true,

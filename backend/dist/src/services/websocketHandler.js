@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebSocketHandler = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const logger_1 = require("../utils/logger");
+// removed unused SocketUser interface
+// Removed unused AuthenticatedSocket interface definition
 class WebSocketHandler {
     constructor(io) {
         this.connectedUsers = new Map(); // userId -> socketId

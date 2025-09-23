@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { Op } from 'sequelize';
+// removed unused Op import
 import { logger } from '../utils/logger';
 import { requirePermission } from '../middleware/authEnhanced';
 

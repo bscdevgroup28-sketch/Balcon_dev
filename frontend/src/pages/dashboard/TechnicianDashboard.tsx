@@ -11,11 +11,8 @@ import {
   ListItemIcon,
   Chip,
   LinearProgress,
-  Avatar,
-  IconButton,
   Divider,
-  Button,
-  Paper
+  Button
 } from '@mui/material';
 import {
   Build,
@@ -155,7 +152,7 @@ const TechnicianDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="technician" title="Technician Dashboard">
-      <Grid container spacing={3}>
+  <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Technician Overview */}
         <Grid item xs={12}>
           <Typography variant="h5" gutterBottom sx={{ color: '#d32f2f', fontWeight: 600 }}>
@@ -567,7 +564,7 @@ const TechnicianDashboard: React.FC = () => {
 
         {/* Recent Activity & Announcements */}
         <Grid item xs={12} lg={4}>
-          <Grid container spacing={3}>
+          <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
             {/* Completed Today */}
             <Grid item xs={12}>
               <Card>

@@ -1,4 +1,4 @@
-import { QueryInterface, DataTypes, Op } from 'sequelize';
+import { QueryInterface, Op } from 'sequelize';
 
 export const up = async (queryInterface: QueryInterface): Promise<void> => {
   // First, add the new role enum values to the existing enum type

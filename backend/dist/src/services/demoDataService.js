@@ -269,7 +269,7 @@ class DemoDataService {
      * Get role-specific demo data for dashboards
      */
     static getDemoMetrics(role) {
-        const baseDate = new Date();
+        // removed unused baseDate
         switch (role) {
             case 'owner':
                 return {

@@ -3,18 +3,14 @@ import { ProjectFile } from '../models';
 import { upload, checkTotalFileSize, handleUploadError, getFileType, getFileUrl, deleteFile } from '../middleware/fileUpload';
 import { validate, ValidatedRequest } from '../middleware/validation';
 import { z } from 'zod';
-import path from 'path';
+// path not used
 import fs from 'fs';
 import { logger } from '../utils/logger';
 
 const router = Router();
 
 // Validation schemas
-const uploadFilesSchema = z.object({
-  projectId: z.string().transform(val => parseInt(val, 10)),
-  description: z.string().optional(),
-  isPublic: z.string().transform(val => val === 'true').optional(),
-});
+// removed unused uploadFilesSchema definition
 
 // POST /api/files/upload - Upload files for a project
 router.post(

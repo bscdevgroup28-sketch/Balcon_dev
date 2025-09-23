@@ -24,7 +24,11 @@
     "setup": "npm run db:init && npm run db:seed",
     "setup:enhanced": "npm run db:init:enhanced && npm run db:seed:enhanced",
     "dev:enhanced": "ts-node-dev --respawn --transpile-only src/indexEnhanced.ts",
-    "validate:sprint4": "curl http://localhost:8082/api/test/sprint4"
+    "validate:sprint4": "curl http://localhost:8082/api/test/sprint4",
+    "migrate": "ts-node src/scripts/migrate.ts up",
+    "migrate:down": "ts-node src/scripts/migrate.ts down",
+    "migrate:pending": "ts-node src/scripts/migrate.ts pending",
+    "migrate:status": "ts-node src/scripts/migrate.ts status"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

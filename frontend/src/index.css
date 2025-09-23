@@ -23,6 +23,18 @@ code {
   flex-direction: column;
 }
 
+/* Improved keyboard focus visibility */
+:focus-visible {
+  outline: 3px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* Avoid double focus ring for elements that apply their own via MUI */
+.MuiButtonBase-root:focus-visible {
+  outline: 3px solid #1976d2;
+  outline-offset: 2px;
+}
+
 .loading-spinner {
   display: flex;
   justify-content: center;

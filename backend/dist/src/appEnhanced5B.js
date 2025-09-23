@@ -8,9 +8,9 @@ const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 // import { Server as SocketIOServer } from 'socket.io'; // Commented out for now
 const cors_1 = __importDefault(require("cors"));
+const corsConfig_1 = require("./config/corsConfig");
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
-const morgan_1 = __importDefault(require("morgan"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const express_rate_limit_1 = require("express-rate-limit");
@@ -18,11 +18,13 @@ const express_rate_limit_1 = require("express-rate-limit");
 dotenv_1.default.config();
 // Import utilities and middleware
 const logger_1 = require("./utils/logger");
+const metrics_1 = require("./monitoring/metrics");
 const errorHandler_1 = require("./middleware/errorHandler");
 const notFoundHandler_1 = require("./middleware/notFoundHandler");
 const authEnhanced_1 = require("./middleware/authEnhanced");
 // Import services
 const setupEnhancedDatabase_1 = require("./scripts/setupEnhancedDatabase");
+// websocket handler not directly referenced here
 // Import routes
 const health_1 = __importDefault(require("./routes/health"));
 const auth_1 = __importDefault(require("./routes/auth")); // Using regular auth routes
@@ -54,21 +56,12 @@ class BalConBuildersApp5B {
                 },
             },
         }));
-        // Enable CORS for all routes
-        this.app.use((0, cors_1.default)({
-            origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
-        }));
-        // Request logging
-        this.app.use((0, morgan_1.default)('combined', {
-            stream: {
-                write: (message) => {
-                    logger_1.logger.info(message.trim());
-                }
-            }
-        }));
+        // Centralized CORS policy
+        this.app.use((0, cors_1.default)((0, corsConfig_1.buildCorsOptions)()));
+        // Request logging with requestId + structured metadata
+        this.app.use(logger_1.requestLoggingMiddleware);
+        // Metrics collection (attach early)
+        this.app.use(metrics_1.metricsMiddleware);
         // Body parsing middleware
         this.app.use(express_1.default.json({ limit: '10mb' }));
         this.app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
@@ -92,6 +85,8 @@ class BalConBuildersApp5B {
     }
     // Initialize routes
     initializeRoutes() {
+        // Metrics endpoints (no auth) - JSON + Prometheus
+        this.app.use('/api/metrics', require('./routes/metrics').default);
         // Health check (no auth required)
         this.app.use('/api/health', health_1.default);
         // Authentication routes (no auth required)
@@ -240,9 +235,8 @@ class BalConBuildersApp5B {
                 logger_1.logger.info(`   ❤️  Health Check: http://localhost:${this.port}/api/health`);
                 logger_1.logger.info(`   🔌 WebSocket: ws://localhost:${this.port}`);
                 logger_1.logger.info('');
-                logger_1.logger.info('🔑 Default Admin Credentials:');
-                logger_1.logger.info('   📧 Email: owner@balconbuilders.com');
-                logger_1.logger.info('   🔒 Password: admin123');
+                logger_1.logger.info('🔑 Admin bootstrap: seeded owner user uses DEFAULT_USER_PASSWORD or a generated temporary password (masked in logs).');
+                logger_1.logger.info('   📧 Owner email: owner@balconbuilders.com');
                 logger_1.logger.info('');
                 logger_1.logger.info('🛠️  Management Commands:');
                 logger_1.logger.info('   🔄 Reset database: npm run db:reset:enhanced');
@@ -252,6 +246,7 @@ class BalConBuildersApp5B {
                     logger_1.logger.info('🔧 Development mode: API test interface available');
                     logger_1.logger.info(`   🧪 Test API: http://localhost:${this.port}/api/test`);
                 }
+                (0, metrics_1.initSentry)(logger_1.logger);
             });
             // Graceful shutdown handling
             this.setupGracefulShutdown();

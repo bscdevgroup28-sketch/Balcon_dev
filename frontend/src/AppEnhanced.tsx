@@ -1,56 +1,59 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import NotificationProvider from './components/feedback/NotificationProvider';
+import OnboardingTour from './components/onboarding/OnboardingTour';
+import { useFeatureFlags } from './hooks/useFeatureFlags';
+import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
+import HelpCenter from './components/help/HelpCenter';
+import LoadingScreen from './components/common/LoadingScreen';
+import usePrefetchCoordinator from './hooks/usePrefetchCoordinator';
+import { RootState } from './store/store';
+import { getDashboardPath } from './utils/roleUtils';
+import { UserRole } from './types/auth';
 // Context providers for Phase 5D integration
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 
-// Enhanced components and pages
-import Layout from './components/layout/Layout';
-import LoginEnhanced from './pages/auth/LoginEnhanced';
-import Register from './pages/auth/Register';
+// Keep all lazy imports after static ones per import/first rule
+
+// Lazily loaded components/pages (code splitting)
+const Layout = lazy(() => import('./components/layout/Layout'));
+const LoginEnhanced = lazy(() => import('./pages/auth/LoginEnhanced'));
+const Register = lazy(() => import('./pages/auth/Register'));
 
 // Dashboard components
-import CustomerDashboard from './pages/dashboard/CustomerDashboard';
-import AdminDashboard from './pages/dashboard/AdminDashboard';
-import OwnerDashboard from './pages/dashboard/OwnerDashboard';
-import OfficeManagerDashboard from './pages/dashboard/OfficeManagerDashboard';
-import ShopManagerDashboard from './pages/dashboard/ShopManagerDashboard';
-import ProjectManagerDashboard from './pages/dashboard/ProjectManagerDashboard';
-import TeamLeaderDashboard from './pages/dashboard/TeamLeaderDashboard';
-import TechnicianDashboard from './pages/dashboard/TechnicianDashboard';
+const CustomerDashboard = lazy(() => import('./pages/dashboard/CustomerDashboard'));
+const AdminDashboard = lazy(() => import('./pages/dashboard/AdminDashboard'));
+const OwnerDashboard = lazy(() => import('./pages/dashboard/OwnerDashboard'));
+const OfficeManagerDashboard = lazy(() => import('./pages/dashboard/OfficeManagerDashboard'));
+const ShopManagerDashboard = lazy(() => import('./pages/dashboard/ShopManagerDashboard'));
+const ProjectManagerDashboard = lazy(() => import('./pages/dashboard/ProjectManagerDashboard'));
+const TeamLeaderDashboard = lazy(() => import('./pages/dashboard/TeamLeaderDashboard'));
+const TechnicianDashboard = lazy(() => import('./pages/dashboard/TechnicianDashboard'));
 
 // Page components
-import ProjectsPage from './pages/projects/ProjectsPage';
-import ProjectDetailPage from './pages/projects/ProjectDetailPage';
-import ProjectWizard from './components/projects/ProjectWizard';
-import QuotesPage from './pages/quotes/QuotesPage';
-import OrdersPage from './pages/orders/OrdersPage';
-import ProfilePage from './pages/profile/ProfilePage';
-import MaterialsPage from './pages/materials/MaterialsPage';
-import UsersPage from './pages/admin/UsersPage';
+const ProjectsPage = lazy(() => import('./pages/projects/ProjectsPage'));
+const ProjectDetailPage = lazy(() => import('./pages/projects/ProjectDetailPage'));
+const ProjectWizard = lazy(() => import('./components/projects/ProjectWizard'));
+const QuotesPage = lazy(() => import('./pages/quotes/QuotesPage'));
+const OrdersPage = lazy(() => import('./pages/orders/OrdersPage'));
+const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
+const MaterialsPage = lazy(() => import('./pages/materials/MaterialsPage'));
+const UsersPage = lazy(() => import('./pages/admin/UsersPage'));
 
 // Phase 5C Enhanced Components
-import AnalyticsDashboard from './components/analytics/AnalyticsDashboard';
-import NotificationsPanel from './components/notifications/NotificationsPanel';
-import RealTimeNotifications from './components/notifications/RealTimeNotifications';
-import EnhancedProjectManagement from './components/projects/EnhancedProjectManagement';
-import MobileDashboard from './components/mobile/MobileDashboard';
-import Phase5CTestSuite from './components/testing/Phase5CTestSuite';
+const AnalyticsDashboard = lazy(() => import('./components/analytics/AnalyticsDashboard'));
+const NotificationsPanel = lazy(() => import('./components/notifications/NotificationsPanel'));
+const RealTimeNotifications = lazy(() => import('./components/notifications/RealTimeNotifications'));
+const EnhancedProjectManagement = lazy(() => import('./components/projects/EnhancedProjectManagement'));
+const MobileDashboard = lazy(() => import('./components/mobile/MobileDashboard'));
+const Phase5CTestSuite = lazy(() => import('./components/testing/Phase5CTestSuite'));
 
-// Enhanced global components
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import NotificationProvider from './components/feedback/NotificationProvider';
-import OnboardingTour from './components/onboarding/OnboardingTour';
-import FeatureDiscovery from './components/help/FeatureDiscovery';
-import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
-import HelpCenter from './components/help/HelpCenter';
-
-import { RootState } from './store/store';
-import { getDashboardPath } from './utils/roleUtils';
-import { UserRole } from './types/auth';
+// Feature discovery lazy component (non-critical, gated by flag)
+const FeatureDiscoveryLazy = React.lazy(() => import('./components/help/FeatureDiscovery'));
 
 // Enhanced App Router with Phase 5D integration
 const EnhancedAppRouter: React.FC = () => {
@@ -73,7 +76,8 @@ const EnhancedAppRouter: React.FC = () => {
   };
 
   return (
-    <Routes>
+    <Suspense fallback={<LoadingScreen /> }>
+      <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginEnhanced />} />
@@ -251,29 +255,66 @@ const EnhancedAppRouter: React.FC = () => {
                 onClose={() => {}} 
                 userType={user?.role === 'admin' ? 'admin' : 'customer'} 
               />
-              <FeatureDiscovery tips={[]} />
+              { /* Feature Discovery gated by flag */ }
+              <FlaggedFeatureDiscovery />
               <PWAInstallBanner />
             </Layout>
           </ProtectedRoute>
         }
       />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 };
 
 // Main App component with Phase 5D integration
 const App: React.FC = () => {
+  // We don't have direct access to user here until contexts resolve; defer hook invocation inside provider tree.
   return (
-    <AuthProvider>
-      <WebSocketProvider>
-        <AppProvider>
-          <NotificationProvider>
-            <EnhancedAppRouter />
-          </NotificationProvider>
-        </AppProvider>
-      </WebSocketProvider>
-    </AuthProvider>
+    <Suspense fallback={<LoadingScreen /> }>
+      <AuthProvider>
+        <WebSocketProvider>
+          <AppProvider>
+            <NotificationProvider>
+              <PrefetchWrapper>
+                <EnhancedAppRouter />
+              </PrefetchWrapper>
+            </NotificationProvider>
+          </AppProvider>
+        </WebSocketProvider>
+      </AuthProvider>
+    </Suspense>
   );
+};
+
+// Wrapper component to access auth context after providers and run prefetch coordinator
+const PrefetchWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  // Load feature flags for prefetch control
+  const { flags } = useFeatureFlags(['prefetch.v2']);
+  if (typeof window !== 'undefined') {
+    // Expose to prefetch hook
+    (window as any).__FF_PREFETCH_V2__ = flags['prefetch.v2'] !== false; // default true if undefined
+  }
+  usePrefetchCoordinator({ userRole: user?.role, delayMs: 1200 });
+  return <>{children}</>;
+};
+
+// Gated Feature Discovery component
+const FlaggedFeatureDiscovery: React.FC = () => {
+  const { flags, loading } = useFeatureFlags(['feature.discovery']);
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    if (!flags['feature.discovery']) return;
+    const run = () => setReady(true);
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(run, { timeout: 4000 });
+    } else {
+      setTimeout(run, 2000);
+    }
+  }, [flags]);
+  if (loading || !flags['feature.discovery'] || !ready) return null;
+  return <Suspense fallback={null}><FeatureDiscoveryLazy tips={[]} /></Suspense>;
 };
 
 export default App;

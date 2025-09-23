@@ -11,7 +11,6 @@ import {
   ListItemIcon,
   Chip,
   LinearProgress,
-  Avatar,
   IconButton,
   Divider,
   Table,
@@ -32,9 +31,7 @@ import {
   Schedule,
   Speed,
   Security,
-  Construction,
-  HandymanOutlined,
-  SettingsApplications
+  Construction
 } from '@mui/icons-material';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
 
@@ -109,7 +106,7 @@ const ShopManagerDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="shop_manager" title="Shop Manager Dashboard">
-      <Grid container spacing={3}>
+      <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Shop Operations Overview */}
         <Grid item xs={12}>
           <Typography variant="h5" gutterBottom sx={{ color: '#e65100', fontWeight: 600 }}>
@@ -118,7 +115,7 @@ const ShopManagerDashboard: React.FC = () => {
         </Grid>
 
         {/* Key Metrics Cards */}
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffcc02 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -136,7 +133,7 @@ const ShopManagerDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} sm={6} md={3}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">

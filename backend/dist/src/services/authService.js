@@ -7,6 +7,7 @@ exports.optionalAuth = exports.requirePermission = exports.requireRole = exports
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const UserEnhanced_1 = require("../models/UserEnhanced");
 const logger_1 = require("../utils/logger");
+const securityAudit_1 = require("../utils/securityAudit");
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'balcon-builders-secret-key-2025';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
@@ -74,17 +75,20 @@ class AuthService {
             const user = await UserEnhanced_1.User.findByEmail(email);
             if (!user) {
                 logger_1.logger.warn(`Authentication failed: User not found for email ${email}`);
+                (0, securityAudit_1.logSecurityEvent)(undefined, { action: 'auth.login', outcome: 'failure', meta: { reason: 'user_not_found', email: email.toLowerCase() } });
                 return null;
             }
             // Check if user is active
             if (!user.isActive) {
                 logger_1.logger.warn(`Authentication failed: User ${email} is inactive`);
+                (0, securityAudit_1.logSecurityEvent)(undefined, { action: 'auth.login', outcome: 'failure', meta: { reason: 'inactive', userId: user.id } });
                 return null;
             }
             // Verify password
             const isPasswordValid = await user.validatePassword(password);
             if (!isPasswordValid) {
                 logger_1.logger.warn(`Authentication failed: Invalid password for user ${email}`);
+                (0, securityAudit_1.logSecurityEvent)(undefined, { action: 'auth.login', outcome: 'failure', meta: { reason: 'bad_password', userId: user.id } });
                 return null;
             }
             // Update last login
@@ -93,6 +97,7 @@ class AuthService {
             const accessToken = this.generateAccessToken(user);
             const refreshToken = this.generateRefreshToken(user);
             logger_1.logger.info(`User authenticated successfully: ${email} (${user.role})`);
+            (0, securityAudit_1.logSecurityEvent)(undefined, { action: 'auth.login', outcome: 'success', meta: { userId: user.id, email: user.email, role: user.role } });
             return {
                 user,
                 accessToken,

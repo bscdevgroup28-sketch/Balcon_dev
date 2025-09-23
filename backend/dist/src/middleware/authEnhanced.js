@@ -6,11 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireOwnerOrAssigned = exports.requirePermission = exports.requireRole = exports.authenticateToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const logger_1 = require("../utils/logger");
+const securityAudit_1 = require("../utils/securityAudit");
 // Enhanced JWT authentication middleware
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
     if (!token) {
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'missing' } });
         res.status(401).json({
             error: 'Access token required',
             message: 'Please provide a valid authentication token'
@@ -21,6 +23,7 @@ const authenticateToken = (req, res, next) => {
         const jwtSecret = process.env.JWT_SECRET;
         if (!jwtSecret) {
             logger_1.logger.error('JWT_SECRET not configured');
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'misconfiguration' } });
             res.status(500).json({
                 error: 'Server configuration error',
                 message: 'Authentication system not properly configured'
@@ -35,16 +38,19 @@ const authenticateToken = (req, res, next) => {
             permissions: decoded.permissions || []
         };
         logger_1.logger.info(`✅ Authenticated user: ${decoded.email} (${decoded.role})`);
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.token.validate', outcome: 'success', meta: { userId: decoded.id, role: decoded.role } });
         next();
     }
     catch (error) {
         if (error instanceof jsonwebtoken_1.default.TokenExpiredError) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'expired' } });
             res.status(401).json({
                 error: 'Token expired',
                 message: 'Your session has expired. Please log in again.'
             });
         }
         else if (error instanceof jsonwebtoken_1.default.JsonWebTokenError) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'invalid' } });
             res.status(401).json({
                 error: 'Invalid token',
                 message: 'The provided authentication token is invalid.'
@@ -52,6 +58,7 @@ const authenticateToken = (req, res, next) => {
         }
         else {
             logger_1.logger.error('Authentication error:', error);
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'error' } });
             res.status(401).json({
                 error: 'Authentication failed',
                 message: 'Unable to authenticate the request.'

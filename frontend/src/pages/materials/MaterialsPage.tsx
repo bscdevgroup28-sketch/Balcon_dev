@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -15,26 +15,20 @@ import {
   FormControl,
   InputLabel,
   Select,
-  Fab,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   LinearProgress,
   Avatar,
-  Tooltip,
+  
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Divider,
   Alert,
-  Badge,
-  Tabs,
-  Tab,
 } from '@mui/material';
 import {
   Add,
@@ -46,44 +40,15 @@ import {
   Inventory,
   Warning,
   CheckCircle,
-  Error,
   TrendingUp,
-  Category,
-  Business,
-  LocationOn,
-  Schedule,
+  Business
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store/store';
 import { Material, MaterialQueryParams } from '../../types/material';
 import { integratedAPI } from '../../services/integratedAPI';
 import MaterialDialog from '../../components/materials/MaterialDialog';
 import StockAdjustmentDialog from '../../components/materials/StockAdjustmentDialog';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`materials-tabpanel-${index}`}
-      aria-labelledby={`materials-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  );
-}
-
 const MaterialsPage: React.FC = () => {
-  const { user } = useSelector((state: RootState) => state.auth);
 
   const [materials, setMaterials] = useState<Material[]>([]);
   const [filteredMaterials, setFilteredMaterials] = useState<Material[]>([]);
@@ -93,13 +58,11 @@ const MaterialsPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [stockStatusFilter, setStockStatusFilter] = useState('all');
-  const [tabValue, setTabValue] = useState(0);
 
   // Pagination
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+  // Removed unused total state; reintroduce when pagination UI implemented
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -122,17 +85,8 @@ const MaterialsPage: React.FC = () => {
     totalValue: 0,
   });
 
-  useEffect(() => {
-    loadMaterials();
-    loadCategories();
-    loadStats();
-  }, [page, categoryFilter, statusFilter, stockStatusFilter]);
-
-  useEffect(() => {
-    filterMaterials();
-  }, [materials, searchTerm]);
-
-  const loadMaterials = async () => {
+  // Stable callbacks (exemplar pattern): each encapsulates its required dependencies.
+  const loadMaterials = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -148,12 +102,10 @@ const MaterialsPage: React.FC = () => {
       if (statusFilter !== 'all') params.status = statusFilter as 'active' | 'inactive' | 'discontinued';
       if (stockStatusFilter !== 'all') params.stockStatus = stockStatusFilter as 'normal' | 'low' | 'critical';
 
-      const response = await integratedAPI.getMaterials(params);
+  const response = await integratedAPI.getMaterials(params);
 
       if (response.success && response.data) {
-        setMaterials(response.data.data || []);
-        setTotal(response.data.meta?.total || 0);
-        setTotalPages(response.data.meta?.totalPages || 0);
+  setMaterials(response.data.data || []);
       } else {
         setError(response.error || 'Failed to load materials');
       }
@@ -163,9 +115,9 @@ const MaterialsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, categoryFilter, statusFilter, stockStatusFilter, limit]);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const response = await integratedAPI.getMaterialCategories();
       if (response.success && response.data) {
@@ -174,9 +126,9 @@ const MaterialsPage: React.FC = () => {
     } catch (err) {
       console.error('Error loading categories:', err);
     }
-  };
+  }, []);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       // Get low stock materials for stats
       const lowStockResponse = await integratedAPI.getLowStockMaterials();
@@ -195,9 +147,9 @@ const MaterialsPage: React.FC = () => {
     } catch (err) {
       console.error('Error loading stats:', err);
     }
-  };
+  }, [materials]);
 
-  const filterMaterials = () => {
+  const filterMaterials = useCallback(() => {
     if (!searchTerm) {
       setFilteredMaterials(materials);
       return;
@@ -210,11 +162,22 @@ const MaterialsPage: React.FC = () => {
       material.supplierName?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredMaterials(filtered);
-  };
+  }, [materials, searchTerm]);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-  };
+  // Effects now depend on stable callbacks (eliminates exhaustive-deps warnings by construction).
+  useEffect(() => {
+    loadMaterials();
+    loadCategories();
+  }, [loadMaterials, loadCategories]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  useEffect(() => {
+    filterMaterials();
+  }, [filterMaterials]);
+
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, material: Material) => {
     setAnchorEl(event.currentTarget);
@@ -393,6 +356,7 @@ const MaterialsPage: React.FC = () => {
                   value={categoryFilter}
                   label="Category"
                   onChange={(e) => setCategoryFilter(e.target.value)}
+                  inputProps={{ 'aria-label': 'Category Select' }}
                 >
                   <MenuItem value="all">All Categories</MenuItem>
                   {categories.map((category) => (

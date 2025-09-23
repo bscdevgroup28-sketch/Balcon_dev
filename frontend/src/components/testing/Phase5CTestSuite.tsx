@@ -3,13 +3,12 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Check, X, Eye, Download, Smartphone, Monitor } from '../ui/icons';
+import { Check, X, Eye, Download } from '../ui/icons';
 import AnalyticsDashboard from '../analytics/AnalyticsDashboard';
 import NotificationsPanel from '../notifications/NotificationsPanel';
 import EnhancedProjectManagement from '../projects/EnhancedProjectManagement';
 import MobileDashboard from '../mobile/MobileDashboard';
 import { PWAInstallBanner, PWAStatusIndicator, PWAFeaturesShowcase } from '../pwa/PWAInstallBanner';
-import { webSocketService } from '../../services/websocketService';
 import pwaService from '../../services/pwaService';
 
 interface TestResult {
@@ -33,7 +32,6 @@ export const Phase5CTestSuite: React.FC = () => {
 
   // Component states for testing
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [wsConnected, setWsConnected] = useState(false);
   const [pwaReady, setPwaReady] = useState(false);
 
   useEffect(() => {

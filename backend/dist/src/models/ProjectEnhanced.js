@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Project = void 0;
 const sequelize_1 = require("sequelize");
-const enhancedDatabase_1 = require("../config/enhancedDatabase");
+const database_1 = require("../config/database");
 class Project extends sequelize_1.Model {
     // Helper methods
     isOverdue() {
@@ -189,7 +189,7 @@ Project.init({
         allowNull: true,
     },
 }, {
-    sequelize: enhancedDatabase_1.enhancedSequelize,
+    sequelize: database_1.sequelize,
     modelName: 'Project',
     tableName: 'enhanced_projects',
     underscored: true,

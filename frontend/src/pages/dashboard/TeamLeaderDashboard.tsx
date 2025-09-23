@@ -31,8 +31,6 @@ import {
   Star,
   TrendingUp,
   Timer,
-  Construction,
-  Person,
   Notifications,
   CalendarToday
 } from '@mui/icons-material';
@@ -154,7 +152,7 @@ const TeamLeaderDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="team_leader" title="Team Leader Dashboard">
-      <Grid container spacing={3}>
+        <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12, lg: 12 }}>
         {/* Team Overview */}
         <Grid item xs={12}>
           <Typography variant="h5" gutterBottom sx={{ color: '#388e3c', fontWeight: 600 }}>
@@ -163,7 +161,7 @@ const TeamLeaderDashboard: React.FC = () => {
         </Grid>
 
         {/* Key Metrics Cards */}
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} md={6} lg={4}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -181,7 +179,7 @@ const TeamLeaderDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} md={6} lg={4}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -199,7 +197,7 @@ const TeamLeaderDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} md={6} lg={4}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -217,7 +215,7 @@ const TeamLeaderDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} md={6} lg={4}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffecb3 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -235,7 +233,7 @@ const TeamLeaderDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} md={6} lg={4}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -253,7 +251,7 @@ const TeamLeaderDashboard: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} lg={2}>
+  <Grid item xs={12} md={6} lg={4}>
           <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)' }}>
             <CardContent>
               <Box display="flex" alignItems="center" justifyContent="space-between">

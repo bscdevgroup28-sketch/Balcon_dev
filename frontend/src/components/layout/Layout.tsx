@@ -69,11 +69,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           ml: { sm: `${sidebarOpen ? drawerWidth : 0}px` },
           transition: 'width 0.3s, margin 0.3s',
         }}
+        role="banner"
+        aria-label="Application top bar"
       >
         <Toolbar>
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
             edge="start"
             onClick={() => dispatch(toggleSidebar())}
             sx={{ mr: 2, display: { sm: sidebarOpen ? 'none' : 'block' } }}
@@ -97,7 +99,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {user ? getRoleDisplayName(user.role) : 'Guest'}
           </Typography>
 
-          <IconButton color="inherit" sx={{ display: { xs: 'none', sm: 'block' } }}>
+          <IconButton color="inherit" sx={{ display: { xs: 'none', sm: 'block' } }} aria-label="View notifications">
             <Badge badgeContent={3} color="error">
               <Notifications />
             </Badge>
@@ -105,7 +107,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           <IconButton
             edge="end"
-            aria-label="account of current user"
+            aria-label="Account options"
             aria-controls="primary-search-account-menu"
             aria-haspopup="true"
             onClick={handleProfileMenuOpen}
@@ -142,7 +144,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Toolbar>
         <Divider />
 
-        <List>
+  <List role="list" aria-label="Primary navigation menu (mobile)">
           {menuItems.map((item) => {
             const IconComponent = item.icon;
             return (
@@ -187,7 +189,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Toolbar>
         <Divider />
 
-        <List>
+  <List role="list" aria-label="Primary navigation menu">
           {menuItems.map((item) => {
             const IconComponent = item.icon;
             return (
@@ -239,6 +241,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main Content */}
       <Box
         component="main"
+        id="main-content"
         sx={{
           flexGrow: 1,
           width: { sm: `calc(100% - ${sidebarOpen ? drawerWidth : 0}px)` },

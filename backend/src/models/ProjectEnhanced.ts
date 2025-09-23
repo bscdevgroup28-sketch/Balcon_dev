@@ -1,5 +1,5 @@
 import { DataTypes, Model, Optional, Association } from 'sequelize';
-import { enhancedSequelize } from '../config/enhancedDatabase';
+import { sequelize } from '../config/database';
 import { User } from './User';
 
 // Enhanced Project interface with additional business fields
@@ -282,7 +282,7 @@ Project.init({
     allowNull: true,
   },
 }, {
-  sequelize: enhancedSequelize,
+  sequelize,
   modelName: 'Project',
   tableName: 'enhanced_projects',
   underscored: true,

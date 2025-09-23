@@ -51,17 +51,6 @@ const FeatureDiscovery: React.FC<FeatureDiscoveryProps> = ({
     }
   }, [autoStart]);
 
-  useEffect(() => {
-    if (isActive && tips.length > 0) {
-      showCurrentTip();
-    }
-  }, [isActive, currentTipIndex, tips, showCurrentTip]);
-
-  const startTour = () => {
-    setCurrentTipIndex(0);
-    setIsActive(true);
-  };
-
   const endTour = useCallback(() => {
     setIsActive(false);
     setAnchorEl(null);
@@ -94,6 +83,17 @@ const FeatureDiscovery: React.FC<FeatureDiscoveryProps> = ({
       element.style.backgroundColor = 'rgba(25, 118, 210, 0.1)';
     }
   }, [currentTipIndex, tips, endTour]);
+
+  useEffect(() => {
+    if (isActive && tips.length > 0) {
+      showCurrentTip();
+    }
+  }, [isActive, currentTipIndex, tips, showCurrentTip]);
+
+  const startTour = () => {
+    setCurrentTipIndex(0);
+    setIsActive(true);
+  };
 
   const removeHighlight = () => {
     if (currentTipIndex < tips.length) {

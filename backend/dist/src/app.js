@@ -7,11 +7,12 @@ exports.app = void 0;
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
-const morgan_1 = __importDefault(require("morgan"));
+// Removed morgan in favor of custom requestLoggingMiddleware
 const compression_1 = __importDefault(require("compression"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const environment_1 = require("./config/environment");
 const logger_1 = require("./utils/logger");
+const metrics_1 = require("./monitoring/metrics");
 const errorHandler_1 = require("./middleware/errorHandler");
 const notFoundHandler_1 = require("./middleware/notFoundHandler");
 // Import routes
@@ -23,6 +24,7 @@ const test_1 = __importDefault(require("./routes/test"));
 const demo_1 = __importDefault(require("./routes/demo"));
 const quotes_1 = __importDefault(require("./routes/quotes"));
 const materials_1 = __importDefault(require("./routes/materials"));
+const featureFlags_1 = __importDefault(require("./routes/featureFlags"));
 const app = (0, express_1.default)();
 exports.app = app;
 // Trust proxy for Cloud Run
@@ -62,19 +64,41 @@ const limiter = (0, express_rate_limit_1.default)({
     legacyHeaders: false,
 });
 app.use('/api/', limiter);
+// Metrics middleware early
+app.use(metrics_1.metricsMiddleware);
 // Body parsing middleware
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
-// Compression
-app.use((0, compression_1.default)());
-// Logging
-if (environment_1.config.server.nodeEnv !== 'production') {
-    app.use((0, morgan_1.default)('combined', {
-        stream: {
-            write: (message) => logger_1.logger.info(message.trim())
+// Compression with threshold & brotli hint support
+app.use((0, compression_1.default)({
+    threshold: 1024,
+    filter: (req, res) => {
+        if (req.headers['x-no-compress'])
+            return false;
+        return compression_1.default.filter(req, res);
+    }
+}));
+// Static / API caching strategy (lightweight)
+app.use((req, res, next) => {
+    // Cache static asset requests (heuristic: /static/ or file extension)
+    if (/\.(js|css|png|jpg|jpeg|gif|svg|woff2?)$/i.test(req.path) || req.path.startsWith('/static/')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+    else if (req.path.startsWith('/api/')) {
+        // Short lived caching for GET API that are idempotent; skip for authenticated modifying methods
+        if (req.method === 'GET') {
+            res.setHeader('Cache-Control', 'private, max-age=30');
         }
-    }));
-}
+        else {
+            res.setHeader('Cache-Control', 'no-store');
+        }
+    }
+    next();
+});
+// Structured logging with request IDs
+app.use(logger_1.requestLoggingMiddleware);
+// Health & Metrics (before auth)
+app.use('/api/metrics', require('./routes/metrics').default);
 // Health check (before authentication)
 app.use('/health', health_1.default);
 // Test routes (no database required)
@@ -86,6 +110,7 @@ app.use('/api/files', files_1.default);
 app.use('/api/uploads', uploads_1.default);
 app.use('/api/quotes', quotes_1.default);
 app.use('/api/materials', materials_1.default);
+app.use('/api/flags', featureFlags_1.default);
 // Error handling
 app.use(notFoundHandler_1.notFoundHandler);
 app.use(errorHandler_1.errorHandler);

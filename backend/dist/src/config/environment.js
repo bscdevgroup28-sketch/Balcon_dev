@@ -106,12 +106,41 @@ exports.config = {
     },
     database: {
         url: env.DATABASE_URL,
-        pool: {
-            max: 20,
-            min: 5,
-            acquire: 30000,
-            idle: 10000,
-        },
+        pool: (() => {
+            const base = {
+                max: 20,
+                min: 5,
+                acquire: 30000,
+                idle: 10000,
+            };
+            // Allow overrides via env for scaling without code deploy
+            const envMax = process.env.DB_POOL_MAX && !isNaN(Number(process.env.DB_POOL_MAX)) ? Number(process.env.DB_POOL_MAX) : undefined;
+            const envMin = process.env.DB_POOL_MIN && !isNaN(Number(process.env.DB_POOL_MIN)) ? Number(process.env.DB_POOL_MIN) : undefined;
+            const envIdle = process.env.DB_POOL_IDLE && !isNaN(Number(process.env.DB_POOL_IDLE)) ? Number(process.env.DB_POOL_IDLE) : undefined;
+            const envAcquire = process.env.DB_POOL_ACQUIRE && !isNaN(Number(process.env.DB_POOL_ACQUIRE)) ? Number(process.env.DB_POOL_ACQUIRE) : undefined;
+            const nodeEnv = env.NODE_ENV;
+            if (nodeEnv === 'production') {
+                base.max = base.max * 2; // allow more concurrency
+                base.min = Math.max(base.min, 5);
+                base.idle = 15000;
+            }
+            else if (nodeEnv === 'test') {
+                base.max = 2;
+                base.min = 0;
+                base.idle = 2000;
+                base.acquire = 5000; // keep test lightweight
+            }
+            else if (nodeEnv === 'development') {
+                base.max = 10;
+                base.min = 2; // avoid exhausting local DB
+            }
+            return {
+                max: envMax ?? base.max,
+                min: envMin ?? base.min,
+                idle: envIdle ?? base.idle,
+                acquire: envAcquire ?? base.acquire,
+            };
+        })(),
     },
     redis: {
         url: env.REDIS_URL,

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Check, X, Eye, Download } from '../ui/icons';
+import { Check, X, Eye } from '../ui/icons';
 import integratedAPI from '../../services/integratedAPI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useApp } from '../../contexts/AppContext';
@@ -18,13 +18,146 @@ interface IntegrationTest {
   action?: () => Promise<void>;
 }
 
+// --- Module-scope async helpers (pure relative to passed or global stable inputs) ---
+// Keeping helpers outside the component gives them stable identity so we can rely on
+// standard exhaustive-deps linting without suppressions.
+type BasicStatus = 'pass' | 'fail' | 'warning';
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const testAPIAuthentication = async (): Promise<BasicStatus> => {
+  try {
+    const response = await integratedAPI.getCurrentUser();
+    return response.success ? 'pass' : 'fail';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testProjectsIntegration = async (projects: any): Promise<BasicStatus> => {
+  try {
+    if (projects.loading) return 'warning';
+    if (projects.error) return 'fail';
+    return projects.items.length >= 0 ? 'pass' : 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testQuotesIntegration = async (quotes: any): Promise<BasicStatus> => {
+  try {
+    if (quotes.loading) return 'warning';
+    if (quotes.error) return 'fail';
+    return quotes.items.length >= 0 ? 'pass' : 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testNotificationsIntegration = async (notifications: any): Promise<BasicStatus> => {
+  try {
+    if (notifications.loading) return 'warning';
+    if (notifications.error) return 'fail';
+    return notifications.items.length >= 0 ? 'pass' : 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testAnalyticsIntegration = async (analytics: any): Promise<BasicStatus> => {
+  try {
+    if (analytics.loading) return 'warning';
+    if (analytics.error) return 'fail';
+    return analytics.data ? 'pass' : 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testWebSocketConnection = async (): Promise<BasicStatus> => 'pass';
+const testRealTimeUpdates = async (): Promise<BasicStatus> => 'pass';
+
+const testAPIConnectivity = async (): Promise<BasicStatus> => {
+  try {
+    const response = await integratedAPI.healthCheck();
+    return response.success ? 'pass' : 'fail';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testCRUDOperations = async (): Promise<BasicStatus> => {
+  try {
+    const response = await integratedAPI.getProjects({ limit: 1 });
+    return response.success ? 'pass' : 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testFileUploadIntegration = async (): Promise<BasicStatus> => 'pass';
+
+const testComponentStateManagement = async (user: any, isAuthenticated: boolean): Promise<BasicStatus> => {
+  try {
+    return user && isAuthenticated ? 'pass' : 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testRouteProtection = async (isAuthenticated: boolean): Promise<BasicStatus> => {
+  try {
+    return isAuthenticated ? 'pass' : 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testPWAIntegration = async (): Promise<BasicStatus> => {
+  try {
+    const isServiceWorkerSupported = 'serviceWorker' in navigator;
+    const isPWAReady = pwaService.isAppInstalled() || pwaService.isInstallAvailable();
+    return isServiceWorkerSupported && isPWAReady ? 'pass' : 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testLoadPerformance = async (): Promise<BasicStatus> => {
+  try {
+    const performanceEntries = performance.getEntriesByType('navigation');
+    if (performanceEntries.length > 0) {
+      const entry = performanceEntries[0] as PerformanceNavigationTiming;
+      const loadTime = entry.loadEventEnd - entry.fetchStart;
+      return loadTime < 3000 ? 'pass' : loadTime < 5000 ? 'warning' : 'fail';
+    }
+    return 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
+const testMemoryUsage = async (): Promise<BasicStatus> => {
+  try {
+    // @ts-ignore
+    if (performance.memory) {
+      // @ts-ignore
+      const memoryUsage = performance.memory.usedJSHeapSize / performance.memory.totalJSHeapSize;
+      return memoryUsage < 0.8 ? 'pass' : memoryUsage < 0.9 ? 'warning' : 'fail';
+    }
+    return 'warning';
+  } catch {
+    return 'fail';
+  }
+};
+
 export const Phase5DIntegrationSuite: React.FC = () => {
   const [tests, setTests] = useState<IntegrationTest[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [currentTest, setCurrentTest] = useState('');
   const [activeTab, setActiveTab] = useState('integration');
 
-  const { isAuthenticated, user, login, logout } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const { 
     projects, 
     quotes, 
@@ -36,13 +169,7 @@ export const Phase5DIntegrationSuite: React.FC = () => {
     loadAnalytics 
   } = useApp();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      runIntegrationTests();
-    }
-  }, [isAuthenticated]);
-
-  const runIntegrationTests = async () => {
+  const runIntegrationTests = useCallback(async () => {
     setIsRunning(true);
     setTests([]);
 
@@ -74,7 +201,7 @@ export const Phase5DIntegrationSuite: React.FC = () => {
     integrationTests.push({
       name: 'Projects Data Integration',
       category: 'Data Management',
-      status: await testProjectsIntegration(),
+      status: await testProjectsIntegration(projects),
       message: `Projects loaded: ${projects.items.length} items`,
       action: loadProjects
     });
@@ -82,7 +209,7 @@ export const Phase5DIntegrationSuite: React.FC = () => {
     integrationTests.push({
       name: 'Quotes Data Integration',
       category: 'Data Management',
-      status: await testQuotesIntegration(),
+      status: await testQuotesIntegration(quotes),
       message: `Quotes loaded: ${quotes.items.length} items`,
       action: loadQuotes
     });
@@ -90,7 +217,7 @@ export const Phase5DIntegrationSuite: React.FC = () => {
     integrationTests.push({
       name: 'Notifications Integration',
       category: 'Data Management',
-      status: await testNotificationsIntegration(),
+      status: await testNotificationsIntegration(notifications),
       message: `Notifications loaded: ${notifications.items.length} items (${notifications.unreadCount} unread)`,
       action: loadNotifications
     });
@@ -98,7 +225,7 @@ export const Phase5DIntegrationSuite: React.FC = () => {
     integrationTests.push({
       name: 'Analytics Integration',
       category: 'Data Management',
-      status: await testAnalyticsIntegration(),
+      status: await testAnalyticsIntegration(analytics),
       message: analytics.data ? 'Analytics data loaded successfully' : 'Analytics data not available',
       action: loadAnalytics
     });
@@ -153,14 +280,14 @@ export const Phase5DIntegrationSuite: React.FC = () => {
     integrationTests.push({
       name: 'Component State Management',
       category: 'Frontend',
-      status: await testComponentStateManagement(),
+      status: await testComponentStateManagement(user, isAuthenticated),
       message: 'React component state synchronization'
     });
 
     integrationTests.push({
       name: 'Route Protection',
       category: 'Frontend',
-      status: await testRouteProtection(),
+      status: await testRouteProtection(isAuthenticated),
       message: 'Protected routes and role-based access'
     });
 
@@ -191,161 +318,15 @@ export const Phase5DIntegrationSuite: React.FC = () => {
 
     setTests(integrationTests);
     setIsRunning(false);
-  };
+  }, [isAuthenticated, user, projects, quotes, notifications, analytics, loadProjects, loadQuotes, loadNotifications, loadAnalytics]);
 
-  // Individual test functions
-  const testAPIAuthentication = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      const response = await integratedAPI.getCurrentUser();
-      return response.success ? 'pass' : 'fail';
-    } catch (error) {
-      return 'fail';
+  useEffect(() => {
+    if (isAuthenticated) {
+      runIntegrationTests();
     }
-  };
+  }, [isAuthenticated, runIntegrationTests]);
 
-  const testProjectsIntegration = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      if (projects.loading) return 'warning';
-      if (projects.error) return 'fail';
-      return projects.items.length >= 0 ? 'pass' : 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testQuotesIntegration = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      if (quotes.loading) return 'warning';
-      if (quotes.error) return 'fail';
-      return quotes.items.length >= 0 ? 'pass' : 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testNotificationsIntegration = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      if (notifications.loading) return 'warning';
-      if (notifications.error) return 'fail';
-      return notifications.items.length >= 0 ? 'pass' : 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testAnalyticsIntegration = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      if (analytics.loading) return 'warning';
-      if (analytics.error) return 'fail';
-      return analytics.data ? 'pass' : 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testWebSocketConnection = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      // Test WebSocket connection status
-      return 'pass'; // Simplified for demo
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testRealTimeUpdates = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      // Test real-time update mechanisms
-      return 'pass'; // Simplified for demo
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testAPIConnectivity = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      const response = await integratedAPI.healthCheck();
-      return response.success ? 'pass' : 'fail';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testCRUDOperations = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      // Test basic CRUD operations
-      const response = await integratedAPI.getProjects({ limit: 1 });
-      return response.success ? 'pass' : 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testFileUploadIntegration = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      // Test file upload capabilities (without actually uploading)
-      return 'pass'; // Simplified for demo
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testComponentStateManagement = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      // Test React component state management
-      return user && isAuthenticated ? 'pass' : 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testRouteProtection = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      // Test protected routes
-      return isAuthenticated ? 'pass' : 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testPWAIntegration = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      const isServiceWorkerSupported = 'serviceWorker' in navigator;
-      const isPWAReady = pwaService.isAppInstalled() || pwaService.isInstallAvailable();
-      return isServiceWorkerSupported && isPWAReady ? 'pass' : 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testLoadPerformance = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      const performanceEntries = performance.getEntriesByType('navigation');
-      if (performanceEntries.length > 0) {
-        const entry = performanceEntries[0] as PerformanceNavigationTiming;
-        const loadTime = entry.loadEventEnd - entry.fetchStart;
-        return loadTime < 3000 ? 'pass' : loadTime < 5000 ? 'warning' : 'fail';
-      }
-      return 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const testMemoryUsage = async (): Promise<'pass' | 'fail' | 'warning'> => {
-    try {
-      // @ts-ignore - performance.memory is available in Chrome
-      if (performance.memory) {
-        // @ts-ignore
-        const memoryUsage = performance.memory.usedJSHeapSize / performance.memory.totalJSHeapSize;
-        return memoryUsage < 0.8 ? 'pass' : memoryUsage < 0.9 ? 'warning' : 'fail';
-      }
-      return 'warning';
-    } catch (error) {
-      return 'fail';
-    }
-  };
-
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  // (All test helpers now declared at module scope for stable identities.)
 
   const getStatusIcon = (status: 'pass' | 'fail' | 'warning' | 'pending') => {
     switch (status) {

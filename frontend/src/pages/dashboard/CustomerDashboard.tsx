@@ -4,7 +4,6 @@ import {
   Grid,
   Typography,
   Button,
-  Chip,
   Paper,
   List,
   Alert,
@@ -14,7 +13,6 @@ import {
   Assignment,
   RequestQuote,
   ShoppingCart,
-  CheckCircle,
   Build,
   Add,
   Phone,
@@ -243,7 +241,7 @@ const CustomerDashboard: React.FC = () => {
         </Grid>
       </Grid>
 
-      <Grid container spacing={3}>
+  <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Active Projects Section */}
         <Grid item xs={12} lg={8}>
           <Paper sx={{ p: 3, mb: 3 }}>

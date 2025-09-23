@@ -69,6 +69,16 @@ frontend/
   public/
 ```
 
+## Documentation
+Key internal docs (see `/docs`):
+- `feature_flags.md` – Flag model, API, rollout strategies
+- `prefetch_strategy.md` – Intelligent progressive loading design & status
+- `security_audit_logging.md` – Structured security event framework & usage
+- `performance_optimizations.md` – Backend & frontend optimization summary
+- `migrations_runbook.md` – Database migration process & operational checklist
+
+These provide implementer and operator guidance; update alongside feature changes.
+
 ## Environment & Configuration
 Backend environment variables (examples):
 - `PORT` (default 3001)

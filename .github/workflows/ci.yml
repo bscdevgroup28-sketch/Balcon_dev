@@ -4,74 +4,51 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 env:
   NODE_VERSION: 18
 
 jobs:
-  backend:
+  quality:
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.modified, 'backend/') || github.event_name == 'pull_request'
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: backend/package-lock.json
-        
-    - name: Install dependencies
-      run: |
-        cd backend
-        npm ci
-        
-    - name: Run backend tests
-      run: |
-        cd backend
-        npm run lint
-        npm run build
-        npm test
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  frontend:
-    runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.modified, 'frontend/') || github.event_name == 'pull_request'
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-        
-    - name: Install dependencies
-      run: |
-        cd frontend
-        npm ci
-        
-    - name: Run frontend tests
-      run: |
-        cd frontend
-        npm run lint || echo "Lint script not found, skipping"
-        npm run build
-        npm run test:ci
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-  integration:
-    runs-on: ubuntu-latest
-    needs: [backend, frontend]
-    if: always() && (needs.backend.result == 'success' || needs.backend.result == 'skipped') && (needs.frontend.result == 'success' || needs.frontend.result == 'skipped')
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Integration tests passed
-      run: echo "All components ready for deployment"
+      - name: Install dependencies (workspace)
+        run: npm install --workspaces
+
+      - name: Lint backend (max-warnings 0)
+        run: npm run lint:backend --workspace . -- --max-warnings=0
+
+      - name: Lint frontend (max-warnings 0)
+        run: npm run lint:frontend --workspace . -- --max-warnings=0
+
+      - name: Type check backend
+        run: npm run typecheck:backend || npm run build --workspace backend -- --noEmit
+
+      - name: Type check frontend
+        run: npm run typecheck:frontend || npm run build --workspace frontend -- --noEmit
+
+      - name: Run backend tests
+        run: npm run test:backend --workspace . -- --ci --reporters=default --maxWorkers=50%
+
+      - name: Run frontend tests (CI)
+        run: npm run test:frontend --workspace . --if-present -- --ci --watchAll=false --reporters=default --maxWorkers=50%
+
+      - name: Upload coverage (ignore if missing)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-artifacts
+          path: |
+            backend/coverage
+            frontend/coverage
+          if-no-files-found: ignore

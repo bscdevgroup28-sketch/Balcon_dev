@@ -1,5 +1,5 @@
 import { sequelize } from '../config/database';
-import { User, Project, ProjectFile } from '../models';
+import { User, Project } from '../models';
 import { logger } from '../utils/logger';
 
 export const initializeDatabase = async (): Promise<void> => {

@@ -1,12 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
+// Removed morgan in favor of custom requestLoggingMiddleware
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
 import { config } from './config/environment';
-import { logger } from './utils/logger';
+import { requestLoggingMiddleware } from './utils/logger';
+import { metricsMiddleware } from './monitoring/metrics';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 
@@ -19,6 +20,7 @@ import testRoutes from './routes/test';
 import demoRoutes from './routes/demo';
 import quotesRoutes from './routes/quotes';
 import materialsRoutes from './routes/materials';
+import featureFlagRoutes from './routes/featureFlags';
 
 const app = express();
 
@@ -64,22 +66,43 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
+// Metrics middleware early
+app.use(metricsMiddleware);
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Compression
-app.use(compression());
+// Compression with threshold & brotli hint support
+app.use(compression({
+  threshold: 1024,
+  filter: (req, res) => {
+    if (req.headers['x-no-compress']) return false;
+    return compression.filter(req, res);
+  }
+}));
 
-// Logging
-if (config.server.nodeEnv !== 'production') {
-  app.use(morgan('combined', {
-    stream: {
-      write: (message: string) => logger.info(message.trim())
+// Static / API caching strategy (lightweight)
+app.use((req, res, next) => {
+  // Cache static asset requests (heuristic: /static/ or file extension)
+  if (/\.(js|css|png|jpg|jpeg|gif|svg|woff2?)$/i.test(req.path) || req.path.startsWith('/static/')) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  } else if (req.path.startsWith('/api/')) {
+    // Short lived caching for GET API that are idempotent; skip for authenticated modifying methods
+    if (req.method === 'GET') {
+      res.setHeader('Cache-Control', 'private, max-age=30');
+    } else {
+      res.setHeader('Cache-Control', 'no-store');
     }
-  }));
-}
+  }
+  next();
+});
 
+// Structured logging with request IDs
+app.use(requestLoggingMiddleware);
+
+// Health & Metrics (before auth)
+app.use('/api/metrics', require('./routes/metrics').default);
 // Health check (before authentication)
 app.use('/health', healthRoutes);
 
@@ -93,6 +116,7 @@ app.use('/api/files', filesRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/quotes', quotesRoutes);
 app.use('/api/materials', materialsRoutes);
+app.use('/api/flags', featureFlagRoutes);
 
 // Error handling
 app.use(notFoundHandler);

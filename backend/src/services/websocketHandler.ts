@@ -1,22 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
 
-interface SocketUser {
-  id: number;
-  email: string;
-  role: string;
-}
+// removed unused SocketUser interface
 
-interface AuthenticatedSocket {
-  user?: SocketUser;
-  id: string;
-  join: (room: string) => void;
-  leave: (room: string) => void;
-  emit: (event: string, data: any) => void;
-  on: (event: string, callback: Function) => void;
-  to: (room: string) => any;
-  handshake: any;
-}
+// Removed unused AuthenticatedSocket interface definition
 
 export class WebSocketHandler {
   private io: any; // Socket.IO Server

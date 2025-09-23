@@ -6,6 +6,8 @@ const validation_1 = require("../middleware/validation");
 const validation_2 = require("../utils/validation");
 const logger_1 = require("../utils/logger");
 const authEnhanced_1 = require("../middleware/authEnhanced");
+const securityAudit_1 = require("../utils/securityAudit");
+// removed unused bcrypt import
 const router = (0, express_1.Router)();
 // GET /api/users - Get all users (admin only)
 router.get('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requireRole)(['owner']), async (req, res) => {
@@ -62,6 +64,7 @@ router.post('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requireRol
         // Check if user already exists
         const existingUser = await UserEnhanced_1.User.findByEmail(userData.email);
         if (existingUser) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.create', outcome: 'failure', meta: { reason: 'email_exists', email: userData.email.toLowerCase() } });
             return res.status(409).json({
                 success: false,
                 message: 'User with this email already exists',
@@ -73,6 +76,7 @@ router.post('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requireRol
         const userResponse = { ...user.toJSON() };
         delete userResponse.passwordHash;
         logger_1.logger.info(`User created: ${user.email} by user ${req.user.id}`);
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.create', outcome: 'success', meta: { newUserId: user.id, email: user.email } });
         res.status(201).json({
             success: true,
             data: userResponse,
@@ -99,6 +103,7 @@ router.put('/:id', authEnhanced_1.authenticateToken, (0, validation_1.validate)(
         const userRole = req.user.role;
         const user = await UserEnhanced_1.User.findByPk(id);
         if (!user) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.update', outcome: 'failure', meta: { reason: 'not_found', targetId: id } });
             return res.status(404).json({
                 success: false,
                 message: 'User not found',
@@ -106,6 +111,7 @@ router.put('/:id', authEnhanced_1.authenticateToken, (0, validation_1.validate)(
         }
         // Check permissions - users can update themselves, admins can update anyone
         if (user.id !== req.user.id && userRole !== 'owner') {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.update', outcome: 'denied', targetUserId: user.id, meta: { reason: 'insufficient_scope' } });
             return res.status(403).json({
                 success: false,
                 message: 'Insufficient permissions to update this user',
@@ -113,16 +119,22 @@ router.put('/:id', authEnhanced_1.authenticateToken, (0, validation_1.validate)(
         }
         // Only admins can change roles
         if (updateData.role && userRole !== 'owner') {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.role.change', outcome: 'denied', targetUserId: user.id, meta: { attemptedRole: updateData.role } });
             return res.status(403).json({
                 success: false,
                 message: 'Insufficient permissions to change user role',
             });
         }
+        const roleChanged = updateData.role && updateData.role !== user.role;
         await user.update(updateData);
         // Remove password from response
         const userResponse = { ...user.toJSON() };
         delete userResponse.passwordHash;
         logger_1.logger.info(`User updated: ${user.email} by user ${req.user.id}`);
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.update', outcome: 'success', targetUserId: user.id, meta: { fields: Object.keys(updateData) } });
+        if (roleChanged) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.role.change', outcome: 'success', targetUserId: user.id, meta: { newRole: user.role } });
+        }
         res.json({
             success: true,
             data: userResponse,
@@ -143,6 +155,7 @@ router.delete('/:id', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requi
         const { id } = req.validatedParams;
         const user = await UserEnhanced_1.User.findByPk(id);
         if (!user) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.delete', outcome: 'failure', meta: { reason: 'not_found', targetId: id } });
             return res.status(404).json({
                 success: false,
                 message: 'User not found',
@@ -150,6 +163,7 @@ router.delete('/:id', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requi
         }
         // Prevent deleting self
         if (user.id === req.user.id) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.delete', outcome: 'denied', targetUserId: user.id, meta: { reason: 'self_delete_blocked' } });
             return res.status(400).json({
                 success: false,
                 message: 'Cannot delete your own account',
@@ -157,6 +171,7 @@ router.delete('/:id', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requi
         }
         await user.destroy();
         logger_1.logger.info(`User deleted: ${user.email} by user ${req.user.id}`);
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'user.delete', outcome: 'success', targetUserId: user.id });
         res.json({
             success: true,
             message: 'User deleted successfully',

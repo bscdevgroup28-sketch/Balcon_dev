@@ -18,17 +18,13 @@ import {
 import {
   AttachMoney,
   TrendingUp,
-  TrendingDown,
   Business,
-  People,
   Assignment,
   Schedule,
   CheckCircle,
   Warning,
   ArrowUpward,
   ArrowDownward,
-  Build,
-  AccountBalance,
 } from '@mui/icons-material';
 import { BaseDashboard } from '../../components/dashboard/BaseDashboard';
 import { BusinessMetricsCard } from '../../components/dashboard/BusinessDashboardComponents';
@@ -156,13 +152,13 @@ const OwnerDashboard: React.FC = () => {
         </Box>
       }
     >
-      <Grid container spacing={3}>
+  <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Executive KPI Cards */}
         <Grid item xs={12}>
           <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
             Executive KPI Overview
           </Typography>
-          <Grid container spacing={3}>
+          <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
             <Grid item xs={12} sm={6} md={3}>
               <BusinessMetricsCard
                 title="Total Revenue"

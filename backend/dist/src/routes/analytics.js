@@ -124,27 +124,21 @@ router.get('/dashboard', (0, authEnhanced_1.requirePermission)('view_all_data'),
 router.get('/revenue', (0, authEnhanced_1.requirePermission)('access_financials'), async (req, res) => {
     try {
         const { period = 'month', year = new Date().getFullYear() } = req.query;
-        let dateFormat;
         let groupBy;
         switch (period) {
             case 'day':
-                dateFormat = '%Y-%m-%d';
                 groupBy = 'DATE(createdAt)';
                 break;
             case 'week':
-                dateFormat = '%Y-%u';
                 groupBy = 'YEARWEEK(createdAt)';
                 break;
             case 'month':
-                dateFormat = '%Y-%m';
                 groupBy = 'DATE_FORMAT(createdAt, "%Y-%m")';
                 break;
             case 'quarter':
-                dateFormat = '%Y-Q%q';
                 groupBy = 'CONCAT(YEAR(createdAt), "-Q", QUARTER(createdAt))';
                 break;
             default:
-                dateFormat = '%Y-%m';
                 groupBy = 'DATE_FORMAT(createdAt, "%Y-%m")';
         }
         const revenueData = await ProjectEnhanced_1.default.findAll({
@@ -190,7 +184,7 @@ router.get('/revenue', (0, authEnhanced_1.requirePermission)('access_financials'
 router.get('/users/:id/performance', (0, authEnhanced_1.requirePermission)('view_all_data'), async (req, res) => {
     try {
         const { id } = req.params;
-        const { period = 'month', limit = 12 } = req.query;
+        const { limit = 12 } = req.query;
         const user = await UserEnhanced_1.default.findByPk(id);
         if (!user) {
             return res.status(404).json({

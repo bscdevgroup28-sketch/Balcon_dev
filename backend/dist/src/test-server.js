@@ -7,7 +7,8 @@ exports.server = exports.app = void 0;
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
-const morgan_1 = __importDefault(require("morgan"));
+// Removed morgan in favor of custom requestLoggingMiddleware
+// removed unused config import
 const logger_1 = require("./utils/logger");
 const demo_1 = __importDefault(require("./routes/demo"));
 const app = (0, express_1.default)();
@@ -20,12 +21,8 @@ app.use((0, cors_1.default)({
     origin: ['http://localhost:3001', 'http://localhost:3000'],
     credentials: true
 }));
-// Logging
-app.use((0, morgan_1.default)('combined', {
-    stream: {
-        write: (message) => logger_1.logger.info(message.trim())
-    }
-}));
+// Structured request logging with request IDs
+app.use(logger_1.requestLoggingMiddleware);
 // Body parsing middleware
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
@@ -61,12 +58,13 @@ app.get('/api/test/data', (req, res) => {
             { id: 2, title: 'Residential Garage', type: 'residential', status: 'quoted' }
         ],
         quotes: [
-            { id: 1, projectId: 1, amount: 25000, status: 'accepted' },
-            { id: 2, projectId: 2, amount: 8500, status: 'sent' }
+            { id: 1, projectId: 1, amount: 25000, status: 'accepted' }
         ]
     });
 });
-// Add demo routes
+// Structured logging
+app.use(logger_1.requestLoggingMiddleware);
+// Demo routes
 app.use('/api/demo', demo_1.default);
 // Basic 404 handler
 app.use('*', (req, res) => {

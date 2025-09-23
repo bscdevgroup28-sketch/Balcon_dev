@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { generateInquiryNumber, autoAssignSalesRep, getSalesRepWorkloads } from '../services/salesAssignment';
-import { emailService } from '../services/emailNotification';
-import { Project, User, ProjectFile } from '../models';
+import { Project, User } from '../models';
 import { config } from '../config/environment';
 import { logger } from '../utils/logger';
 

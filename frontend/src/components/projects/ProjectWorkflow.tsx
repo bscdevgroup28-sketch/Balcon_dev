@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Paper,
   Typography,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent,
   Button,
   Card,
   CardContent,
@@ -38,7 +34,6 @@ import {
   Schedule,
   Phone,
   Email,
-  Person,
   PhotoCamera,
   Description,
   Payment,
@@ -68,7 +63,6 @@ const ProjectWorkflow: React.FC<ProjectWorkflowProps> = ({
   currentStage, 
   projectData 
 }) => {
-  const [activeStep, setActiveStep] = useState(currentStage);
 
   const workflowSteps = [
     {

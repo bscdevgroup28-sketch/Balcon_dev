@@ -129,30 +129,16 @@ router.get('/dashboard', requirePermission('view_all_data'), async (req: Request
 // Revenue analytics over time
 router.get('/revenue', requirePermission('access_financials'), async (req: Request, res: Response) => {
   try {
-    const { period = 'month', year = new Date().getFullYear() } = req.query;
+  const { period = 'month', year = new Date().getFullYear() } = req.query;
 
-    let dateFormat: string;
     let groupBy: string;
 
     switch (period) {
-      case 'day':
-        dateFormat = '%Y-%m-%d';
-        groupBy = 'DATE(createdAt)';
-        break;
-      case 'week':
-        dateFormat = '%Y-%u';
-        groupBy = 'YEARWEEK(createdAt)';
-        break;
-      case 'month':
-        dateFormat = '%Y-%m';
-        groupBy = 'DATE_FORMAT(createdAt, "%Y-%m")';
-        break;
-      case 'quarter':
-        dateFormat = '%Y-Q%q';
-        groupBy = 'CONCAT(YEAR(createdAt), "-Q", QUARTER(createdAt))';
-        break;
+      case 'day': groupBy = 'DATE(createdAt)'; break;
+      case 'week': groupBy = 'YEARWEEK(createdAt)'; break;
+      case 'month': groupBy = 'DATE_FORMAT(createdAt, "%Y-%m")'; break;
+      case 'quarter': groupBy = 'CONCAT(YEAR(createdAt), "-Q", QUARTER(createdAt))'; break;
       default:
-        dateFormat = '%Y-%m';
         groupBy = 'DATE_FORMAT(createdAt, "%Y-%m")';
     }
 
@@ -200,8 +186,8 @@ router.get('/revenue', requirePermission('access_financials'), async (req: Reque
 // User performance analytics
 router.get('/users/:id/performance', requirePermission('view_all_data'), async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { period = 'month', limit = 12 } = req.query;
+  const { id } = req.params;
+  const { limit = 12 } = req.query;
 
     const user = await UserEnhanced.findByPk(id);
     if (!user) {

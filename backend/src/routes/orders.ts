@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { Op } from 'sequelize';
 import { Order, Project, User, Quote } from '../models';
 import { validate, ValidatedRequest } from '../middleware/validation';
