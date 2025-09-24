@@ -1,5 +1,7 @@
 import React from 'react';
-import { Box } from '@mui/material';
+import { Box, Container } from '@mui/material';
+import { layoutTokens } from '../../theme/layoutTokens';
+import { useLayoutDensity } from '../../theme/LayoutDensityContext';
 
 interface DashboardContainerProps {
   children: React.ReactNode;
@@ -16,15 +18,16 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
   fullHeight = false,
   disableGutters = false
 }) => {
+  const { density } = useLayoutDensity();
   return (
-    <Box
+    <Container maxWidth={layoutTokens.container.maxWidth} disableGutters={disableGutters}
       sx={{
         position: 'relative',
         width: '100%',
         mx: 'auto',
-        px: disableGutters ? 0 : { xs: 1, sm: 2, md: 3 },
+        px: disableGutters ? 0 : (density === 'compact' ? layoutTokens.container.guttersDense : layoutTokens.container.gutters),
         pb: { xs: 4, md: 6 },
-        pt: 0, // Layout already adds top spacing via Toolbar spacer
+        pt: 0,
         minHeight: fullHeight ? {
           xs: `calc(100vh - ${APP_BAR_MOBILE}px)`,
           sm: `calc(100vh - ${APP_BAR_DESKTOP}px)`
@@ -33,7 +36,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
       }}
     >
       {children}
-    </Box>
+    </Container>
   );
 };
 

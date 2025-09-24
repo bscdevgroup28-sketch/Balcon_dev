@@ -27,6 +27,7 @@ import {
   ArrowDownward,
 } from '@mui/icons-material';
 import { BaseDashboard } from '../../components/dashboard/BaseDashboard';
+import DashboardSection from '../../components/dashboard/DashboardSection';
 import { BusinessMetricsCard } from '../../components/dashboard/BusinessDashboardComponents';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 
@@ -156,9 +157,7 @@ const OwnerDashboard: React.FC = () => {
   <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Executive KPI Cards */}
         <Grid item xs={12}>
-          <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-            Executive KPI Overview
-          </Typography>
+          <DashboardSection title="Executive KPI Overview" id="owner-kpi-overview">
           <ResponsiveCardGrid minWidth={260} gap={3}>
             <BusinessMetricsCard
               title="Total Revenue"
@@ -193,6 +192,7 @@ const OwnerDashboard: React.FC = () => {
               trend={{ direction: 'up', percentage: 25.3 }}
             />
           </ResponsiveCardGrid>
+          </DashboardSection>
         </Grid>
 
         {/* Recent Performance Metrics */}

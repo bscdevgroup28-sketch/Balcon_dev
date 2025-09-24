@@ -1,5 +1,7 @@
 import React from 'react';
 import { Box } from '@mui/material';
+import { layoutTokens } from '../../theme/layoutTokens';
+import { useLayoutDensity } from '../../theme/LayoutDensityContext';
 
 interface ResponsiveCardGridProps {
   children: React.ReactNode;
@@ -17,17 +19,20 @@ const ResponsiveCardGrid: React.FC<ResponsiveCardGridProps> = ({
   gap = 3,
   rowGap
 }) => {
+  const { density } = useLayoutDensity();
+  const effectiveGap = gap ?? (density === 'compact' ? layoutTokens.card.gapDense : layoutTokens.card.gap);
+  const baseMin = minWidth ?? layoutTokens.card.minWidth;
   return (
     <Box
       sx={{
         display: 'grid',
         width: '100%',
-        gap: gap,
-        rowGap: rowGap || gap,
+        gap: effectiveGap,
+        rowGap: rowGap || effectiveGap,
         gridTemplateColumns: {
-          xs: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`,
-          sm: `repeat(auto-fill, minmax(${minWidth + 20}px, 1fr))`,
-          md: `repeat(auto-fill, minmax(${minWidth + 40}px, 1fr))`
+          xs: `repeat(auto-fill, minmax(${baseMin}px, 1fr))`,
+          sm: `repeat(auto-fill, minmax(${baseMin + 20}px, 1fr))`,
+          md: `repeat(auto-fill, minmax(${baseMin + 40}px, 1fr))`
         }
       }}
     >

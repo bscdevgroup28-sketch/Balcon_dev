@@ -35,6 +35,8 @@ import {
   CalendarToday
 } from '@mui/icons-material';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
+import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
+import DashboardSection from '../../components/dashboard/DashboardSection';
 
 const TeamLeaderDashboard: React.FC = () => {
   // Mock data for Team Leader specific metrics
@@ -152,122 +154,110 @@ const TeamLeaderDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="team_leader" title="Team Leader Dashboard">
-        <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12, lg: 12 }}>
-        {/* Team Overview */}
-        <Grid item xs={12}>
-          <Typography variant="h5" gutterBottom sx={{ color: '#388e3c', fontWeight: 600 }}>
-            Team Leadership Center
-          </Typography>
-        </Grid>
-
-        {/* Key Metrics Cards */}
-  <Grid item xs={12} md={6} lg={4}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Team Size
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {teamMetrics.teamSize}
-                  </Typography>
-                </Box>
-                <Groups sx={{ fontSize: 40, color: '#388e3c' }} />
+      {/* Key Metrics Cards - full width responsive auto-fill grid */}
+      <DashboardSection title="Team Leadership Center" id="team-lead-overview">
+      <ResponsiveCardGrid minWidth={260} gap={3}>
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Team Size
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {teamMetrics.teamSize}
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Groups sx={{ fontSize: 40, color: '#388e3c' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-  <Grid item xs={12} md={6} lg={4}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Active Tasks
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {teamMetrics.activeAssignments}
-                  </Typography>
-                </Box>
-                <Assignment sx={{ fontSize: 40, color: '#1976d2' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Active Tasks
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {teamMetrics.activeAssignments}
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Assignment sx={{ fontSize: 40, color: '#1976d2' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-  <Grid item xs={12} md={6} lg={4}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Completed Today
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {teamMetrics.completedToday}
-                  </Typography>
-                </Box>
-                <CheckCircle sx={{ fontSize: 40, color: '#7b1fa2' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Completed Today
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {teamMetrics.completedToday}
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <CheckCircle sx={{ fontSize: 40, color: '#7b1fa2' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-  <Grid item xs={12} md={6} lg={4}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffecb3 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Team Efficiency
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {teamMetrics.teamEfficiency}%
-                  </Typography>
-                </Box>
-                <TrendingUp sx={{ fontSize: 40, color: '#f57c00' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffecb3 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Team Efficiency
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {teamMetrics.teamEfficiency}%
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <TrendingUp sx={{ fontSize: 40, color: '#f57c00' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-  <Grid item xs={12} md={6} lg={4}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Due Today
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {teamMetrics.upcomingDeadlines}
-                  </Typography>
-                </Box>
-                <Schedule sx={{ fontSize: 40, color: '#d32f2f' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Due Today
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {teamMetrics.upcomingDeadlines}
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Schedule sx={{ fontSize: 40, color: '#d32f2f' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-  <Grid item xs={12} md={6} lg={4}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Team Morale
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {teamMetrics.teamMorale}%
-                  </Typography>
-                </Box>
-                <Star sx={{ fontSize: 40, color: '#f9a825' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Team Morale
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {teamMetrics.teamMorale}%
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Star sx={{ fontSize: 40, color: '#f9a825' }} />
+            </Box>
+          </CardContent>
+        </Card>
+  </ResponsiveCardGrid>
+  </DashboardSection>
+
+      <Divider sx={{ my: 4 }} />
+
+      <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12, lg: 12 }}>
 
         {/* Team Members Overview */}
         <Grid item xs={12} lg={8}>

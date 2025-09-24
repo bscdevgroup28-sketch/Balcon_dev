@@ -29,6 +29,8 @@ import {
   Notifications
 } from '@mui/icons-material';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
+import DashboardSection from '../../components/dashboard/DashboardSection';
+import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 
 const OfficeManagerDashboard: React.FC = () => {
   // Mock data for Office Manager specific metrics
@@ -93,123 +95,110 @@ const OfficeManagerDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="office_manager" title="Office Manager Dashboard">
+      {/* Key Metrics Cards - full width responsive auto-fill grid */}
+      <DashboardSection title="Administrative Overview" id="office-admin-overview">
+        <ResponsiveCardGrid minWidth={260} gap={3}>
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e1bee7 0%, #ce93d8 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Pending Quotes
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {adminMetrics.pendingQuotes}
+                </Typography>
+              </Box>
+              <Assignment sx={{ fontSize: 40, color: '#7b1fa2' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Active Projects
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {adminMetrics.activeProjects}
+                </Typography>
+              </Box>
+              <EventNote sx={{ fontSize: 40, color: '#388e3c' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Overdue Invoices
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {adminMetrics.overdueInvoices}
+                </Typography>
+              </Box>
+              <Warning sx={{ fontSize: 40, color: '#d32f2f' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #bbdefb 0%, #90caf9 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  New Leads
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {adminMetrics.newLeads}
+                </Typography>
+              </Box>
+              <TrendingUp sx={{ fontSize: 40, color: '#1976d2' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffcc02 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Staff Schedule
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {adminMetrics.staffSchedule}%
+                </Typography>
+              </Box>
+              <Schedule sx={{ fontSize: 40, color: '#f57c00' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Pending Docs
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {adminMetrics.documentsPending}
+                </Typography>
+              </Box>
+              <FileCopy sx={{ fontSize: 40, color: '#7b1fa2' }} />
+            </Box>
+          </CardContent>
+        </Card>
+        </ResponsiveCardGrid>
+      </DashboardSection>
+
+      <Divider sx={{ my: 4 }} />
+
       <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
-        {/* Administrative Metrics */}
-        <Grid item xs={12}>
-          <Typography variant="h5" gutterBottom sx={{ color: '#7b1fa2', fontWeight: 600 }}>
-            Administrative Overview
-          </Typography>
-        </Grid>
-
-        {/* Key Metrics Cards */}
-  <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e1bee7 0%, #ce93d8 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Pending Quotes
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {adminMetrics.pendingQuotes}
-                  </Typography>
-                </Box>
-                <Assignment sx={{ fontSize: 40, color: '#7b1fa2' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-  <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Active Projects
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {adminMetrics.activeProjects}
-                  </Typography>
-                </Box>
-                <EventNote sx={{ fontSize: 40, color: '#388e3c' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-  <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Overdue Invoices
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {adminMetrics.overdueInvoices}
-                  </Typography>
-                </Box>
-                <Warning sx={{ fontSize: 40, color: '#d32f2f' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #bbdefb 0%, #90caf9 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    New Leads
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {adminMetrics.newLeads}
-                  </Typography>
-                </Box>
-                <TrendingUp sx={{ fontSize: 40, color: '#1976d2' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffcc02 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Staff Schedule
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {adminMetrics.staffSchedule}%
-                  </Typography>
-                </Box>
-                <Schedule sx={{ fontSize: 40, color: '#f57c00' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Pending Docs
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {adminMetrics.documentsPending}
-                  </Typography>
-                </Box>
-                <FileCopy sx={{ fontSize: 40, color: '#7b1fa2' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
         {/* Recent Activities */}
         <Grid item xs={12} md={6}>
           <Card sx={{ height: '400px' }}>

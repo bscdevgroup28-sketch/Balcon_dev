@@ -31,6 +31,8 @@ import {
   Warning
 } from '@mui/icons-material';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
+import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
+import DashboardSection from '../../components/dashboard/DashboardSection';
 
 const TechnicianDashboard: React.FC = () => {
   // Mock data for Technician specific metrics
@@ -152,122 +154,110 @@ const TechnicianDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="technician" title="Technician Dashboard">
-  <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
-        {/* Technician Overview */}
-        <Grid item xs={12}>
-          <Typography variant="h5" gutterBottom sx={{ color: '#d32f2f', fontWeight: 600 }}>
-            My Work Center
-          </Typography>
-        </Grid>
-
-        {/* Quick Status Cards */}
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Assigned Tasks
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {technicianMetrics.assignedTasks}
-                  </Typography>
-                </Box>
-                <Assignment sx={{ fontSize: 40, color: '#d32f2f' }} />
+      {/* Quick Status Cards - full width responsive auto-fill grid */}
+      <DashboardSection title="My Work Center" id="tech-work-center">
+        <ResponsiveCardGrid minWidth={260} gap={3}>
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Assigned Tasks
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {technicianMetrics.assignedTasks}
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Assignment sx={{ fontSize: 40, color: '#d32f2f' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Completed Today
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {technicianMetrics.completedToday}
-                  </Typography>
-                </Box>
-                <CheckCircle sx={{ fontSize: 40, color: '#388e3c' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Completed Today
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {technicianMetrics.completedToday}
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <CheckCircle sx={{ fontSize: 40, color: '#388e3c' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Hours Worked
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {technicianMetrics.hoursWorked}h
-                  </Typography>
-                </Box>
-                <Timer sx={{ fontSize: 40, color: '#1976d2' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Hours Worked
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {technicianMetrics.hoursWorked}h
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Timer sx={{ fontSize: 40, color: '#1976d2' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffecb3 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Efficiency
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {technicianMetrics.efficiency}%
-                  </Typography>
-                </Box>
-                <Build sx={{ fontSize: 40, color: '#f57c00' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffecb3 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Efficiency
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {technicianMetrics.efficiency}%
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Build sx={{ fontSize: 40, color: '#f57c00' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Current Project
-                  </Typography>
-                  <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-                    {technicianMetrics.currentProject}
-                  </Typography>
-                </Box>
-                <Construction sx={{ fontSize: 40, color: '#7b1fa2' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Current Project
+                </Typography>
+                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                  {technicianMetrics.currentProject}
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Construction sx={{ fontSize: 40, color: '#7b1fa2' }} />
+            </Box>
+          </CardContent>
+        </Card>
 
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Next Deadline
-                  </Typography>
-                  <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-                    {technicianMetrics.nextDeadline}
-                  </Typography>
-                </Box>
-                <Schedule sx={{ fontSize: 40, color: '#f9a825' }} />
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Next Deadline
+                </Typography>
+                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                  {technicianMetrics.nextDeadline}
+                </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
+              <Schedule sx={{ fontSize: 40, color: '#f9a825' }} />
+            </Box>
+          </CardContent>
+        </Card>
+        </ResponsiveCardGrid>
+      </DashboardSection>
+
+      <Divider sx={{ my: 4 }} />
+
+      <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
 
         {/* Active Work Timer */}
         <Grid item xs={12} md={6}>

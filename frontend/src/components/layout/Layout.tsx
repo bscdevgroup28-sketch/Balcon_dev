@@ -15,6 +15,8 @@ import {
   Menu,
   MenuItem,
   Badge,
+  FormControlLabel,
+  Switch,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -28,6 +30,7 @@ import { RootState } from '../../store/store';
 import { logout } from '../../store/slices/authSlice';
 import { toggleSidebar } from '../../store/slices/uiSlice';
 import { getMenuItemsForRole, getRoleDisplayName } from '../../utils/roleUtils';
+import { useLayoutDensity } from '../../theme/LayoutDensityContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -40,6 +43,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user } = useSelector((state: RootState) => state.auth);
   const { sidebarOpen } = useSelector((state: RootState) => state.ui);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const { density, toggleDensity } = useLayoutDensity();
 
   const drawerWidth = 240;
 
@@ -98,6 +102,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           >
             {user ? getRoleDisplayName(user.role) : 'Guest'}
           </Typography>
+
+          <FormControlLabel
+            sx={{ mr: 1, color: 'inherit' }}
+            control={<Switch size="small" checked={density === 'compact'} onChange={toggleDensity} color="default" />}
+            label={density === 'compact' ? 'Compact' : 'Comfortable'}
+          />
 
           <IconButton color="inherit" sx={{ display: { xs: 'none', sm: 'block' } }} aria-label="View notifications">
             <Badge badgeContent={3} color="error">

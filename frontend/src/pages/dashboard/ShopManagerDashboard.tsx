@@ -34,6 +34,8 @@ import {
   Construction
 } from '@mui/icons-material';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
+import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
+import DashboardSection from '../../components/dashboard/DashboardSection';
 
 const ShopManagerDashboard: React.FC = () => {
   // Mock data for Shop Manager specific metrics
@@ -106,122 +108,110 @@ const ShopManagerDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="shop_manager" title="Shop Manager Dashboard">
+      {/* Key Metrics Cards - full width responsive auto-fill grid */}
+      <DashboardSection title="Shop Operations Control Center" id="shop-ops-overview">
+      <ResponsiveCardGrid minWidth={260} gap={3}>
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffcc02 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Active Jobs
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {shopMetrics.activeJobs}
+                </Typography>
+              </Box>
+              <Construction sx={{ fontSize: 40, color: '#e65100' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Equipment Util.
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {shopMetrics.equipmentUtilization}%
+                </Typography>
+              </Box>
+              <Engineering sx={{ fontSize: 40, color: '#2e7d32' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Safety Score
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {shopMetrics.safetyScore}%
+                </Typography>
+              </Box>
+              <Security sx={{ fontSize: 40, color: '#1976d2' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Quality Score
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {shopMetrics.qualityScore}%
+                </Typography>
+              </Box>
+              <Assessment sx={{ fontSize: 40, color: '#7b1fa2' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Production Eff.
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {shopMetrics.productionEfficiency}%
+                </Typography>
+              </Box>
+              <Speed sx={{ fontSize: 40, color: '#f57c00' }} />
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)' }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box>
+                <Typography color="textSecondary" gutterBottom variant="body2">
+                  Pending Maint.
+                </Typography>
+                <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+                  {shopMetrics.pendingMaintenance}
+                </Typography>
+              </Box>
+              <Build sx={{ fontSize: 40, color: '#d32f2f' }} />
+            </Box>
+          </CardContent>
+        </Card>
+  </ResponsiveCardGrid>
+  </DashboardSection>
+
+      <Divider sx={{ my: 4 }} />
+
       <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
-        {/* Shop Operations Overview */}
-        <Grid item xs={12}>
-          <Typography variant="h5" gutterBottom sx={{ color: '#e65100', fontWeight: 600 }}>
-            Shop Operations Control Center
-          </Typography>
-        </Grid>
-
-        {/* Key Metrics Cards */}
-  <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff3e0 0%, #ffcc02 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Active Jobs
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {shopMetrics.activeJobs}
-                  </Typography>
-                </Box>
-                <Construction sx={{ fontSize: 40, color: '#e65100' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-  <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Equipment Util.
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {shopMetrics.equipmentUtilization}%
-                  </Typography>
-                </Box>
-                <Engineering sx={{ fontSize: 40, color: '#2e7d32' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Safety Score
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {shopMetrics.safetyScore}%
-                  </Typography>
-                </Box>
-                <Security sx={{ fontSize: 40, color: '#1976d2' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Quality Score
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {shopMetrics.qualityScore}%
-                  </Typography>
-                </Box>
-                <Assessment sx={{ fontSize: 40, color: '#7b1fa2' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Production Eff.
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {shopMetrics.productionEfficiency}%
-                  </Typography>
-                </Box>
-                <Speed sx={{ fontSize: 40, color: '#f57c00' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={6} lg={2}>
-          <Card sx={{ height: '100%', background: 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)' }}>
-            <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2">
-                    Pending Maint.
-                  </Typography>
-                  <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
-                    {shopMetrics.pendingMaintenance}
-                  </Typography>
-                </Box>
-                <Build sx={{ fontSize: 40, color: '#d32f2f' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
 
         {/* Active Workstations */}
         <Grid item xs={12} lg={8}>

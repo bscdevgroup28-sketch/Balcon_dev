@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Paper, Breadcrumbs, Link, Chip } from '@mui/material';
+import { Box, Typography, Breadcrumbs, Link, Chip } from '@mui/material';
 import { Home, NavigateNext } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
@@ -188,17 +188,16 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   };
 
   return (
-    <Paper
-      elevation={0}
+    <Box
       sx={{
-        p: { xs: 1, sm: 2 },
+        p: 0,
         borderRadius: 2,
         minHeight: '100%',
         ...getRoleSpecificStyles(role)
       }}
     >
       {children}
-    </Paper>
+    </Box>
   );
 };
 

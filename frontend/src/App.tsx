@@ -26,6 +26,7 @@ import NotificationProvider from './components/feedback/NotificationProvider';
 import HelpCenter from './components/help/HelpCenter';
 import { RootState } from './store/store';
 import { getDashboardPath } from './utils/roleUtils';
+import { LayoutDensityProvider } from './theme/LayoutDensityContext';
 
 const App: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -46,6 +47,7 @@ const App: React.FC = () => {
 
   return (
     <NotificationProvider>
+      <LayoutDensityProvider>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
@@ -183,6 +185,7 @@ const App: React.FC = () => {
           }
         />
       </Routes>
+      </LayoutDensityProvider>
     </NotificationProvider>
   );
 };

@@ -43,6 +43,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
+import DashboardSection from '../../components/dashboard/DashboardSection';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -94,12 +95,8 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="admin" title="Admin Dashboard" subtitle="System administration center and operational overview">
-      {/* System Overview */}
-      <Typography variant="h5" gutterBottom sx={{ color: '#424242', fontWeight: 600, mb: 3 }}>
-        System Administration Center
-      </Typography>
-
       {/* Stats Cards - full width responsive auto-fill grid */}
+      <DashboardSection title="System Administration Center" id="admin-system-overview">
       <ResponsiveCardGrid minWidth={250} gap={3}>
         <Card>
           <CardContent>
@@ -157,7 +154,8 @@ const AdminDashboard: React.FC = () => {
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>vs last month</Typography>
           </CardContent>
         </Card>
-      </ResponsiveCardGrid>
+  </ResponsiveCardGrid>
+  </DashboardSection>
 
       <Divider sx={{ my: 4 }} />
 

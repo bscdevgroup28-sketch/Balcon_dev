@@ -32,6 +32,7 @@ import {
   SalesRepContactCard,
 } from '../../components/dashboard/BusinessDashboardComponents';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
+import DashboardSection from '../../components/dashboard/DashboardSection';
 
 const CustomerDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -187,6 +188,7 @@ const CustomerDashboard: React.FC = () => {
 
       {/* Business Metrics */}
       <Box sx={{ mb: 4 }} data-testid="dashboard-stats">
+        <DashboardSection title="Your Account Overview" id="customer-metrics-overview">
         <ResponsiveCardGrid minWidth={260} gap={3}>
           <BusinessMetricsCard
             title="Active Projects"
@@ -231,6 +233,7 @@ const CustomerDashboard: React.FC = () => {
             trend={{ direction: 'up', percentage: 8 }}
           />
         </ResponsiveCardGrid>
+        </DashboardSection>
       </Box>
 
   <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
