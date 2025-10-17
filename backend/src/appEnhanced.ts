@@ -395,6 +395,7 @@ export class BalConBuildersApp {
       res.json({ status: 'ok', time: new Date().toISOString() });
     });
   this.app.use('/api/metrics', require('./routes/metrics').default);
+  // Health route: returns 200 "degraded" if HEALTH_DEGRADED_OK is set and DB is down
   this.app.use('/api/health', healthRoutes);
   this.app.use('/api/ready', readinessRoutes);
     this.app.use('/api/auth', authRoutes);

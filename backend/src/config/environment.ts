@@ -47,6 +47,8 @@ const envSchema = z.object({
   GOOGLE_CLOUD_STORAGE_BUCKET: z.string().optional(),
   CORS_ORIGIN: z.string().default('*'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  // Health behavior: allow degraded 200 responses when DB is down (to avoid platform restarts)
+  HEALTH_DEGRADED_OK: z.string().optional(),
   // Observability toggles
   ADV_METRICS_ENABLED: z.string().optional(),
   PROM_DEFAULT_METRICS: z.string().optional(),
