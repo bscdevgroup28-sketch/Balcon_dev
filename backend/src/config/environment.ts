@@ -84,9 +84,10 @@ const parseEnv = () => {
 
 const env = parseEnv();
 
-// Production safety guard: disallow SQLite fallback in production to prevent ephemeral data loss
-if (env.NODE_ENV === 'production' && env.DATABASE_URL && env.DATABASE_URL.startsWith('sqlite')) {
-  console.error('❌ Refusing to start: DATABASE_URL is using sqlite in production. Set a Postgres DATABASE_URL.');
+// Production safety guard: disallow SQLite in production unless explicitly overridden for demos
+const allowSqliteInProd = (process.env.ALLOW_SQLITE_IN_PROD || '').toLowerCase() === '1' || (process.env.ALLOW_SQLITE_IN_PROD || '').toLowerCase() === 'true';
+if (env.NODE_ENV === 'production' && env.DATABASE_URL && env.DATABASE_URL.startsWith('sqlite') && !allowSqliteInProd) {
+  console.error('❌ Refusing to start: DATABASE_URL is using sqlite in production. Set a Postgres DATABASE_URL or set ALLOW_SQLITE_IN_PROD=1 for demo.');
   process.exit(1);
 }
 

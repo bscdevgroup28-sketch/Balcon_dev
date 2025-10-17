@@ -10,10 +10,11 @@ if (isSQLite && databaseUrl.startsWith('sqlite:./') && !databaseUrl.startsWith('
   databaseUrl = databaseUrl.replace('sqlite:./', 'sqlite://./');
 }
 
-// Hard guard: never allow SQLite in production deployments to Railway / real environments
-if (config.server.nodeEnv === 'production' && isSQLite) {
+// Hard guard: never allow SQLite in production unless explicitly overridden for demo
+const allowSqliteInProd = (process.env.ALLOW_SQLITE_IN_PROD || '').toLowerCase() === '1' || (process.env.ALLOW_SQLITE_IN_PROD || '').toLowerCase() === 'true';
+if (config.server.nodeEnv === 'production' && isSQLite && !allowSqliteInProd) {
   // eslint-disable-next-line no-console
-  console.error('[database] Refusing to start: SQLite detected while NODE_ENV=production. Set DATABASE_URL to a Postgres connection string.');
+  console.error('[database] Refusing to start: SQLite detected while NODE_ENV=production. Set DATABASE_URL to a Postgres connection string or ALLOW_SQLITE_IN_PROD=1 for demo.');
   throw new Error('Production environment misconfiguration: SQLite is not allowed. Configure DATABASE_URL for Postgres.');
 }
 
