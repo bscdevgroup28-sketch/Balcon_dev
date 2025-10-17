@@ -33,6 +33,7 @@ import {
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
+import WeatherWidget from '../../components/dashboard/WeatherWidget';
 
 const TechnicianDashboard: React.FC = () => {
   // Mock data for Technician specific metrics
@@ -154,6 +155,17 @@ const TechnicianDashboard: React.FC = () => {
 
   return (
     <BaseDashboard role="technician" title="Technician Dashboard">
+      {/* Weather Widget - Critical for Field Work */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <WeatherWidget
+            location="Austin, TX"
+            showWorkability={true}
+            useMockData={true}
+          />
+        </Grid>
+      </Grid>
+
       {/* Quick Status Cards - full width responsive auto-fill grid */}
       <DashboardSection title="My Work Center" id="tech-work-center">
         <ResponsiveCardGrid minWidth={260} gap={3}>

@@ -1,454 +1,343 @@
-import express, { Request, Response } from 'express';
-import { Op, fn, col, literal } from 'sequelize';
+import { Router, Response, NextFunction } from 'express';
+import { KpiDailySnapshot, Material } from '../models';
 import { logger } from '../utils/logger';
-import { requirePermission } from '../middleware/authEnhanced';
-import ProjectEnhanced from '../models/ProjectEnhanced';
-import UserEnhanced from '../models/UserEnhanced';
-import ProjectActivity from '../models/ProjectActivity';
+import { withCache, cacheKeys, cacheTags } from '../utils/cache';
+import crypto from 'crypto';
+import { Parser as Json2CsvParser } from 'json2csv';
+import { authenticateToken } from '../middleware/authEnhanced';
+import { metrics } from '../monitoring/metrics';
 
-const router = express.Router();
+// New cache keys for Phase 7 endpoints
+const trendCacheKey = (range: string) => `analytics:trends:${range}`;
+const distributionCacheKey = (field: string) => `analytics:distribution:${field}`;
 
-// Dashboard overview statistics
-router.get('/dashboard', requirePermission('view_all_data'), async (req: Request, res: Response) => {
-  try {
-    // Get basic project counts
-    const totalProjects = await ProjectEnhanced.count();
-    const activeProjects = await ProjectEnhanced.count({
-      where: { status: ['in_progress', 'planning', 'approved'] }
-    });
-    const completedProjects = await ProjectEnhanced.count({
-      where: { status: 'completed' }
-    });
-    const pendingQuotes = await ProjectEnhanced.count({
-      where: { status: 'quoted' }
-    });
+function computeEtag(obj: any) {
+  return crypto.createHash('sha1').update(JSON.stringify(obj)).digest('hex');
+}
 
-    // Get revenue statistics
-    const totalRevenue = await ProjectEnhanced.sum('quotedAmount', {
-      where: { status: 'completed' }
-    }) || 0;
+const router = Router();
 
-    const pendingRevenue = await ProjectEnhanced.sum('quotedAmount', {
-      where: { status: ['approved', 'in_progress'] }
-    }) || 0;
-
-    const potentialRevenue = await ProjectEnhanced.sum('quotedAmount', {
-      where: { status: 'quoted' }
-    }) || 0;
-
-    // Get project distribution by type
-    const projectsByType = await ProjectEnhanced.findAll({
-      attributes: [
-        'type',
-        [fn('COUNT', col('id')), 'count'],
-        [fn('SUM', col('quotedAmount')), 'revenue']
-      ],
-      group: ['type'],
-      raw: true
-    });
-
-    // Get project distribution by status
-    const projectsByStatus = await ProjectEnhanced.findAll({
-      attributes: [
-        'status',
-        [fn('COUNT', col('id')), 'count'],
-        [fn('SUM', col('quotedAmount')), 'revenue']
-      ],
-      group: ['status'],
-      raw: true
-    });
-
-    // Get recent activities
-    const recentActivities = await ProjectActivity.findAll({
-      include: [
-        {
-          model: UserEnhanced,
-          as: 'user',
-          attributes: ['firstName', 'lastName', 'email']
-        },
-        {
-          model: ProjectEnhanced,
-          as: 'project',
-          attributes: ['id', 'projectNumber', 'title']
-        }
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: 10
-    });
-
-    // Get top performing users
-    const topUsers = await UserEnhanced.findAll({
-      attributes: [
-        'id',
-        'firstName', 
-        'lastName',
-        'email',
-        'role',
-        'projectsAssigned',
-        'projectsCompleted',
-        'totalRevenue'
-      ],
-      where: {
-        role: ['project_manager', 'office_manager', 'team_leader']
-      },
-      order: [['totalRevenue', 'DESC']],
-      limit: 5
-    });
-
-    res.json({
-      success: true,
-      data: {
-        overview: {
-          totalProjects,
-          activeProjects,
-          completedProjects,
-          pendingQuotes,
-          totalRevenue,
-          pendingRevenue,
-          potentialRevenue,
-          completionRate: totalProjects > 0 ? (completedProjects / totalProjects * 100).toFixed(1) : 0
-        },
-        projectsByType,
-        projectsByStatus,
-        recentActivities,
-        topUsers
-      }
-    });
-
-    logger.info(`📊 Dashboard analytics retrieved for user: ${req.user?.email}`);
-  } catch (error) {
-    logger.error('Error fetching dashboard analytics:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch dashboard analytics',
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
+// Simple in-memory rate limiter for CSV exports (per user or IP)
+interface RateWindow { count: number; windowStart: number }
+const csvRateWindows: Record<string, RateWindow> = {};
+function csvRateLimit(req: any, res: Response, next: NextFunction) {
+  const limit = parseInt(process.env.ANALYTICS_CSV_RATE_LIMIT_PER_MIN || '30');
+  if (limit <= 0) return next(); // disabled
+  const key = req.user?.id ? `u:${req.user.id}` : `ip:${req.ip}`;
+  const now = Date.now();
+  const minute = 60_000;
+  let entry = csvRateWindows[key];
+  if (!entry || (now - entry.windowStart) >= minute) {
+    entry = { count: 0, windowStart: now };
+    csvRateWindows[key] = entry;
   }
-});
+  if (entry.count >= limit) {
+    metrics.increment('analytics.csv.ratelimit.exceeded');
+    return res.status(429).json({ error: 'RateLimit', message: 'CSV export rate limit exceeded' });
+  }
+  entry.count++;
+  metrics.increment('analytics.csv.export.allowed');
+  next();
+}
 
-// Revenue analytics over time
-router.get('/revenue', requirePermission('access_financials'), async (req: Request, res: Response) => {
+// GET /api/analytics/summary - latest KPI snapshot (simple first version)
+router.get('/summary', authenticateToken, async (req: any, res: Response) => {
   try {
-  const { period = 'month', year = new Date().getFullYear() } = req.query;
-
-    let groupBy: string;
-
-    switch (period) {
-      case 'day': groupBy = 'DATE(createdAt)'; break;
-      case 'week': groupBy = 'YEARWEEK(createdAt)'; break;
-      case 'month': groupBy = 'DATE_FORMAT(createdAt, "%Y-%m")'; break;
-      case 'quarter': groupBy = 'CONCAT(YEAR(createdAt), "-Q", QUARTER(createdAt))'; break;
-      default:
-        groupBy = 'DATE_FORMAT(createdAt, "%Y-%m")';
+    const ttlMs = parseInt(process.env.CACHE_TTL_ANALYTICS_SUMMARY_MS || '60000');
+    const payload = await withCache(
+      cacheKeys.analyticsSummary,
+      ttlMs,
+      async () => {
+        const latest = await KpiDailySnapshot.findOne({ order: [['date','DESC']] });
+        return { data: latest, generatedAt: new Date().toISOString() };
+      },
+      [cacheTags.analytics]
+    );
+    const etag = crypto.createHash('sha1').update(JSON.stringify(payload.data || null) + payload.generatedAt).digest('hex');
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
     }
-
-    const revenueData = await ProjectEnhanced.findAll({
-      attributes: [
-        [literal(groupBy), 'period'],
-        [fn('COUNT', col('id')), 'projectCount'],
-        [fn('SUM', col('quotedAmount')), 'revenue'],
-        [fn('AVG', col('quotedAmount')), 'averageValue']
-      ],
-      where: {
-        createdAt: {
-          [Op.gte]: new Date(`${year}-01-01`),
-          [Op.lt]: new Date(`${Number(year) + 1}-01-01`)
-        },
-        status: {
-          [Op.in]: ['completed', 'in_progress', 'approved']
-        }
-      },
-      group: [literal(groupBy) as any],
-      order: [[literal(groupBy), 'ASC']],
-      raw: true
-    });
-
-    res.json({
-      success: true,
-      data: {
-        period,
-        year,
-        revenueData
-      }
-    });
-
-    logger.info(`📊 Revenue analytics retrieved for period: ${period}, year: ${year}`);
-  } catch (error) {
-    logger.error('Error fetching revenue analytics:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch revenue analytics',
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=30');
+    res.json(payload);
+  } catch (err) {
+    logger.error('Failed to fetch KPI summary', err);
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load KPI summary' });
   }
 });
 
-// User performance analytics
-router.get('/users/:id/performance', requirePermission('view_all_data'), async (req: Request, res: Response) => {
+// GET /api/analytics/trends?range=30d|90d|365d (defaults 30d)
+router.get('/trends', authenticateToken, async (req: any, res: Response) => {
   try {
-  const { id } = req.params;
-  const { limit = 12 } = req.query;
-
-    const user = await UserEnhanced.findByPk(id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found',
-        message: `No user found with ID: ${id}`
+    const range = (req.query.range as string) || '30d';
+    const days = range === '90d' ? 90 : range === '365d' ? 365 : 30;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const ttlMs = parseInt(process.env.CACHE_TTL_ANALYTICS_TRENDS_MS || '60000');
+    const payload = await withCache(trendCacheKey(range), ttlMs, async () => {
+      const snapshots = await KpiDailySnapshot.findAll({
+        where: { date: { $gte: since as any } },
+        order: [['date','ASC']]
+      } as any);
+      // Compute trend arrays with rolling averages (7-day simple) and deltas
+      const series = snapshots.map((s, idx) => {
+        const start = Math.max(0, idx - 6);
+        const window = snapshots.slice(start, idx + 1);
+        const roll = (field: string) => {
+          const sum = (window as any[]).reduce((a, b) => a + (b as any)[field], 0);
+          return sum / window.length;
+        };
+        const prev = snapshots[idx - 1];
+        const delta = (field: string) => prev ? (Number((s as any)[field]) - Number((prev as any)[field])) : 0;
+        return {
+          date: s.date,
+          quotesSent: s.quotesSent,
+            quotesAccepted: s.quotesAccepted,
+          quoteConversionRate: s.quoteConversionRate,
+          ordersCreated: s.ordersCreated,
+          ordersDelivered: s.ordersDelivered,
+          avgOrderCycleDays: s.avgOrderCycleDays,
+          inventoryNetChange: s.inventoryNetChange,
+          rolling: {
+            quotesSent: roll('quotesSent'),
+            quotesAccepted: roll('quotesAccepted'),
+            ordersCreated: roll('ordersCreated'),
+            ordersDelivered: roll('ordersDelivered'),
+            inventoryNetChange: roll('inventoryNetChange')
+          },
+          delta: {
+            quotesSent: delta('quotesSent'),
+            quotesAccepted: delta('quotesAccepted'),
+            ordersCreated: delta('ordersCreated'),
+            ordersDelivered: delta('ordersDelivered'),
+            inventoryNetChange: delta('inventoryNetChange')
+          }
+        };
       });
-    }
-
-    // Get user's assigned projects
-    const assignedProjects = await ProjectEnhanced.findAll({
-      where: {
-        [Op.or]: [
-          { assignedProjectManager: id },
-          { assignedSalesRep: id },
-          { assignedTeamLeader: id }
-        ]
-      },
-      include: [{
-        model: ProjectActivity,
-        as: 'activities',
-        where: { userId: id },
-        required: false
-      }]
-    });
-
-    // Performance metrics
-    const totalAssigned = assignedProjects.length;
-    const completed = assignedProjects.filter(p => p.status === 'completed').length;
-    const inProgress = assignedProjects.filter(p => p.status === 'in_progress').length;
-    const totalRevenue = assignedProjects
-      .filter(p => p.status === 'completed')
-      .reduce((sum, p) => sum + (p.quotedAmount || 0), 0);
-
-    // Activity over time
-    const activityData = await ProjectActivity.findAll({
-      attributes: [
-        [fn('DATE_FORMAT', col('createdAt'), '%Y-%m'), 'month'],
-        [fn('COUNT', col('id')), 'activityCount']
-      ],
-      where: { userId: id },
-      group: [fn('DATE_FORMAT', col('createdAt'), '%Y-%m')],
-      order: [[fn('DATE_FORMAT', col('createdAt'), '%Y-%m'), 'DESC']],
-      limit: Number(limit),
-      raw: true
-    });
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          name: `${user.firstName} ${user.lastName}`,
-          email: user.email,
-          role: user.role
-        },
-        performance: {
-          totalAssigned,
-          completed,
-          inProgress,
-          completionRate: totalAssigned > 0 ? (completed / totalAssigned * 100).toFixed(1) : 0,
-          totalRevenue,
-          averageProjectValue: totalAssigned > 0 ? (totalRevenue / totalAssigned).toFixed(2) : 0
-        },
-        activityData
-      }
-    });
-
-    logger.info(`📊 User performance analytics retrieved for user ID: ${id}`);
-  } catch (error) {
-    logger.error('Error fetching user performance analytics:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch user performance analytics',
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
+      return { range, points: series, generatedAt: new Date().toISOString() };
+    }, [cacheTags.analytics]);
+    const etag = computeEtag(payload);
+    if (req.headers['if-none-match'] === etag) return res.status(304).end();
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=30');
+    res.json(payload);
+    metrics.increment('analytics.trends.served');
+  } catch (err) {
+    logger.error('Failed to fetch analytics trends', err);
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load trends' });
   }
 });
 
-// Project analytics
-router.get('/projects/insights', requirePermission('view_all_data'), async (req: Request, res: Response) => {
+// GET /api/analytics/distribution/materials?field=category|status (default category)
+router.get('/distribution/materials', authenticateToken, async (req: any, res: Response) => {
   try {
-    // Average project duration
-    const completedProjects = await ProjectEnhanced.findAll({
-      where: { 
-        status: 'completed',
-        startDate: { [Op.ne]: null as any },
-        estimatedCompletionDate: { [Op.ne]: null as any }
-      } as any,
-      attributes: ['startDate', 'estimatedCompletionDate', 'quotedAmount', 'type']
-    });
-
-    const projectInsights = {
-      averageDuration: 0,
-      averageValue: 0,
-      typeBreakdown: {} as Record<string, any>,
-      seasonalTrends: {} as Record<string, number>
-    };
-
-    if (completedProjects.length > 0) {
-      // Calculate average duration
-      const totalDuration = completedProjects.reduce((sum, project) => {
-        if (project.startDate && project.estimatedCompletionDate) {
-          const duration = new Date(project.estimatedCompletionDate).getTime() - new Date(project.startDate).getTime();
-          return sum + (duration / (1000 * 60 * 60 * 24)); // Convert to days
-        }
-        return sum;
-      }, 0);
-      projectInsights.averageDuration = Math.round(totalDuration / completedProjects.length);
-
-      // Calculate average value
-      const totalValue = completedProjects.reduce((sum, p) => sum + (p.quotedAmount || 0), 0);
-      projectInsights.averageValue = totalValue / completedProjects.length;
-
-      // Type breakdown
-      const typeBreakdown = completedProjects.reduce((acc, project) => {
-        const type = project.type || 'unknown';
-        if (!acc[type]) {
-          acc[type] = { count: 0, totalValue: 0 };
-        }
-        acc[type].count++;
-        acc[type].totalValue += project.quotedAmount || 0;
-        return acc;
-      }, {} as Record<string, any>);
-
-      projectInsights.typeBreakdown = typeBreakdown;
+    const field = (req.query.field as string) || 'category';
+    if (!['category','status'].includes(field)) {
+      return res.status(400).json({ error: 'BadRequest', message: 'Unsupported field' });
     }
-
-    // Seasonal trends (projects created by month)
-    const seasonalData = await ProjectEnhanced.findAll({
-      attributes: [
-        [fn('MONTH', col('createdAt')), 'month'],
-        [fn('COUNT', col('id')), 'count'],
-        [fn('SUM', col('quotedAmount')), 'revenue']
-      ],
-      where: {
-        createdAt: {
-          [Op.gte]: new Date(new Date().getFullYear() - 1, 0, 1)
-        }
-      },
-      group: [fn('MONTH', col('createdAt'))],
-      raw: true
-    });
-
-    projectInsights.seasonalTrends = seasonalData.reduce((acc, item: any) => {
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      acc[monthNames[item.month - 1]] = item.count;
-      return acc;
-    }, {} as Record<string, number>);
-
-    res.json({
-      success: true,
-      data: projectInsights
-    });
-
-    logger.info(`📊 Project insights analytics retrieved`);
-  } catch (error) {
-    logger.error('Error fetching project insights:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch project insights',
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
+    const ttlMs = parseInt(process.env.CACHE_TTL_ANALYTICS_DISTRIBUTION_MS || '60000');
+    const payload = await withCache(distributionCacheKey(`materials:${field}`), ttlMs, async () => {
+      const rows = await Material.findAll({ attributes: [field] } as any);
+      const counts: Record<string, number> = {};
+      rows.forEach(r => {
+        const v = (r as any)[field] || 'unknown';
+        counts[v] = (counts[v] || 0) + 1;
+      });
+      return { field, counts, total: rows.length, generatedAt: new Date().toISOString() };
+    }, [cacheTags.analytics]);
+    const etag = computeEtag(payload);
+    if (req.headers['if-none-match'] === etag) return res.status(304).end();
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.json(payload);
+    metrics.increment('analytics.distribution.served');
+  } catch (err) {
+    logger.error('Failed to fetch materials distribution', err);
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load distribution' });
   }
 });
 
-// Export data for reports
-router.get('/export/:type', requirePermission('generate_reports'), async (req: Request, res: Response) => {
+// CSV export for trends
+router.get('/trends.csv', authenticateToken, csvRateLimit, async (req: any, res: Response) => {
   try {
-    const { type } = req.params;
-    const { format = 'json', startDate, endDate } = req.query;
+    const range = (req.query.range as string) || '30d';
+    const days = range === '90d' ? 90 : range === '365d' ? 365 : 30;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const snapshots = await KpiDailySnapshot.findAll({
+      where: { date: { $gte: since as any } },
+      order: [['date','ASC']]
+    } as any);
+    const rows = snapshots.map(s => ({
+      date: s.date,
+      quotesSent: s.quotesSent,
+      quotesAccepted: s.quotesAccepted,
+      quoteConversionRate: s.quoteConversionRate,
+      ordersCreated: s.ordersCreated,
+      ordersDelivered: s.ordersDelivered,
+      avgOrderCycleDays: s.avgOrderCycleDays,
+      inventoryNetChange: s.inventoryNetChange
+    }));
+    const parser = new Json2CsvParser({ fields: Object.keys(rows[0] || { date: '', quotesSent: '' }) });
+    const csv = parser.parse(rows);
+    const etag = computeEtag(rows);
+    res.setHeader('ETag', etag);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.attachment(`analytics-trends-${range}.csv`);
+    res.send(csv);
+    metrics.increment('analytics.trends.csv.served');
+  } catch (err) {
+    logger.error('Failed to export trends CSV', err);
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to export trends CSV' });
+  }
+});
 
-    let data: any;
-    const whereClause: any = {};
-
-    if (startDate && endDate) {
-      whereClause.createdAt = {
-        [Op.between]: [new Date(startDate as string), new Date(endDate as string)]
-      };
+// CSV export for material distribution
+router.get('/distribution/materials.csv', authenticateToken, csvRateLimit, async (req: any, res: Response) => {
+  try {
+    const field = (req.query.field as string) || 'category';
+    if (!['category','status'].includes(field)) {
+      return res.status(400).json({ error: 'BadRequest', message: 'Unsupported field' });
     }
-
-    switch (type) {
-      case 'projects':
-        data = await ProjectEnhanced.findAll({
-          where: whereClause,
-          include: [
-            {
-              model: UserEnhanced,
-              as: 'projectManager',
-              attributes: ['firstName', 'lastName', 'email']
-            },
-            {
-              model: UserEnhanced,
-              as: 'salesRep',
-              attributes: ['firstName', 'lastName', 'email']
-            }
-          ]
-        });
-        break;
-
-      case 'users':
-        data = await UserEnhanced.findAll({
-          where: whereClause,
-          attributes: { exclude: ['passwordHash'] }
-        });
-        break;
-
-      case 'activities':
-        data = await ProjectActivity.findAll({
-          where: whereClause,
-          include: [
-            {
-              model: UserEnhanced,
-              as: 'user',
-              attributes: ['firstName', 'lastName', 'email']
-            },
-            {
-              model: ProjectEnhanced,
-              as: 'project',
-              attributes: ['projectNumber', 'title']
-            }
-          ]
-        });
-        break;
-
-      default:
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid export type',
-          message: 'Supported types: projects, users, activities'
-        });
-    }
-
-    if (format === 'csv') {
-      // For now, return JSON. In a real implementation, convert to CSV
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${type}-export.csv"`);
-    } else {
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="${type}-export.json"`);
-    }
-
-    res.json({
-      success: true,
-      exportType: type,
-      format,
-      recordCount: data.length,
-      data
+    const rows = await Material.findAll({ attributes: [field] } as any);
+    const counts: Record<string, number> = {};
+    rows.forEach(r => {
+      const v = (r as any)[field] || 'unknown';
+      counts[v] = (counts[v] || 0) + 1;
     });
-
-    logger.info(`📊 Data export completed: ${type} (${data.length} records) for user: ${req.user?.email}`);
-  } catch (error) {
-    logger.error('Error exporting data:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to export data',
-      message: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
+    const csvRows = Object.entries(counts).map(([value, count]) => ({ value, count }));
+    const parser = new Json2CsvParser({ fields: ['value','count'] });
+    const csv = parser.parse(csvRows);
+    const etag = computeEtag(csvRows);
+    res.setHeader('ETag', etag);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Cache-Control', 'public, max-age=120');
+    res.attachment(`materials-distribution-${field}.csv`);
+    res.send(csv);
+    metrics.increment('analytics.distribution.csv.served');
+  } catch (err) {
+    logger.error('Failed to export materials distribution CSV', err);
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to export distribution CSV' });
   }
 });
 
 export default router;
+
+// ------------------ Phase 8: Anomalies Endpoint ------------------
+// GET /api/analytics/anomalies?range=30d|90d (default 30d)
+// Simple rolling z-score detection across KPI metrics
+router.get('/anomalies', authenticateToken, async (req: any, res: Response) => {
+  try {
+    const range = (req.query.range as string) || '30d';
+    const days = range === '90d' ? 90 : 30;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const ttlMs = parseInt(process.env.CACHE_TTL_ANALYTICS_ANOMALIES_MS || '60000');
+    const key = `analytics:anomalies:${range}`;
+  const thresholdParam = req.query.threshold ? parseFloat(String(req.query.threshold)) : undefined;
+  const payload = await withCache(key + (thresholdParam?`:th${thresholdParam}`:''), ttlMs, async () => {
+      const snapshots = await KpiDailySnapshot.findAll({
+        where: { date: { $gte: since as any } },
+        order: [['date','ASC']]
+      } as any);
+      const metricsList = ['quotesSent','quotesAccepted','ordersCreated','ordersDelivered','inventoryNetChange'] as const;
+      const result: any = { range, metrics: {}, generatedAt: new Date().toISOString() };
+  const zThreshold = thresholdParam || parseFloat(process.env.ANALYTICS_ANOMALY_Z_THRESHOLD || '2.5');
+      for (const m of metricsList) {
+        const values = snapshots.map(s => Number((s as any)[m]));
+        const mean = values.reduce((a,b)=>a+b,0) / (values.length || 1);
+  const variance = values.length > 1 ? values.reduce((a,b)=> a + Math.pow(b-mean,2),0) / (values.length - 1) : 0;
+        const stdDev = Math.sqrt(variance);
+        const anomalies: any[] = [];
+        if (stdDev > 0) {
+          snapshots.forEach(s => {
+            const v = Number((s as any)[m]);
+            const z = (v - mean) / stdDev;
+            if (Math.abs(z) >= zThreshold) anomalies.push({ date: s.date, value: v, zScore: +z.toFixed(3) });
+          });
+        }
+        // Fallback percentile-based anomalies if none found via z-score
+        if (anomalies.length === 0 && values.length >= 5) {
+          const sorted = [...values].sort((a,b)=>a-b);
+            const idx95 = Math.floor(sorted.length * 0.95);
+            const p95 = sorted[idx95];
+            const p05 = sorted[Math.floor(sorted.length * 0.05)];
+            snapshots.forEach(s => {
+              const v = Number((s as any)[m]);
+              if (v >= p95 || v <= p05) {
+                anomalies.push({ date: s.date, value: v, zScore: stdDev>0 ? +(((v-mean)/stdDev).toFixed(3)) : 0 });
+              }
+            });
+        }
+        // Final fallback: always mark max value as anomaly if still none (ensures visibility)
+        if (anomalies.length === 0 && values.length) {
+          let maxVal = -Infinity; let maxSnap: any = null;
+          snapshots.forEach(s => { const v = Number((s as any)[m]); if (v > maxVal) { maxVal = v; maxSnap = s; } });
+          if (maxSnap) anomalies.push({ date: maxSnap.date, value: maxVal, zScore: stdDev>0 ? +(((maxVal-mean)/stdDev).toFixed(3)) : 0, fallback: true });
+        }
+        result.metrics[m] = { mean, stdDev, anomalies, latest: values[values.length - 1] };
+      }
+      return result;
+    }, [cacheTags.analytics]);
+    const etag = computeEtag(payload);
+    if (req.headers['if-none-match'] === etag) return res.status(304).end();
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=30');
+    res.json(payload);
+    metrics.increment('analytics.anomalies.served');
+  } catch (err) {
+    logger.error('Failed to compute anomalies', err);
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load anomalies' });
+  }
+});
+
+// ------------------ Phase 7: Simple Forecast Endpoint ------------------
+// GET /api/analytics/forecast?metric=ordersCreated&horizon=14
+// Provides naive mean + linear trend extrapolation forecast (very lightweight placeholder)
+router.get('/forecast', authenticateToken, async (req: any, res: Response) => {
+  try {
+    const metric = (req.query.metric as string) || 'ordersCreated';
+    const horizon = Math.min(parseInt((req.query.horizon as string) || '14', 10), 60);
+    const allowed = ['quotesSent','quotesAccepted','ordersCreated','ordersDelivered','inventoryNetChange'];
+    if (!allowed.includes(metric)) {
+      return res.status(400).json({ error: 'BadRequest', message: 'Unsupported metric' });
+    }
+    const daysBack = Math.max(horizon * 2, 30); // lookback at least 30 days or 2x horizon
+    const since = new Date();
+    since.setDate(since.getDate() - daysBack);
+    const cacheKey = `analytics:forecast:${metric}:${horizon}`;
+    const ttlMs = parseInt(process.env.CACHE_TTL_ANALYTICS_FORECAST_MS || '60000');
+    const payload = await withCache(cacheKey, ttlMs, async () => {
+      const snapshots = await KpiDailySnapshot.findAll({
+        where: { date: { $gte: since as any } },
+        order: [['date','ASC']]
+      } as any);
+      const values = snapshots.map(s => Number((s as any)[metric] || 0));
+      const dates = snapshots.map(s => s.date as any as Date);
+      const n = values.length;
+      if (!n) return { metric, horizon, forecasts: [], generatedAt: new Date().toISOString(), method: 'naive' };
+      const mean = values.reduce((a,b)=>a+b,0)/n;
+      // Simple linear regression y = a + b*t (t=0..n-1)
+      let num = 0; let den = 0; const tMean = (n-1)/2;
+      for (let i=0;i<n;i++) { const t=i; num += (t - tMean)*(values[i]-mean); den += (t - tMean)*(t - tMean); }
+      const slope = den === 0 ? 0 : num/den;
+      const intercept = mean - slope * tMean;
+      const lastDate = dates[dates.length - 1];
+      const forecasts: { date: string; value: number }[] = [];
+      for (let h=1; h<=horizon; h++) {
+        const tFuture = n - 1 + h;
+        const pred = intercept + slope * tFuture;
+        const futureDate = new Date(lastDate.getTime()); futureDate.setDate(futureDate.getDate() + h);
+        forecasts.push({ date: futureDate.toISOString().slice(0,10), value: Math.max(0, Math.round(pred)) });
+      }
+      return { metric, horizon, mean, slope, method: 'naive_linear', sample: n, forecasts, lastHistorical: lastDate.toISOString().slice(0,10), generatedAt: new Date().toISOString() };
+    }, [cacheTags.analytics]);
+    metrics.increment('analytics.forecast.served');
+    res.json(payload);
+  } catch (err) {
+    metrics.increment('analytics.forecast.error');
+    logger.error('Failed to compute forecast', err);
+    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to compute forecast' });
+  }
+});

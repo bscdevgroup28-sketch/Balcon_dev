@@ -5,9 +5,11 @@ const sequelize_1 = require("sequelize");
 const zod_1 = require("zod");
 const database_1 = require("../config/database");
 const models_1 = require("../models");
+const cache_1 = require("../utils/cache");
 const validation_1 = require("../middleware/validation");
 const validation_2 = require("../utils/validation");
 const logger_1 = require("../utils/logger");
+const eventBus_1 = require("../events/eventBus");
 const router = (0, express_1.Router)();
 // GET /api/materials - Get all materials with filtering and pagination
 router.get('/', (0, validation_1.validate)({ query: validation_2.materialQuerySchema }), async (req, res) => {
@@ -35,9 +37,6 @@ router.get('/', (0, validation_1.validate)({ query: validation_2.materialQuerySc
                             { [sequelize_1.Op.gt]: database_1.sequelize.col('reorderPoint') }
                         ]
                     };
-                    break;
-                case 'normal':
-                    where.currentStock = { [sequelize_1.Op.gt]: database_1.sequelize.col('minimumStock') };
                     break;
             }
         }
@@ -78,7 +77,7 @@ router.get('/', (0, validation_1.validate)({ query: validation_2.materialQuerySc
     }
 });
 // GET /api/materials/:id - Get a specific material
-router.get('/:id', (0, validation_1.validate)({ params: validation_2.idParamSchema }), async (req, res) => {
+router.get('/:id(\\d+)', (0, validation_1.validate)({ params: validation_2.idParamSchema }), async (req, res) => {
     try {
         const { id } = req.validatedParams;
         const material = await models_1.Material.findByPk(id);
@@ -104,6 +103,27 @@ router.post('/', (0, validation_1.validate)({ body: validation_2.createMaterialS
         const materialData = req.validatedBody;
         const material = await models_1.Material.create(materialData);
         logger_1.logger.info(`Material created: ${material.name} (ID: ${material.id})`);
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('material.created', { id: material.id, name: material.name }));
+        try {
+            // Direct key deletion plus tag invalidation for stronger consistency
+            try {
+                (0, cache_1.del)(cache_1.cacheKeys.materialCategories);
+            }
+            catch { /* ignore */ }
+            (0, cache_1.invalidateTag)(cache_1.cacheTags.materials);
+            // Write-through repopulation for strong consistency post-create
+            const cats = await models_1.Material.findAll({
+                attributes: [[models_1.Material.sequelize.fn('DISTINCT', models_1.Material.sequelize.col('category')), 'category']],
+                where: { status: 'active' },
+                raw: true
+            });
+            const list = cats.map((c) => c.category).filter(Boolean).sort();
+            try {
+                (0, cache_1.set)(cache_1.cacheKeys.materialCategories, list, parseInt(process.env.CACHE_TTL_MATERIAL_CATEGORIES_MS || '30000'), [cache_1.cacheTags.materials]);
+            }
+            catch { /* ignore */ }
+        }
+        catch { /* ignore */ }
         res.status(201).json({
             data: material,
             message: 'Material created successfully',
@@ -118,7 +138,7 @@ router.post('/', (0, validation_1.validate)({ body: validation_2.createMaterialS
     }
 });
 // PUT /api/materials/:id - Update a material
-router.put('/:id', (0, validation_1.validate)({ params: validation_2.idParamSchema, body: validation_2.updateMaterialSchema }), async (req, res) => {
+router.put('/:id(\\d+)', (0, validation_1.validate)({ params: validation_2.idParamSchema, body: validation_2.updateMaterialSchema }), async (req, res) => {
     try {
         const { id } = req.validatedParams;
         const updateData = req.validatedBody;
@@ -130,6 +150,11 @@ router.put('/:id', (0, validation_1.validate)({ params: validation_2.idParamSche
             });
         }
         await material.update(updateData);
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('material.updated', { id: material.id, changes: Object.keys(updateData) }));
+        try {
+            (0, cache_1.invalidateTag)(cache_1.cacheTags.materials);
+        }
+        catch { /* ignore */ }
         logger_1.logger.info(`Material updated: ${material.name} (ID: ${material.id})`);
         res.json({
             data: material,
@@ -145,7 +170,7 @@ router.put('/:id', (0, validation_1.validate)({ params: validation_2.idParamSche
     }
 });
 // DELETE /api/materials/:id - Delete a material
-router.delete('/:id', (0, validation_1.validate)({ params: validation_2.idParamSchema }), async (req, res) => {
+router.delete('/:id(\\d+)', (0, validation_1.validate)({ params: validation_2.idParamSchema }), async (req, res) => {
     try {
         const { id } = req.validatedParams;
         const material = await models_1.Material.findByPk(id);
@@ -156,6 +181,11 @@ router.delete('/:id', (0, validation_1.validate)({ params: validation_2.idParamS
             });
         }
         await material.destroy();
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('material.deleted', { id: material.id }));
+        try {
+            (0, cache_1.invalidateTag)(cache_1.cacheTags.materials);
+        }
+        catch { /* ignore */ }
         logger_1.logger.info(`Material deleted: ${material.name} (ID: ${material.id})`);
         res.json({
             message: 'Material deleted successfully',
@@ -172,22 +202,26 @@ router.delete('/:id', (0, validation_1.validate)({ params: validation_2.idParamS
 // GET /api/materials/categories - Get unique material categories
 router.get('/categories', async (req, res) => {
     try {
-        const categories = await models_1.Material.findAll({
-            attributes: [
-                [models_1.Material.sequelize.fn('DISTINCT', models_1.Material.sequelize.col('category')), 'category']
-            ],
-            where: {
-                status: 'active',
-            },
-            raw: true,
-        });
-        const categoryList = categories
-            .map((cat) => cat.category)
-            .filter(Boolean)
-            .sort();
-        res.json({
-            data: categoryList,
-        });
+        const ttlMs = parseInt(process.env.CACHE_TTL_MATERIAL_CATEGORIES_MS || '30000');
+        const bypass = req.query?.bypassCache === 'true';
+        const loader = async () => {
+            const categories = await models_1.Material.findAll({
+                attributes: [
+                    [models_1.Material.sequelize.fn('DISTINCT', models_1.Material.sequelize.col('category')), 'category']
+                ],
+                where: { status: 'active' },
+                raw: true,
+            });
+            return categories
+                .map((cat) => cat.category)
+                .filter(Boolean)
+                .sort();
+        };
+        const categoryList = bypass
+            ? await loader()
+            : await (0, cache_1.withCache)(cache_1.cacheKeys.materialCategories, ttlMs, loader, [cache_1.cacheTags.materials]);
+        res.setHeader('Cache-Control', 'public, max-age=30');
+        res.json({ data: categoryList, cached: !bypass });
     }
     catch (error) {
         logger_1.logger.error('Error fetching material categories:', error);
@@ -200,20 +234,21 @@ router.get('/categories', async (req, res) => {
 // GET /api/materials/low-stock - Get materials with low stock
 router.get('/low-stock', async (req, res) => {
     try {
-        const materials = await models_1.Material.findAll({
-            where: {
-                status: 'active',
-                currentStock: {
-                    [sequelize_1.Op.lte]: database_1.sequelize.col('minimumStock'),
+        const ttlMs = parseInt(process.env.CACHE_TTL_MATERIALS_LOW_STOCK_MS || '15000');
+        const materials = await (0, cache_1.withCache)(cache_1.cacheKeys.materialLowStock, ttlMs, async () => {
+            const rows = await models_1.Material.findAll({
+                where: {
+                    status: 'active',
+                    currentStock: { [sequelize_1.Op.lte]: database_1.sequelize.col('minimumStock') },
                 },
-            },
-            order: [['currentStock', 'ASC']],
-        });
+                order: [['currentStock', 'ASC']],
+            });
+            return rows.map(r => r.toJSON());
+        }, [cache_1.cacheTags.materials]);
         res.json({
             data: materials,
-            meta: {
-                total: materials.length,
-            },
+            meta: { total: materials.length },
+            cached: true
         });
     }
     catch (error) {
@@ -225,7 +260,7 @@ router.get('/low-stock', async (req, res) => {
     }
 });
 // PUT /api/materials/:id/stock - Update material stock
-router.put('/:id/stock', (0, validation_1.validate)({
+router.put('/:id(\\d+)/stock', (0, validation_1.validate)({
     params: validation_2.idParamSchema,
     body: zod_1.z.object({
         currentStock: zod_1.z.number().min(0, 'Stock cannot be negative'),
@@ -253,11 +288,29 @@ router.put('/:id/stock', (0, validation_1.validate)({
                 });
             }
         }
+        const previousStock = material.currentStock;
         await material.update({
             currentStock: newStock,
             notes: notes ? `${material.notes || ''}\nStock updated: ${new Date().toISOString()} - ${notes}`.trim() : material.notes,
         });
+        try {
+            (0, cache_1.invalidateTag)(cache_1.cacheTags.materials);
+        }
+        catch { /* ignore */ }
         logger_1.logger.info(`Material stock updated: ${material.name} (ID: ${material.id}) - New stock: ${newStock}`);
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('material.stock.changed', { id: material.id, previousStock, newStock }));
+        // Emit inventory transaction event (logical; persistence to dedicated table can be added in service layer later)
+        const direction = newStock > previousStock ? 'in' : 'out';
+        const delta = Math.abs(newStock - previousStock);
+        if (delta !== 0) {
+            eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('inventory.transaction.recorded', {
+                materialId: material.id,
+                direction,
+                quantity: delta,
+                resultingStock: newStock,
+                type: 'adjustment'
+            }));
+        }
         res.json({
             data: material,
             message: 'Material stock updated successfully',

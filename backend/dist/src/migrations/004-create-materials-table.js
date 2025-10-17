@@ -28,14 +28,14 @@ const up = async (queryInterface) => {
                 len: [2, 100],
             },
         },
-        unitOfMeasure: {
+        unit_of_measure: {
             type: sequelize_1.DataTypes.STRING,
             allowNull: false,
             validate: {
                 len: [1, 50],
             },
         },
-        currentStock: {
+        current_stock: {
             type: sequelize_1.DataTypes.DECIMAL(12, 2),
             allowNull: false,
             defaultValue: 0,
@@ -43,7 +43,7 @@ const up = async (queryInterface) => {
                 min: 0,
             },
         },
-        minimumStock: {
+        minimum_stock: {
             type: sequelize_1.DataTypes.DECIMAL(12, 2),
             allowNull: false,
             defaultValue: 0,
@@ -51,7 +51,7 @@ const up = async (queryInterface) => {
                 min: 0,
             },
         },
-        reorderPoint: {
+        reorder_point: {
             type: sequelize_1.DataTypes.DECIMAL(12, 2),
             allowNull: false,
             defaultValue: 0,
@@ -59,14 +59,14 @@ const up = async (queryInterface) => {
                 min: 0,
             },
         },
-        unitCost: {
+        unit_cost: {
             type: sequelize_1.DataTypes.DECIMAL(10, 2),
             allowNull: false,
             validate: {
                 min: 0,
             },
         },
-        markupPercentage: {
+        markup_percentage: {
             type: sequelize_1.DataTypes.DECIMAL(5, 2),
             allowNull: false,
             defaultValue: 0,
@@ -75,35 +75,35 @@ const up = async (queryInterface) => {
                 max: 999.99,
             },
         },
-        sellingPrice: {
+        selling_price: {
             type: sequelize_1.DataTypes.DECIMAL(10, 2),
             allowNull: false,
             validate: {
                 min: 0,
             },
         },
-        supplierName: {
+        supplier_name: {
             type: sequelize_1.DataTypes.STRING,
             allowNull: true,
             validate: {
                 len: [0, 200],
             },
         },
-        supplierContact: {
+        supplier_contact: {
             type: sequelize_1.DataTypes.STRING,
             allowNull: true,
             validate: {
                 len: [0, 100],
             },
         },
-        supplierEmail: {
+        supplier_email: {
             type: sequelize_1.DataTypes.STRING,
             allowNull: true,
             validate: {
                 isEmail: true,
             },
         },
-        leadTimeDays: {
+        lead_time_days: {
             type: sequelize_1.DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 7,
@@ -127,12 +127,12 @@ const up = async (queryInterface) => {
             type: sequelize_1.DataTypes.TEXT,
             allowNull: true,
         },
-        createdAt: {
+        created_at: {
             type: sequelize_1.DataTypes.DATE,
             allowNull: false,
             defaultValue: sequelize_1.DataTypes.NOW,
         },
-        updatedAt: {
+        updated_at: {
             type: sequelize_1.DataTypes.DATE,
             allowNull: false,
             defaultValue: sequelize_1.DataTypes.NOW,
@@ -148,13 +148,13 @@ const up = async (queryInterface) => {
     await queryInterface.addIndex('materials', ['status'], {
         name: 'materials_status_idx',
     });
-    await queryInterface.addIndex('materials', ['currentStock'], {
+    await queryInterface.addIndex('materials', ['current_stock'], {
         name: 'materials_current_stock_idx',
     });
-    await queryInterface.addIndex('materials', ['supplierName'], {
+    await queryInterface.addIndex('materials', ['supplier_name'], {
         name: 'materials_supplier_name_idx',
     });
-    await queryInterface.addIndex('materials', ['createdAt'], {
+    await queryInterface.addIndex('materials', ['created_at'], {
         name: 'materials_created_at_idx',
     });
 };

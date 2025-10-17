@@ -26,14 +26,14 @@ export const up = async (queryInterface: QueryInterface): Promise<void> => {
         len: [2, 100],
       },
     },
-    unitOfMeasure: {
+    unit_of_measure: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
         len: [1, 50],
       },
     },
-    currentStock: {
+    current_stock: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
       defaultValue: 0,
@@ -41,7 +41,7 @@ export const up = async (queryInterface: QueryInterface): Promise<void> => {
         min: 0,
       },
     },
-    minimumStock: {
+    minimum_stock: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
       defaultValue: 0,
@@ -49,7 +49,7 @@ export const up = async (queryInterface: QueryInterface): Promise<void> => {
         min: 0,
       },
     },
-    reorderPoint: {
+    reorder_point: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
       defaultValue: 0,
@@ -57,14 +57,14 @@ export const up = async (queryInterface: QueryInterface): Promise<void> => {
         min: 0,
       },
     },
-    unitCost: {
+    unit_cost: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
         min: 0,
       },
     },
-    markupPercentage: {
+    markup_percentage: {
       type: DataTypes.DECIMAL(5, 2),
       allowNull: false,
       defaultValue: 0,
@@ -73,35 +73,35 @@ export const up = async (queryInterface: QueryInterface): Promise<void> => {
         max: 999.99,
       },
     },
-    sellingPrice: {
+    selling_price: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       validate: {
         min: 0,
       },
     },
-    supplierName: {
+    supplier_name: {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
         len: [0, 200],
       },
     },
-    supplierContact: {
+    supplier_contact: {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
         len: [0, 100],
       },
     },
-    supplierEmail: {
+    supplier_email: {
       type: DataTypes.STRING,
       allowNull: true,
       validate: {
         isEmail: true,
       },
     },
-    leadTimeDays: {
+    lead_time_days: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 7,
@@ -125,12 +125,12 @@ export const up = async (queryInterface: QueryInterface): Promise<void> => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    createdAt: {
+    created_at: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    updatedAt: {
+    updated_at: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
@@ -150,15 +150,15 @@ export const up = async (queryInterface: QueryInterface): Promise<void> => {
     name: 'materials_status_idx',
   });
 
-  await queryInterface.addIndex('materials', ['currentStock'], {
+  await queryInterface.addIndex('materials', ['current_stock'], {
     name: 'materials_current_stock_idx',
   });
 
-  await queryInterface.addIndex('materials', ['supplierName'], {
+  await queryInterface.addIndex('materials', ['supplier_name'], {
     name: 'materials_supplier_name_idx',
   });
 
-  await queryInterface.addIndex('materials', ['createdAt'], {
+  await queryInterface.addIndex('materials', ['created_at'], {
     name: 'materials_created_at_idx',
   });
 };

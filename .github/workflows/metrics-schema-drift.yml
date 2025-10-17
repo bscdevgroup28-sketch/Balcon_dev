@@ -1,0 +1,52 @@
+name: Metrics Schema Drift
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/src/monitoring/**'
+      - 'backend/src/scripts/metrics/**'
+      - 'backend/metrics-schema/baseline.json'
+      - '.github/workflows/metrics-schema-drift.yml'
+  schedule:
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: 18
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci
+      - name: Build
+        run: |
+          cd backend
+          npm run build
+      - name: Drift Check
+        run: |
+          cd backend
+          npm run metrics:schema:drift
+      - name: Export current schema (artifact)
+        if: always()
+        run: |
+          cd backend
+          npm run metrics:schema > metrics-schema-export.json
+      - name: Upload schema artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-schema
+          path: backend/metrics-schema-export.json

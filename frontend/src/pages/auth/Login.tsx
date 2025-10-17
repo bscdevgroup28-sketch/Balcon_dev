@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -117,7 +117,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const { isLoading, error } = useSelector((state: RootState) => state.auth);
+  const { isLoading, error, user } = useSelector((state: RootState) => state.auth);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -134,16 +134,21 @@ const Login: React.FC = () => {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performLogin = async (creds: { email: string; password: string }) => {
     try {
-      const result = await dispatch(loginUser(formData) as any);
+      const result = await dispatch(loginUser(creds) as any);
       if (result.type === 'auth/login/fulfilled') {
         navigate(from, { replace: true });
       }
-    } catch (error) {
-      // Login error is handled by the auth slice
+      return result.type === 'auth/login/fulfilled';
+    } catch {
+      return false;
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performLogin(formData);
   };
 
   const handleDemoLogin = async (account: DemoAccount) => {
@@ -178,6 +183,29 @@ const Login: React.FC = () => {
       // Demo login error handling
     }
   };
+
+  // Auto-authenticate support: if URL contains autoLogin=1 and creds or a demo alias, attempt once.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (user) return; // already logged in
+    if (!params.get('autoLogin')) return;
+    const emailParam = params.get('email');
+    const passwordParam = params.get('password');
+    const demoRole = params.get('demo');
+    // Prevent repeat loops
+    if (sessionStorage.getItem('autoLoginAttempted')) return;
+    sessionStorage.setItem('autoLoginAttempted', '1');
+    if (emailParam && passwordParam) {
+      performLogin({ email: emailParam, password: passwordParam });
+      return;
+    }
+    if (demoRole) {
+      const acct = demoAccounts.find(a => a.role === demoRole);
+      if (acct) handleDemoLogin(acct);
+    }
+    // We intentionally exclude performLogin/handleDemoLogin from deps to avoid re-attempt loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, user]);
 
   return (
     <Box

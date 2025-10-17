@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { Op } from 'sequelize';
 import { Order, Project, User, Quote } from '../models';
+import { eventBus, createEvent } from '../events/eventBus';
 import { validate, ValidatedRequest } from '../middleware/validation';
 import {
   createOrderSchema,
@@ -13,7 +14,9 @@ import {
   IdParamInput,
 } from '../utils/validation';
 import { logger } from '../utils/logger';
-import { authenticateToken, requireRole } from '../middleware/authEnhanced';
+import { getNextSequence } from '../models/Sequence';
+import { authenticateToken, requirePolicy } from '../middleware/authEnhanced';
+import { Actions } from '../security/actions';
 
 const router = Router();
 
@@ -73,7 +76,7 @@ router.get(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
           {
             model: Quote,
@@ -131,7 +134,7 @@ router.get(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company', 'phone'],
+            attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
           },
           {
             model: Quote,
@@ -181,31 +184,40 @@ router.get(
 router.post(
   '/',
   authenticateToken,
-  requireRole(['admin', 'owner', 'office_manager']),
+  // Prefer policy-based authorization; fallback role guard retained temporarily for legacy
+  requirePolicy(Actions.ORDER_CREATE),
   validate({ body: createOrderSchema }),
   async (req: ValidatedRequest<CreateOrderInput>, res: Response) => {
     try {
       const orderData = req.validatedBody!;
 
-      // Generate order number
-      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-
       // Verify project exists and user has access
       const project = await Project.findByPk(orderData.projectId);
       if (!project) {
+        logger.warn('Order create 404 project not found', { projectId: orderData.projectId });
         return res.status(404).json({
           success: false,
           message: 'Project not found',
         });
       }
 
-      // Verify user exists
-      const user = await User.findByPk(orderData.userId);
+      // Determine userId: prefer provided, fallback to project's userId
+      let userIdToUse = orderData.userId;
+      if (!userIdToUse && project.userId) userIdToUse = project.userId;
+      const user = userIdToUse ? await User.findByPk(userIdToUse) : null;
       if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found',
-        });
+        logger.warn('Order create 404 user not found', { userIdToUse });
+        return res.status(404).json({ success: false, message: 'User not found for order creation' });
+      }
+
+      // Generate deterministic sequential order number (e.g., ORD-000001)
+      let orderNumber: string;
+      try {
+        const seq = await getNextSequence('order_number');
+        orderNumber = `ORD-${seq.toString().padStart(6,'0')}`;
+      } catch (e) {
+        logger.error('Order sequence generation failed, using fallback', e);
+        orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
       }
 
       // Calculate totals
@@ -214,7 +226,8 @@ router.post(
       const totalAmount = subtotal + taxAmount;
 
       const order = await Order.create({
-        ...orderData,
+  ...orderData,
+  userId: user.id,
         orderNumber,
         subtotal,
         taxAmount,
@@ -225,6 +238,17 @@ router.post(
       });
 
       logger.info(`Order created: ${orderNumber} by user ${(req as any).user.id}`);
+      // Emit domain event
+      eventBus.emitEvent(createEvent('order.created', {
+        id: order.id,
+        orderNumber,
+        projectId: order.projectId,
+        userId: order.userId,
+        totalAmount: order.totalAmount,
+        status: order.status,
+        createdAt: order.createdAt,
+        deliveredAt: order.get('deliveredAt') || null
+      }));
 
       res.status(201).json({
         success: true,
@@ -246,7 +270,7 @@ router.post(
 router.put(
   '/:id',
   authenticateToken,
-  requireRole(['admin', 'owner', 'office_manager']),
+  requirePolicy(Actions.ORDER_UPDATE),
   validate({ params: idParamSchema, body: updateOrderSchema }),
   async (req: ValidatedRequest<UpdateOrderInput, any, IdParamInput>, res: Response) => {
     try {
@@ -295,9 +319,36 @@ router.put(
         updateFields.estimatedDelivery = new Date(updateData.estimatedDelivery);
       }
 
+      const statusBefore = order.get('status');
       await order.update(updateFields);
+      const statusAfter = order.get('status');
 
       logger.info(`Order updated: ${order.orderNumber} by user ${(req as any).user.id}`);
+
+      // Emit update event
+      const changedKeys = Object.keys(updateFields);
+      eventBus.emitEvent(createEvent('order.updated', {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        changed: changedKeys,
+        statusBefore,
+        statusAfter
+      }));
+      if (statusBefore !== statusAfter) {
+        const payloadBase = {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          projectId: order.projectId,
+          createdAt: order.createdAt,
+          deliveredAt: order.get('deliveredAt') || null
+        };
+        eventBus.emitEvent(createEvent('order.status.changed', {
+          ...payloadBase,
+          statusBefore,
+          statusAfter
+        }));
+        eventBus.emitEvent(createEvent(`order.${statusAfter}`, payloadBase));
+      }
 
       res.json({
         success: true,
@@ -319,7 +370,7 @@ router.put(
 router.delete(
   '/:id',
   authenticateToken,
-  requireRole(['admin', 'owner']),
+  requirePolicy(Actions.ORDER_DELETE),
   validate({ params: idParamSchema }),
   async (req: ValidatedRequest<IdParamInput>, res: Response) => {
     try {
@@ -341,9 +392,10 @@ router.delete(
         });
       }
 
-      await order.destroy();
+  await order.destroy();
 
-      logger.info(`Order deleted: ${order.orderNumber} by user ${(req as any).user.id}`);
+  logger.info(`Order deleted: ${order.orderNumber} by user ${(req as any).user.id}`);
+  eventBus.emitEvent(createEvent('order.deleted', { id: order.id, orderNumber: order.orderNumber }));
 
       res.json({
         success: true,

@@ -1,26 +1,38 @@
-import { User } from './User';
+// Export enhanced user model as canonical User for unified feature set
+import { User as UserEnhanced } from './UserEnhanced';
+// Preserve legacy simple User model (optional) only if needed elsewhere
+// import { User as BasicUser } from './User';
 import { Project } from './Project';
 import { Quote } from './Quote';
 import { Order } from './Order';
 import { Material } from './Material';
+import { WorkOrder } from './WorkOrder';
+import { EventLog } from './EventLog';
 import { ProjectFile, defineProjectFileAssociations } from './ProjectFile';
+import { InventoryTransaction } from './InventoryTransaction';
+import { KpiDailySnapshot } from './KpiDailySnapshot';
+import { ExportJob } from './ExportJob';
+import { DownloadToken } from './DownloadToken';
+import { WebhookSubscription } from './WebhookSubscription';
+import { WebhookDelivery } from './WebhookDelivery';
+import { JobRecord } from './JobRecord';
 
 // Define associations
-User.hasMany(Project, { foreignKey: 'userId', as: 'projects' });
-Project.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+UserEnhanced.hasMany(Project, { foreignKey: 'userId', as: 'projects' });
+Project.belongsTo(UserEnhanced, { foreignKey: 'userId', as: 'user' });
 
 // Sales rep assignment associations
-User.hasMany(Project, { foreignKey: 'assignedSalesRepId', as: 'assignedProjects' });
-Project.belongsTo(User, { foreignKey: 'assignedSalesRepId', as: 'assignedSalesRep' });
+UserEnhanced.hasMany(Project, { foreignKey: 'assignedSalesRepId', as: 'assignedProjects' });
+Project.belongsTo(UserEnhanced, { foreignKey: 'assignedSalesRepId', as: 'assignedSalesRep' });
 
-User.hasMany(Quote, { foreignKey: 'userId', as: 'quotes' });
-Quote.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+UserEnhanced.hasMany(Quote, { foreignKey: 'userId', as: 'quotes' });
+Quote.belongsTo(UserEnhanced, { foreignKey: 'userId', as: 'user' });
 
 Project.hasMany(Quote, { foreignKey: 'projectId', as: 'quotes' });
 Quote.belongsTo(Project, { foreignKey: 'projectId', as: 'project' });
 
-User.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
-Order.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+UserEnhanced.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
+Order.belongsTo(UserEnhanced, { foreignKey: 'userId', as: 'user' });
 
 Project.hasMany(Order, { foreignKey: 'projectId', as: 'orders' });
 Order.belongsTo(Project, { foreignKey: 'projectId', as: 'project' });
@@ -33,18 +45,36 @@ Project.hasMany(ProjectFile, { foreignKey: 'projectId', as: 'files' });
 defineProjectFileAssociations();
 
 export {
-  User,
+  UserEnhanced as User,
   Project,
   Quote,
   Order,
   Material,
   ProjectFile,
+  WorkOrder,
+  EventLog,
+  InventoryTransaction,
+  KpiDailySnapshot,
+  ExportJob,
+  DownloadToken,
+  WebhookSubscription,
+  WebhookDelivery,
+  JobRecord,
 };
 
 export default {
-  User,
+  User: UserEnhanced,
   Project,
   Quote,
   Order,
   Material,
+  WorkOrder,
+  EventLog,
+  InventoryTransaction,
+  KpiDailySnapshot,
+  ExportJob,
+  DownloadToken,
+  WebhookSubscription,
+  WebhookDelivery,
+  JobRecord,
 };

@@ -10,15 +10,27 @@ const UserEnhanced_1 = require("../models/UserEnhanced");
 const ProjectEnhanced_1 = require("../models/ProjectEnhanced");
 const ProjectActivity_1 = require("../models/ProjectActivity");
 const logger_1 = require("../utils/logger");
+const environment_1 = require("../config/environment");
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'balcon-builders-secret-key-2025';
 // WebSocket service class
 class WebSocketService {
     constructor(server) {
         this.connectedUsers = new Map(); // userId -> socketIds[]
+        const origins = environment_1.config.server.frontendOrigins && environment_1.config.server.frontendOrigins.length
+            ? environment_1.config.server.frontendOrigins
+            : [process.env.FRONTEND_URL || 'http://localhost:3001'];
         this.io = new socket_io_1.Server(server, {
             cors: {
-                origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+                origin: (origin, cb) => {
+                    if (!origin)
+                        return cb(null, true);
+                    if (origins.includes(origin))
+                        return cb(null, true);
+                    if (environment_1.config.server.nodeEnv !== 'production' && /^http:\/\/localhost:\d+$/.test(origin))
+                        return cb(null, true);
+                    return cb(new Error('WS origin not allowed'));
+                },
                 methods: ['GET', 'POST'],
                 credentials: true
             },

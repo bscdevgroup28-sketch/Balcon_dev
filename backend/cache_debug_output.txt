@@ -1,0 +1,25 @@
+(node:25472) [DEP0170] DeprecationWarning: The URL sqlite::memory: is invalid. Future versions of Node.js will throw an error.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+FAIL tests/integration/materialsCache.test.ts
+  ● Materials Categories Caching › invalidates categories cache when a new category is introduced
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 86 |[39m     [36mconst[39m afterSet [33m=[39m [36mnew[39m [33mSet[39m(after[33m.[39mbody[33m.[39mdata)[33m;[39m
+     [90m 87 |[39m     [36mfor[39m ([36mconst[39m c [36mof[39m original) expect(afterSet[33m.[39mhas(c))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 88 |[39m     expect(afterSet[33m.[39mhas([32m'Electrical'[39m))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m    |[39m                                        [31m[1m^[22m[39m
+     [90m 89 |[39m     expect(afterSet[33m.[39msize)[33m.[39mtoBeGreaterThan(original[33m.[39mlength)[33m;[39m
+     [90m 90 |[39m   })[33m;[39m
+     [90m 91 |[39m[0m
+
+      at Object.<anonymous> (tests/integration/materialsCache.test.ts:88:40)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 skipped, 3 total
+Snapshots:   0 total
+Time:        2.907 s, estimated 4 s
+Ran all test suites matching /tests\\integration\\materialsCache.test.ts/i with tests matching "invalidates".

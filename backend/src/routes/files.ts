@@ -1,4 +1,5 @@
 import { Router, Response, Request } from 'express';
+import { requirePolicy } from '../middleware/authEnhanced';
 import { ProjectFile } from '../models';
 import { upload, checkTotalFileSize, handleUploadError, getFileType, getFileUrl, deleteFile } from '../middleware/fileUpload';
 import { validate, ValidatedRequest } from '../middleware/validation';
@@ -15,6 +16,7 @@ const router = Router();
 // POST /api/files/upload - Upload files for a project
 router.post(
   '/upload',
+  requirePolicy('file.upload'),
   upload.array('files', 10),
   checkTotalFileSize,
   async (req: Request, res: Response) => {
@@ -112,6 +114,7 @@ router.post(
 // GET /api/files/project/:projectId - Get all files for a project
 router.get(
   '/project/:projectId',
+  requirePolicy('file.list'),
   validate({ params: z.object({ projectId: z.string().transform(val => parseInt(val, 10)) }) }),
   async (req: ValidatedRequest<any, any, { projectId: number }>, res: Response) => {
     try {
@@ -162,7 +165,7 @@ router.get(
 );
 
 // GET /api/files/:fileName - Serve file
-router.get('/:fileName', async (req: Request, res: Response) => {
+router.get('/:fileName', requirePolicy('file.read'), async (req: Request, res: Response) => {
   try {
     const { fileName } = req.params;
 
@@ -211,6 +214,7 @@ router.get('/:fileName', async (req: Request, res: Response) => {
 // DELETE /api/files/:fileId - Delete a file
 router.delete(
   '/:fileId',
+  requirePolicy('file.delete'),
   validate({ params: z.object({ fileId: z.string().transform(val => parseInt(val, 10)) }) }),
   async (req: ValidatedRequest<any, any, { fileId: number }>, res: Response) => {
     try {

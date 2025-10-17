@@ -262,6 +262,12 @@ export const getMenuItemsForRole = (role: UserRole): MenuItem[] => {
       path: '/admin/settings',
       roles: ['admin'],
     },
+    {
+      text: 'Webhooks',
+      icon: Assessment,
+      path: '/admin/webhooks',
+      roles: ['admin'],
+    },
 
     // Customer Menu Items
     {

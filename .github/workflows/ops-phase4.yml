@@ -1,0 +1,87 @@
+name: Ops Phase 4 Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ops-phase4.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+
+env:
+  NODE_VERSION: 18
+
+jobs:
+  perf-smoke-and-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Build Backend
+        working-directory: backend
+        run: npm run build
+
+      - name: Start Server (Background)
+        working-directory: backend
+        run: |
+          node dist/src/indexEnhanced.js &
+          echo $! > server.pid
+          sleep 5
+
+      - name: Perf Smoke (health)
+        working-directory: backend
+        env:
+          BASE_URL: http://localhost:8080
+          PERF_DURATION: 5
+          PERF_CONN: 5
+        run: |
+          npm run perf:health:save
+
+      - name: Persist Auth Baseline (Optional Skip if no creds)
+        working-directory: backend
+        env:
+          PERF_EMAIL: test@example.com
+          PERF_PASSWORD: Password123!
+          PERF_DURATION: 5
+          PERF_CONN: 5
+        run: |
+          set +e
+          npm run perf:auth:save || echo "auth baseline skipped"
+          set -e
+
+      - name: Compare Latest Baselines
+        working-directory: backend
+        run: npm run perf:compare
+
+      - name: Validate Support Bundle
+        working-directory: backend
+        run: npm run ops:bundle:validate
+
+      - name: Upload Perf History
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-history
+          path: backend/perf-history
+          if-no-files-found: ignore
+
+      - name: Stop Server
+        if: always()
+        run: |
+          if [ -f backend/server.pid ]; then kill $(cat backend/server.pid) || true; fi

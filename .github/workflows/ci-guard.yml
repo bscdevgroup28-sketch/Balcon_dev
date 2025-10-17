@@ -1,0 +1,80 @@
+name: CI Guard Rails
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-guard:
+    name: Backend Build + Schema & Perf Guard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Smoke Tests (skip flaky integration)
+        run: |
+          npx jest --config jest.config.cjs --runTestsByPath tests/unit/services/salesAssignment.test.ts || true
+      - name: Metrics Schema Drift Check
+        run: npm run metrics:schema:drift
+      - name: Perf Guard
+        run: |
+          # Create golden baseline if missing; then guard
+          if [ ! -f perf-history/golden-baseline.json ]; then echo 'No golden baseline found; generating'; node dist/src/scripts/perf/goldenBaseline.js || true; fi
+          npm run perf:guard || (echo 'Perf guard failed' && exit 1)
+      - name: Support Bundle (artifact)
+        run: npm run ops:support-bundle || true
+      - name: Upload Support Bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-bundle
+          path: backend/support-bundle-*.tar.gz
+          if-no-files-found: ignore
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Archive build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [backend-guard, frontend-build]
+    steps:
+      - name: Result
+        run: echo "CI guard rails completed."

@@ -10,7 +10,7 @@ const securityAudit_1 = require("../utils/securityAudit");
 // removed unused bcrypt import
 const router = (0, express_1.Router)();
 // GET /api/users - Get all users (admin only)
-router.get('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requireRole)(['owner']), async (req, res) => {
+router.get('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)('user.list'), async (req, res) => {
     try {
         const users = await UserEnhanced_1.User.findAll({
             attributes: { exclude: ['passwordHash'] }, // Exclude password from response
@@ -58,7 +58,7 @@ router.get('/:id', authEnhanced_1.authenticateToken, (0, validation_1.validate)(
     }
 });
 // POST /api/users - Create new user (admin only)
-router.post('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requireRole)(['owner']), (0, validation_1.validate)({ body: validation_2.createUserSchema }), async (req, res) => {
+router.post('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)('user.create'), (0, validation_1.validate)({ body: validation_2.createUserSchema }), async (req, res) => {
     try {
         const userData = req.validatedBody;
         // Check if user already exists
@@ -150,7 +150,7 @@ router.put('/:id', authEnhanced_1.authenticateToken, (0, validation_1.validate)(
     }
 });
 // DELETE /api/users/:id - Delete user (admin only)
-router.delete('/:id', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requireRole)(['owner']), (0, validation_1.validate)({ params: validation_2.idParamSchema }), async (req, res) => {
+router.delete('/:id', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)('user.delete'), (0, validation_1.validate)({ params: validation_2.idParamSchema }), async (req, res) => {
     try {
         const { id } = req.validatedParams;
         const user = await UserEnhanced_1.User.findByPk(id);

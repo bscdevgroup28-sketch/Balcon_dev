@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const authEnhanced_1 = require("../middleware/authEnhanced");
 const fileUpload_1 = require("../middleware/fileUpload");
 const models_1 = require("../models");
 const logger_1 = require("../utils/logger");
@@ -23,7 +24,7 @@ const uploadLimits = {
  * Upload files for a project
  * POST /api/uploads/project/:projectId
  */
-router.post('/project/:projectId', fileUpload_1.upload.array('files', uploadLimits.maxFiles), async (req, res) => {
+router.post('/project/:projectId', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)('file.upload'), fileUpload_1.upload.array('files', uploadLimits.maxFiles), async (req, res) => {
     try {
         const projectId = parseInt(req.params.projectId, 10);
         const uploadedFiles = req.files;
@@ -89,7 +90,7 @@ router.post('/project/:projectId', fileUpload_1.upload.array('files', uploadLimi
  * Get files for a project
  * GET /api/uploads/project/:projectId
  */
-router.get('/project/:projectId', async (req, res) => {
+router.get('/project/:projectId', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)('file.list'), async (req, res) => {
     try {
         const projectId = parseInt(req.params.projectId, 10);
         if (isNaN(projectId)) {
@@ -132,7 +133,7 @@ router.get('/project/:projectId', async (req, res) => {
  * Delete a project file
  * DELETE /api/uploads/:fileId
  */
-router.delete('/:fileId', async (req, res) => {
+router.delete('/:fileId', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)('file.delete'), async (req, res) => {
     try {
         const fileId = parseInt(req.params.fileId, 10);
         if (isNaN(fileId)) {

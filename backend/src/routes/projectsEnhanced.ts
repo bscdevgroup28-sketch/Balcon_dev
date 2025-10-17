@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import { logger } from '../utils/logger';
-import { requireRole, requirePermission } from '../middleware/authEnhanced';
+import { requirePolicy } from '../middleware/authEnhanced';
 import ProjectEnhanced from '../models/ProjectEnhanced';
 import UserEnhanced from '../models/UserEnhanced';
 import ProjectActivity from '../models/ProjectActivity';
@@ -154,7 +154,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // Create new project (requires project management permissions)
-router.post('/', requirePermission('manage_projects'), async (req: Request, res: Response) => {
+router.post('/', requirePolicy('project.create'), async (req: Request, res: Response) => {
   try {
     const projectData = req.body;
     
@@ -223,7 +223,7 @@ router.post('/', requirePermission('manage_projects'), async (req: Request, res:
 });
 
 // Update project
-router.put('/:id', requirePermission('manage_projects'), async (req: Request, res: Response) => {
+router.put('/:id', requirePolicy('project.update'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -391,7 +391,7 @@ router.post('/:id/activities', async (req: Request, res: Response) => {
 });
 
 // Delete project (admin only)
-router.delete('/:id', requireRole(['owner']), async (req: Request, res: Response) => {
+router.delete('/:id', requirePolicy('project.delete'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 

@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { SOCKET_BASE_URL } from '../config/api';
 
 // Notification data interface
 export interface NotificationData {
@@ -59,8 +60,8 @@ class WebSocketService {
 
       try {
         // Connect to Socket.IO server
-        const serverUrl = process.env.REACT_APP_API_URL || 'http://localhost:8082';
-        this.socket = io(serverUrl, {
+  const serverUrl = SOCKET_BASE_URL;
+  this.socket = io(serverUrl, {
           auth: {
             token: token
           },

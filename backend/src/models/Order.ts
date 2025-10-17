@@ -1,6 +1,6 @@
 import { DataTypes, Model, Optional, Association } from 'sequelize';
 import { sequelize } from '../config/database';
-import { User } from './User';
+import { User } from './UserEnhanced';
 import { Project } from './Project';
 import { Quote } from './Quote';
 
@@ -122,7 +122,7 @@ Order.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'users',
+        model: 'enhanced_users', // TODO: future alignment to 'users'
         key: 'id',
       },
     },

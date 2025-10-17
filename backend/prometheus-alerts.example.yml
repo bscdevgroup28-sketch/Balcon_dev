@@ -1,0 +1,84 @@
+# Example Prometheus alert rules for Bal-Con Builders backend
+# Adjust metric names if your Prometheus exposition normalizes '.' to '_'.
+# Copy into your infra repository (e.g., Helm chart values or Terraform) and customize thresholds post-baseline.
+
+groups:
+  - name: balcon-core
+    interval: 30s
+    rules:
+      - alert: High5xxErrorRate
+        expr: rate(http_errors_5xx[5m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          service: balcon-backend
+        annotations:
+          summary: High 5xx error volume
+          description: More than 5 server errors per minute sustained over 5m.
+          runbook: https://internal/runbooks/balcon#5xx
+
+      - alert: SlowQuerySurge
+        expr: increase(db_slow_query_total[10m]) > 10
+        for: 10m
+        labels:
+          severity: high
+          service: balcon-backend
+        annotations:
+          summary: Slow DB queries increasing
+          description: Detected >10 slow queries in last 10m.
+          runbook: https://internal/runbooks/balcon#db-slow
+
+      - alert: AuthFailureSpike
+        expr: (increase(auth_failures[5m]) > 50) and (increase(auth_failures[5m]) / (increase(auth_success[5m]) + 1) > 0.3)
+        for: 5m
+        labels:
+          severity: high
+          service: balcon-backend
+        annotations:
+          summary: Authentication failures spiking
+          description: High auth failure volume with elevated failure ratio.
+          runbook: https://internal/runbooks/balcon#auth-failures
+
+      - alert: TokenCleanupStalled
+        expr: (time() * 1000 - tokens_cleanup_last_run_epoch_ms) > 3600000
+        for: 15m
+        labels:
+          severity: medium
+          service: balcon-backend
+        annotations:
+          summary: Token cleanup stalled
+          description: No token cleanup execution detected in > 1h.
+          runbook: https://internal/runbooks/balcon#token-cleanup
+
+      - alert: WebhookFailureRateHigh
+        expr: avg_over_time(webhooks_failure_rate[5m]) > 0.2
+        for: 10m
+        labels:
+          severity: medium
+          service: balcon-backend
+        annotations:
+          summary: Webhook delivery failure rate high
+          description: Failure rate exceeds 20% over 5m window.
+          runbook: https://internal/runbooks/balcon#webhooks
+
+      - alert: RateLimitAbuse
+        expr: (rate(http_errors_429[5m]) / rate(http_requests_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: medium
+          service: balcon-backend
+        annotations:
+          summary: Elevated 429 responses
+          description: ">5% of requests are being rate limited."
+          runbook: https://internal/runbooks/balcon#rate-limits
+
+      - alert: EventLoopDelayHigh
+        expr: event_loop_delay_p95_ms > 100
+        for: 5m
+        labels:
+          severity: medium
+          service: balcon-backend
+        annotations:
+          summary: Elevated event loop delay p95
+          description: p95 event loop delay > 100ms indicates CPU/blocking pressure.
+          runbook: https://internal/runbooks/balcon#performance

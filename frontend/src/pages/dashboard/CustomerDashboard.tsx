@@ -33,6 +33,9 @@ import {
 } from '../../components/dashboard/BusinessDashboardComponents';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
+import ProjectTimeline, { TimelinePhase } from '../../components/projects/ProjectTimeline';
+import ProgressPhotosGallery, { ProgressPhoto } from '../../components/projects/ProgressPhotosGallery';
+import BudgetBreakdownCard, { BudgetCategory } from '../../components/dashboard/BudgetBreakdownCard';
 
 const CustomerDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -265,6 +268,129 @@ const CustomerDashboard: React.FC = () => {
               ))}
             </Grid>
           </Paper>
+
+          {/* Enhanced Project Details for Primary Project */}
+          {activeProjects.length > 0 && (
+            <>
+              {/* Project Timeline */}
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+                  {activeProjects[0].title} - Construction Timeline
+                </Typography>
+                <ProjectTimeline
+                  phases={[
+                    {
+                      id: '1',
+                      label: 'Design & Planning',
+                      description: 'Blueprint finalization and permit acquisition',
+                      status: 'completed',
+                      startDate: 'Jan 5, 2025',
+                      endDate: 'Jan 20, 2025',
+                      details: ['Blueprints approved', 'Permits obtained', 'Site prepared'],
+                    },
+                    {
+                      id: '2',
+                      label: 'Foundation & Framing',
+                      description: 'Concrete foundation and steel frame installation',
+                      status: 'in-progress',
+                      progress: 75,
+                      startDate: 'Jan 22, 2025',
+                      endDate: 'Feb 28, 2025',
+                      details: ['Foundation complete', 'Steel frame 75% erected', 'On schedule'],
+                    },
+                    {
+                      id: '3',
+                      label: 'Roofing & Walls',
+                      description: 'Metal roofing and wall panel installation',
+                      status: 'upcoming',
+                      startDate: 'Mar 1, 2025',
+                      endDate: 'Mar 15, 2025',
+                    },
+                    {
+                      id: '4',
+                      label: 'Electrical & Finishing',
+                      description: 'Electrical systems and final touches',
+                      status: 'upcoming',
+                      startDate: 'Mar 16, 2025',
+                      endDate: 'Mar 30, 2025',
+                    },
+                  ]}
+                  orientation="vertical"
+                />
+              </Paper>
+
+              {/* Progress Photos */}
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <ProgressPhotosGallery
+                  photos={[
+                    {
+                      id: '1',
+                      url: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800',
+                      thumbnail: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=400',
+                      title: 'Site Preparation Complete',
+                      description: 'Ground leveled and ready for foundation',
+                      timestamp: 'Jan 18, 2025',
+                      phase: 'Foundation',
+                      weather: 'sunny',
+                      tags: ['site-prep', 'foundation'],
+                    },
+                    {
+                      id: '2',
+                      url: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=800',
+                      thumbnail: 'https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400',
+                      title: 'Foundation Pour',
+                      description: 'Concrete foundation successfully poured',
+                      timestamp: 'Jan 25, 2025',
+                      phase: 'Foundation',
+                      weather: 'cloudy',
+                      tags: ['concrete', 'foundation'],
+                    },
+                    {
+                      id: '3',
+                      url: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800',
+                      thumbnail: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400',
+                      title: 'Steel Frame Rising',
+                      description: 'Main structural steel frame 50% complete',
+                      timestamp: 'Feb 10, 2025',
+                      phase: 'Framing',
+                      weather: 'sunny',
+                      tags: ['steel', 'framing', 'structure'],
+                    },
+                    {
+                      id: '4',
+                      url: 'https://images.unsplash.com/photo-1590856029826-c7a73142bbf1?w=800',
+                      thumbnail: 'https://images.unsplash.com/photo-1590856029826-c7a73142bbf1?w=400',
+                      title: 'Frame Nearly Complete',
+                      description: 'Steel framework 75% erected - ahead of schedule',
+                      timestamp: 'Feb 20, 2025',
+                      phase: 'Framing',
+                      weather: 'sunny',
+                      tags: ['steel', 'progress', 'milestone'],
+                    },
+                  ]}
+                  showBeforeAfter={true}
+                  columns={2}
+                />
+              </Paper>
+
+              {/* Budget Breakdown */}
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <BudgetBreakdownCard
+                  totalBudget={85000}
+                  spentAmount={63750}
+                  targetBudget={88000}
+                  categories={[
+                    { name: 'Materials', amount: 38250, percentage: 45 },
+                    { name: 'Labor', amount: 23800, percentage: 28 },
+                    { name: 'Equipment', amount: 12750, percentage: 15 },
+                    { name: 'Permits & Fees', amount: 4250, percentage: 5 },
+                    { name: 'Contingency', amount: 5950, percentage: 7 },
+                  ]}
+                  showVariance={true}
+                />
+              </Paper>
+            </>
+          )}
 
           {/* Notifications */}
           <Paper sx={{ p: 3 }}>

@@ -1,0 +1,85 @@
+name: Backend Performance Regression
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *' # daily 03:00 UTC run
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/src/**'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/perf-regression.yml'
+
+env:
+  NODE_VERSION: 18
+  PERF_CONN: 5
+  PERF_DURATION: 10
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Build backend
+        run: |
+          cd backend
+          npm run build
+
+      - name: Start app (background)
+        run: |
+          cd backend
+          node dist/src/indexEnhanced.js &
+          echo $! > server.pid
+          # wait for health endpoint
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8082/api/health > /dev/null; then echo "API up"; break; fi; sleep 2; done
+      - name: Obtain auth token
+        id: auth
+        run: |
+          # Attempt login with default seeded credentials
+          TOKEN=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"email":"admin@example.com","password":"Password123!"}' http://localhost:8082/api/auth/login | jq -r '.accessToken')
+          if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then echo "Failed to obtain access token"; exit 1; fi
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+      - name: Run auth baseline & persist
+        run: |
+          cd backend
+          npm run perf:auth:save
+      - name: Run projects baseline & persist
+        env:
+          PERF_ACCESS_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          cd backend
+          npm run perf:projects:save
+      - name: Regression guard
+        run: |
+          cd backend
+          # Generate golden baseline (non-fatal if not enough history)
+          node dist/src/scripts/perf/goldenBaseline.js || true
+          USE_GOLDEN=1 npm run perf:guard
+      - name: Upload perf history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-history
+          path: backend/perf-history/*.json
+      - name: Stop app
+        if: always()
+        run: |
+          if [ -f backend/server.pid ]; then kill $(cat backend/server.pid) || true; fi

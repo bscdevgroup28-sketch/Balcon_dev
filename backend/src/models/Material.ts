@@ -20,8 +20,8 @@ export interface MaterialAttributes {
   location?: string; // warehouse location
   status: 'active' | 'inactive' | 'discontinued';
   notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface MaterialCreationAttributes extends Optional<MaterialAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
@@ -199,20 +199,14 @@ Material.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
+    // createdAt / updatedAt provided automatically
   },
   {
     sequelize,
     modelName: 'Material',
     tableName: 'materials',
     timestamps: true,
+    underscored: true,
     indexes: [
       {
         fields: ['name'],
@@ -223,15 +217,9 @@ Material.init(
       {
         fields: ['status'],
       },
-      {
-        fields: ['currentStock'],
-      },
-      {
-        fields: ['supplierName'],
-      },
-      {
-        fields: ['createdAt'],
-      },
+      { fields: ['current_stock'] },
+      { fields: ['supplier_name'] },
+      { fields: ['created_at'] },
     ],
     hooks: {
       beforeValidate: (material: Material) => {

@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 // removed unused Op import
 import { logger } from '../utils/logger';
-import { requirePermission } from '../middleware/authEnhanced';
+import { requirePolicy } from '../middleware/authEnhanced';
 
 const router = express.Router();
 
@@ -121,7 +121,7 @@ router.patch('/read-all', async (req: Request, res: Response) => {
 });
 
 // Create notification (admin only)
-router.post('/', requirePermission('manage_users'), async (req: Request, res: Response) => {
+router.post('/', requirePolicy('notification.create'), async (req: Request, res: Response) => {
   try {
     const { userId, type, title, message, metadata } = req.body;
 
@@ -156,7 +156,7 @@ router.post('/', requirePermission('manage_users'), async (req: Request, res: Re
 });
 
 // Create broadcast notification (admin only)
-router.post('/broadcast', requirePermission('manage_users'), async (req: Request, res: Response) => {
+router.post('/broadcast', requirePolicy('notification.broadcast'), async (req: Request, res: Response) => {
   try {
     const { type, title, message, metadata, userIds } = req.body;
 

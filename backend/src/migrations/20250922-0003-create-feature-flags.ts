@@ -1,6 +1,7 @@
 import { QueryInterface, DataTypes } from 'sequelize';
 
-export async function up({ context }: { context: QueryInterface }) {
+export async function up(arg: { context: QueryInterface } | QueryInterface) {
+  const context: QueryInterface = (arg as any).context || (arg as any);
   const table = 'feature_flags';
   const tables = await context.showAllTables();
   if (Array.isArray(tables) && tables.includes(table)) return;
@@ -21,7 +22,8 @@ export async function up({ context }: { context: QueryInterface }) {
   await context.addIndex(table, ['enabled'], { name: 'feature_flags_enabled_idx' });
 }
 
-export async function down({ context }: { context: QueryInterface }) {
+export async function down(arg: { context: QueryInterface } | QueryInterface) {
+  const context: QueryInterface = (arg as any).context || (arg as any);
   const table = 'feature_flags';
   const tables = await context.showAllTables();
   if (Array.isArray(tables) && tables.includes(table)) {

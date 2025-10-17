@@ -31,8 +31,13 @@ const createSeedData = async () => {
             phone: '555-0100',
             role: 'admin',
             isActive: true,
-            isSalesRep: false,
-            salesCapacity: 0
+            isVerified: true,
+            passwordHash: 'temp',
+            permissions: [],
+            canAccessFinancials: true,
+            canManageProjects: true,
+            canManageUsers: true,
+            mustChangePassword: false
         });
         // Create sales representatives
         const salesRep1 = await models_1.User.create({
@@ -42,8 +47,13 @@ const createSeedData = async () => {
             phone: '555-0101',
             role: 'sales',
             isActive: true,
-            isSalesRep: true,
-            salesCapacity: 15
+            isVerified: true,
+            passwordHash: 'temp',
+            permissions: [],
+            canAccessFinancials: false,
+            canManageProjects: true,
+            canManageUsers: false,
+            mustChangePassword: false
         });
         const salesRep2 = await models_1.User.create({
             firstName: 'Sarah',
@@ -52,8 +62,13 @@ const createSeedData = async () => {
             phone: '555-0102',
             role: 'sales',
             isActive: true,
-            isSalesRep: true,
-            salesCapacity: 12
+            isVerified: true,
+            passwordHash: 'temp',
+            permissions: [],
+            canAccessFinancials: false,
+            canManageProjects: true,
+            canManageUsers: false,
+            mustChangePassword: false
         });
         // Create test customer
         const customer = await models_1.User.create({
@@ -61,11 +76,15 @@ const createSeedData = async () => {
             lastName: 'Customer',
             email: 'customer@example.com',
             phone: '555-0200',
-            company: 'ABC Construction',
             role: 'user',
             isActive: true,
-            isSalesRep: false,
-            salesCapacity: 0
+            isVerified: true,
+            passwordHash: 'temp',
+            permissions: [],
+            canAccessFinancials: false,
+            canManageProjects: false,
+            canManageUsers: false,
+            mustChangePassword: false
         });
         // Create a sample project
         const sampleProject = await models_1.Project.create({

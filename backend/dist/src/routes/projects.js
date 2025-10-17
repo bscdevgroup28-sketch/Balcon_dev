@@ -8,6 +8,9 @@ const validation_2 = require("../utils/validation");
 const logger_1 = require("../utils/logger");
 const salesAssignment_1 = require("../services/salesAssignment");
 const emailNotification_1 = require("../services/emailNotification");
+const eventBus_1 = require("../events/eventBus");
+const authEnhanced_1 = require("../middleware/authEnhanced");
+const actions_1 = require("../security/actions");
 const router = (0, express_1.Router)();
 // GET /api/projects - Get all projects with filtering and pagination
 router.get('/', (0, validation_1.validate)({ query: validation_2.projectQuerySchema }), async (req, res) => {
@@ -38,7 +41,7 @@ router.get('/', (0, validation_1.validate)({ query: validation_2.projectQuerySch
                 {
                     model: models_1.User,
                     as: 'user',
-                    attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                    attributes: ['id', 'firstName', 'lastName', 'email'],
                 },
                 {
                     model: models_1.User,
@@ -81,7 +84,7 @@ router.get('/:id', (0, validation_1.validate)({ params: validation_2.idParamSche
                 {
                     model: models_1.User,
                     as: 'user',
-                    attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                    attributes: ['id', 'firstName', 'lastName', 'email'],
                 },
                 {
                     model: models_1.User,
@@ -108,7 +111,7 @@ router.get('/:id', (0, validation_1.validate)({ params: validation_2.idParamSche
     }
 });
 // POST /api/projects - Create a new project
-router.post('/', (0, validation_1.validate)({ body: validation_2.createProjectSchema }), async (req, res) => {
+router.post('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)(actions_1.Actions.PROJECT_CREATE), (0, validation_1.validate)({ body: validation_2.createProjectSchema }), async (req, res) => {
     try {
         const projectData = req.validatedBody;
         // For now, we'll use a default user ID of 1
@@ -149,7 +152,7 @@ router.post('/', (0, validation_1.validate)({ body: validation_2.createProjectSc
             {
                 model: models_1.User,
                 as: 'user',
-                attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                attributes: ['id', 'firstName', 'lastName', 'email'],
             },
             {
                 model: models_1.User,
@@ -183,6 +186,7 @@ router.post('/', (0, validation_1.validate)({ body: validation_2.createProjectSc
             inquiryNumber,
             assignedSalesRep: assignedSalesRep?.id
         });
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('project.created', { id: project.id, inquiryNumber, userId }));
         res.status(201).json({
             data: responsePayload,
             message: 'Project created successfully',
@@ -215,13 +219,15 @@ router.put('/:id', (0, validation_1.validate)({ params: validation_2.idParamSche
             targetCompletionDate: updateData.targetCompletionDate ? new Date(updateData.targetCompletionDate) : undefined,
             actualCompletionDate: updateData.actualCompletionDate ? new Date(updateData.actualCompletionDate) : undefined,
         };
+        const statusBefore = project.get('status');
         await project.update(processedUpdateData);
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('project.updated', { id: project.id, statusBefore, statusAfter: project.get('status') }));
         const updatedProject = await models_1.Project.findByPk(id, {
             include: [
                 {
                     model: models_1.User,
                     as: 'user',
-                    attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                    attributes: ['id', 'firstName', 'lastName', 'email'],
                 },
             ],
         });
@@ -251,6 +257,7 @@ router.delete('/:id', (0, validation_1.validate)({ params: validation_2.idParamS
             });
         }
         await project.destroy();
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('project.deleted', { id: project.id }));
         logger_1.logger.info('Project deleted', { projectId: id });
         res.json({
             message: 'Project deleted successfully',

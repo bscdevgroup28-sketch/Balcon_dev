@@ -7,6 +7,7 @@ exports.balConApp = exports.BalConBuildersApp = void 0;
 const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const cors_1 = __importDefault(require("cors"));
+// DEPRECATED: This simplified variant retained for reference. Use appEnhanced.ts only for runtime.
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
 // Removed morgan in favor of custom requestLoggingMiddleware

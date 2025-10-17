@@ -4,11 +4,12 @@
   "description": "Bal-Con Builders Backend API",
   "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/indexEnhanced.js",
-    "start:prod": "node dist/indexEnhanced.js",
+    "start": "node dist/src/indexEnhanced.js",
+    "start:prod": "node dist/src/indexEnhanced.js",
     "dev": "ts-node-dev --respawn --transpile-only src/indexEnhanced.ts",
     "build": "tsc",
     "test": "jest --config jest.config.cjs",
+  "pretest": "npm run migrations:verify",
     "test:unit": "jest --config jest.config.cjs --runTestsByPath tests/unit/services/salesAssignment.test.ts",
     "test:integration": "jest --config jest.config.cjs --runTestsByPath tests/integration/sprint4.test.ts",
     "test:watch": "jest --config jest.config.cjs --watch",
@@ -28,34 +29,87 @@
     "migrate": "ts-node src/scripts/migrate.ts up",
     "migrate:down": "ts-node src/scripts/migrate.ts down",
     "migrate:pending": "ts-node src/scripts/migrate.ts pending",
-    "migrate:status": "ts-node src/scripts/migrate.ts status"
+    "migrate:status": "ts-node src/scripts/migrate.ts status",
+    "openapi:generate": "ts-node src/scripts/generateOpenApi.ts",
+    "kpi:daily": "ts-node src/scripts/jobs/aggregateDailyKpis.ts",
+    "kpi:daily:local": "set DATABASE_URL=sqlite://enhanced_database.sqlite&& ts-node src/scripts/jobs/runKpiLocal.ts",
+    "kpi:daily:isolated": "set DATABASE_URL=sqlite:./kpi_isolated.sqlite&& set KPI_ISOLATED_DB=true&& ts-node src/scripts/jobs/runKpiLocal.ts",
+    "kpi:daily:migrated": "set DATABASE_URL=sqlite:./kpi_migrated.sqlite&& ts-node src/scripts/jobs/migrateAndAggregateKpi.ts",
+    "kpi:daily:migrated:cross": "node runKpiMigrated.js",
+    "kpi:daily:isolated:lite": "ts-node src/scripts/jobs/kpiIsolatedRun.ts",
+    "kpi:daily:migrated:isolated": "ts-node src/scripts/jobs/kpiMigratedIsolated.ts kpi_fresh.sqlite",
+    "kpi:backfill": "ts-node src/scripts/jobs/kpiBackfill.ts",
+    "health:migrations": "ts-node -e \"import('./src/scripts/migrate').then(m=>m.migrationStatus()).catch(e=>{console.error(e);process.exit(1)})\"",
+    "kpi:scheduler": "ts-node src/scripts/jobs/kpiScheduler.ts",
+    "runtime:validate": "ts-node src/scripts/runtimeValidate.ts",
+    "deploy:verify": "ts-node src/scripts/verifyDeployment.ts",
+    "migrations:manifest": "ts-node src/scripts/generateMigrationManifest.ts",
+    "migrations:verify": "ts-node src/scripts/generateMigrationManifest.ts --verify",
+    "perf:smoke": "node dist/src/scripts/perf/authBaseline.js",
+    "perf:auth": "node dist/src/scripts/perf/authBaseline.js",
+    "perf:projects": "node dist/src/scripts/perf/projectsBaseline.js"
+    ,"perf:auth:save": "node dist/src/scripts/perf/authBaseline.js > auth_tmp.json && node dist/src/scripts/perf/persistBaseline.js auth_tmp.json && del auth_tmp.json"
+    ,"perf:projects:save": "node dist/src/scripts/perf/projectsBaseline.js > projects_tmp.json && node dist/src/scripts/perf/persistBaseline.js projects_tmp.json && del projects_tmp.json"
+  ,"perf:compare": "node dist/src/scripts/perf/compareLatest.js"
+    ,"perf:health:save": "node dist/src/scripts/perf/healthBaseline.js > health_tmp.json && node dist/src/scripts/perf/persistBaseline.js health_tmp.json && del health_tmp.json"
+    ,"perf:guard": "node dist/src/scripts/perf/regressionGuard.js"
+    ,"ops:support-bundle": "ts-node src/scripts/supportBundle.ts"
+    ,"ops:bundle:validate": "ts-node src/scripts/validateSupportBundle.ts"
+    ,"metrics:schema": "ts-node src/scripts/metrics/exportSchema.ts"
+    ,"metrics:schema:drift": "ts-node src/scripts/metrics/schemaDriftCheck.ts"
+    ,"analytics:forecast": "ts-node -e \"import('./src/routes/analytics').then(()=>console.log('Invoke via HTTP /api/analytics/forecast'))\""
+    ,"synthetic:probe": "node dist/src/scripts/syntheticProbe.js"
+    ,"analytics:residuals": "node dist/src/scripts/computeForecastResiduals.js"
+    ,"analytics:residuals:update": "node dist/src/scripts/updateResidualGauges.js"
+    ,"analytics:residuals:anom": "node dist/src/scripts/computeResidualAnomalies.js"
+    ,"analytics:residuals:anom:update": "node dist/src/scripts/updateResidualAnomGauges.js"
+    ,"capacity:derive": "node dist/src/scripts/capacityFromStepLoad.js"
+    ,"capacity:update": "node dist/src/scripts/updateCapacityGauges.js"
+    ,"analytics:residuals:history": "node dist/src/scripts/recordResidualHistory.js"
+    ,"analytics:residuals:adaptive": "node dist/src/scripts/adaptiveResidualThresholds.js"
+    ,"analytics:residuals:adaptive:update": "node dist/src/scripts/updateAdaptiveResidualThresholds.js"
+    ,"scaling:advice": "node dist/src/scripts/computeScalingAdvice.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.896.0",
+    "@aws-sdk/s3-request-presigner": "^3.896.0",
+    "@types/zxcvbn": "^4.4.5",
+    "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
+    "date-fns": "^3.6.0",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "express-rate-limit": "^6.10.0",
     "express-validator": "^7.0.1",
     "helmet": "^7.0.0",
     "joi": "^17.9.2",
+    "json2csv": "^5.0.7",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.7.0",
     "nodemailer": "^6.9.4",
     "pg": "^8.11.3",
+    "prom-client": "^15.1.3",
     "redis": "^4.6.7",
     "sequelize": "^6.32.1",
     "socket.io": "^4.7.2",
     "sqlite3": "^5.1.7",
     "twilio": "^4.14.0",
+    "umzug": "^3.8.2",
     "uuid": "^9.0.0",
     "winston": "^3.10.0",
-    "zod": "^3.21.4"
+    "zod": "^3.21.4",
+    "zxcvbn": "^4.4.2"
   },
   "devDependencies": {
+    "@asteasolutions/zod-to-openapi": "^5.0.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/archiver": "^6.0.3",
     "@types/bcryptjs": "^2.4.2",
     "@types/compression": "^1.7.2",
     "@types/cors": "^2.8.13",
@@ -67,10 +121,10 @@
     "@types/node": "^20.19.10",
     "@types/nodemailer": "^6.4.9",
     "@types/supertest": "^2.0.12",
-    "@types/umzug": "^2.3.9",
     "@types/uuid": "^9.0.2",
     "@typescript-eslint/eslint-plugin": "^6.2.0",
     "@typescript-eslint/parser": "^6.2.0",
+    "autocannon": "^7.15.0",
     "eslint": "^8.45.0",
     "jest": "^29.6.1",
     "sequelize-cli": "^6.6.1",

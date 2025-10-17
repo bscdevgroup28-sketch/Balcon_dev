@@ -1,1 +1,1 @@
-web: node dist/indexEnhanced.js
+web: node dist/src/indexEnhanced.js

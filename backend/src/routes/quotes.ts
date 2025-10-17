@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 // removed unused Op import
 import { z } from 'zod';
 import { Quote, User, Project } from '../models';
+import { eventBus, createEvent } from '../events/eventBus';
 import { validate, ValidatedRequest } from '../middleware/validation';
 import {
   createQuoteSchema,
@@ -14,17 +15,24 @@ import {
   IdParamInput,
 } from '../utils/validation';
 import { logger } from '../utils/logger';
+import { getNextSequence } from '../models/Sequence';
 
 const router = Router();
 
-// Generate quote number
-const generateQuoteNumber = (): string => {
-  const date = new Date();
-  const year = date.getFullYear().toString().slice(-2);
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `Q${year}${month}${random}`;
-};
+// Generate quote number (deterministic sequence). Fallback retains legacy pattern if sequence fails.
+async function generateQuoteNumber(): Promise<string> {
+  try {
+    const seq = await getNextSequence('quote_number');
+    return `QUO-${seq.toString().padStart(6,'0')}`;
+  } catch (e) {
+    logger.error('Quote sequence generation failed, using legacy pattern', e);
+    const date = new Date();
+    const year = date.getFullYear().toString().slice(-2);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `Q${year}${month}${random}`;
+  }
+}
 
 // Calculate quote totals
 const calculateQuoteTotals = (items: any[], taxRate: number = 0.0825) => {
@@ -68,7 +76,7 @@ router.get(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
           {
             model: Project,
@@ -117,7 +125,7 @@ router.get(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
           {
             model: Project,
@@ -165,12 +173,12 @@ router.post(
       // Calculate totals
       const { subtotal, taxAmount, totalAmount } = calculateQuoteTotals(items, taxRate);
 
-      // Generate quote number
-      const quoteNumber = generateQuoteNumber();
+  // Generate quote number (await sequence)
+  const quoteNumber = await generateQuoteNumber();
 
       const quote = await Quote.create({
         projectId,
-        userId: project.userId,
+        userId: project.userId ?? 0,
         quoteNumber,
         status: 'draft',
         subtotal,
@@ -187,7 +195,7 @@ router.post(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
           {
             model: Project,
@@ -198,6 +206,15 @@ router.post(
       });
 
       logger.info('Quote created', { quoteId: quote.id, projectId });
+
+      // Emit domain event
+      eventBus.emitEvent(
+        createEvent('quote.created', {
+          id: quote.id,
+          projectId,
+          totalAmount: quote.totalAmount,
+        })
+      );
 
       res.status(201).json({
         data: createdQuote,
@@ -251,14 +268,15 @@ router.put(
       // Remove taxRate from update data as it's not a database field
       delete processedUpdateData.taxRate;
 
-      await quote.update(processedUpdateData);
+  const statusBefore = quote.get('status');
+  await quote.update(processedUpdateData);
 
       const updatedQuote = await Quote.findByPk(id, {
         include: [
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
           {
             model: Project,
@@ -269,6 +287,17 @@ router.put(
       });
 
       logger.info('Quote updated', { quoteId: id });
+
+      // Emit domain event (after re-fetch for latest state)
+      const changes = Object.keys(updateData);
+      eventBus.emitEvent(
+        createEvent('quote.updated', {
+          id,
+            changes,
+            statusBefore,
+            statusAfter: updatedQuote?.get('status'),
+        })
+      );
 
       res.json({
         data: updatedQuote,
@@ -301,9 +330,12 @@ router.delete(
         });
       }
 
-      await quote.destroy();
+  await quote.destroy();
 
       logger.info('Quote deleted', { quoteId: id });
+
+  // Emit domain event
+  eventBus.emitEvent(createEvent('quote.deleted', { id }));
 
       res.json({
         message: 'Quote deleted successfully',
@@ -361,6 +393,11 @@ router.post(
         sentAt: new Date(),
       });
 
+      // Emit domain event
+      eventBus.emitEvent(
+        createEvent('quote.sent', { id: quote.id, projectId: quote.projectId })
+      );
+
       logger.info('Quote sent to customer', { quoteId: id });
 
       res.json({
@@ -407,9 +444,14 @@ router.post(
         viewedAt: new Date(),
       };
 
-      await quote.update(updateData);
+  await quote.update(updateData);
 
       logger.info('Quote viewed by customer', { quoteId: id });
+
+      // Emit domain event
+      eventBus.emitEvent(
+        createEvent('quote.viewed', { id: quote.id, projectId: quote.projectId })
+      );
 
       res.json({
         data: quote,
@@ -475,7 +517,7 @@ router.post(
                           `Customer Response (${response}): ${notes}`;
       }
 
-      await quote.update(updateData);
+  await quote.update(updateData);
 
       // If quote is accepted, update project status
       if (response === 'accepted' && quote.project) {
@@ -483,6 +525,14 @@ router.post(
       }
 
       logger.info('Quote response recorded', { quoteId: id, response });
+
+      // Emit domain events
+      eventBus.emitEvent(
+        createEvent('quote.responded', { id: quote.id, response })
+      );
+      eventBus.emitEvent(
+        createEvent(`quote.${response}`, { id: quote.id, projectId: quote.projectId })
+      );
 
       res.json({
         data: quote,
@@ -511,7 +561,7 @@ router.get(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
           {
             model: Project,
@@ -538,10 +588,14 @@ router.get(
 
       // Auto-mark as viewed if not already viewed
       if (quote.status === 'sent') {
+        const statusBefore = quote.get('status');
         await quote.update({
           status: 'viewed',
           viewedAt: new Date(),
         });
+        eventBus.emitEvent(
+          createEvent('quote.viewed', { id: quote.id, projectId: quote.projectId, source: 'public', previousStatus: statusBefore })
+        );
       }
 
       res.json({

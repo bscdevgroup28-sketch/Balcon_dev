@@ -4,18 +4,27 @@ const express_1 = require("express");
 // removed unused Op import
 const zod_1 = require("zod");
 const models_1 = require("../models");
+const eventBus_1 = require("../events/eventBus");
 const validation_1 = require("../middleware/validation");
 const validation_2 = require("../utils/validation");
 const logger_1 = require("../utils/logger");
+const Sequence_1 = require("../models/Sequence");
 const router = (0, express_1.Router)();
-// Generate quote number
-const generateQuoteNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear().toString().slice(-2);
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    return `Q${year}${month}${random}`;
-};
+// Generate quote number (deterministic sequence). Fallback retains legacy pattern if sequence fails.
+async function generateQuoteNumber() {
+    try {
+        const seq = await (0, Sequence_1.getNextSequence)('quote_number');
+        return `QUO-${seq.toString().padStart(6, '0')}`;
+    }
+    catch (e) {
+        logger_1.logger.error('Quote sequence generation failed, using legacy pattern', e);
+        const date = new Date();
+        const year = date.getFullYear().toString().slice(-2);
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        return `Q${year}${month}${random}`;
+    }
+}
 // Calculate quote totals
 const calculateQuoteTotals = (items, taxRate = 0.0825) => {
     const subtotal = items.reduce((total, item) => {
@@ -44,7 +53,7 @@ router.get('/', (0, validation_1.validate)({ query: validation_2.quoteQuerySchem
                 {
                     model: models_1.User,
                     as: 'user',
-                    attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                    attributes: ['id', 'firstName', 'lastName', 'email'],
                 },
                 {
                     model: models_1.Project,
@@ -86,7 +95,7 @@ router.get('/:id', (0, validation_1.validate)({ params: validation_2.idParamSche
                 {
                     model: models_1.User,
                     as: 'user',
-                    attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                    attributes: ['id', 'firstName', 'lastName', 'email'],
                 },
                 {
                     model: models_1.Project,
@@ -125,11 +134,11 @@ router.post('/', (0, validation_1.validate)({ body: validation_2.createQuoteSche
         }
         // Calculate totals
         const { subtotal, taxAmount, totalAmount } = calculateQuoteTotals(items, taxRate);
-        // Generate quote number
-        const quoteNumber = generateQuoteNumber();
+        // Generate quote number (await sequence)
+        const quoteNumber = await generateQuoteNumber();
         const quote = await models_1.Quote.create({
             projectId,
-            userId: project.userId,
+            userId: project.userId ?? 0,
             quoteNumber,
             status: 'draft',
             subtotal,
@@ -145,7 +154,7 @@ router.post('/', (0, validation_1.validate)({ body: validation_2.createQuoteSche
                 {
                     model: models_1.User,
                     as: 'user',
-                    attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                    attributes: ['id', 'firstName', 'lastName', 'email'],
                 },
                 {
                     model: models_1.Project,
@@ -155,6 +164,12 @@ router.post('/', (0, validation_1.validate)({ body: validation_2.createQuoteSche
             ],
         });
         logger_1.logger.info('Quote created', { quoteId: quote.id, projectId });
+        // Emit domain event
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('quote.created', {
+            id: quote.id,
+            projectId,
+            totalAmount: quote.totalAmount,
+        }));
         res.status(201).json({
             data: createdQuote,
             message: 'Quote created successfully',
@@ -196,13 +211,14 @@ router.put('/:id', (0, validation_1.validate)({ params: validation_2.idParamSche
         }
         // Remove taxRate from update data as it's not a database field
         delete processedUpdateData.taxRate;
+        const statusBefore = quote.get('status');
         await quote.update(processedUpdateData);
         const updatedQuote = await models_1.Quote.findByPk(id, {
             include: [
                 {
                     model: models_1.User,
                     as: 'user',
-                    attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                    attributes: ['id', 'firstName', 'lastName', 'email'],
                 },
                 {
                     model: models_1.Project,
@@ -212,6 +228,14 @@ router.put('/:id', (0, validation_1.validate)({ params: validation_2.idParamSche
             ],
         });
         logger_1.logger.info('Quote updated', { quoteId: id });
+        // Emit domain event (after re-fetch for latest state)
+        const changes = Object.keys(updateData);
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('quote.updated', {
+            id,
+            changes,
+            statusBefore,
+            statusAfter: updatedQuote?.get('status'),
+        }));
         res.json({
             data: updatedQuote,
             message: 'Quote updated successfully',
@@ -238,6 +262,8 @@ router.delete('/:id', (0, validation_1.validate)({ params: validation_2.idParamS
         }
         await quote.destroy();
         logger_1.logger.info('Quote deleted', { quoteId: id });
+        // Emit domain event
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('quote.deleted', { id }));
         res.json({
             message: 'Quote deleted successfully',
         });
@@ -285,6 +311,8 @@ router.post('/:id/send', (0, validation_1.validate)({ params: validation_2.idPar
             status: 'sent',
             sentAt: new Date(),
         });
+        // Emit domain event
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('quote.sent', { id: quote.id, projectId: quote.projectId }));
         logger_1.logger.info('Quote sent to customer', { quoteId: id });
         res.json({
             data: quote,
@@ -323,6 +351,8 @@ router.post('/:id/view', (0, validation_1.validate)({ params: validation_2.idPar
         };
         await quote.update(updateData);
         logger_1.logger.info('Quote viewed by customer', { quoteId: id });
+        // Emit domain event
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('quote.viewed', { id: quote.id, projectId: quote.projectId }));
         res.json({
             data: quote,
             message: 'Quote marked as viewed',
@@ -383,6 +413,9 @@ router.post('/:id/respond', (0, validation_1.validate)({
             await quote.project.update({ status: 'approved' });
         }
         logger_1.logger.info('Quote response recorded', { quoteId: id, response });
+        // Emit domain events
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('quote.responded', { id: quote.id, response }));
+        eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)(`quote.${response}`, { id: quote.id, projectId: quote.projectId }));
         res.json({
             data: quote,
             message: `Quote ${response} successfully`,
@@ -405,7 +438,7 @@ router.get('/:id/public', (0, validation_1.validate)({ params: validation_2.idPa
                 {
                     model: models_1.User,
                     as: 'user',
-                    attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+                    attributes: ['id', 'firstName', 'lastName', 'email'],
                 },
                 {
                     model: models_1.Project,
@@ -429,10 +462,12 @@ router.get('/:id/public', (0, validation_1.validate)({ params: validation_2.idPa
         }
         // Auto-mark as viewed if not already viewed
         if (quote.status === 'sent') {
+            const statusBefore = quote.get('status');
             await quote.update({
                 status: 'viewed',
                 viewedAt: new Date(),
             });
+            eventBus_1.eventBus.emitEvent((0, eventBus_1.createEvent)('quote.viewed', { id: quote.id, projectId: quote.projectId, source: 'public', previousStatus: statusBefore }));
         }
         res.json({
             data: {

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { authenticateToken, requirePolicy } from '../middleware/authEnhanced';
 import { upload, getFileType } from '../middleware/fileUpload';
 import { ProjectFile } from '../models';
 import { logger } from '../utils/logger';
@@ -24,7 +25,7 @@ const uploadLimits = {
  * Upload files for a project
  * POST /api/uploads/project/:projectId
  */
-router.post('/project/:projectId', upload.array('files', uploadLimits.maxFiles), async (req: Request, res: Response) => {
+router.post('/project/:projectId', authenticateToken, requirePolicy('file.upload'), upload.array('files', uploadLimits.maxFiles), async (req: Request, res: Response) => {
   try {
     const projectId = parseInt(req.params.projectId, 10);
     const uploadedFiles = req.files as Express.Multer.File[];
@@ -100,7 +101,7 @@ router.post('/project/:projectId', upload.array('files', uploadLimits.maxFiles),
  * Get files for a project
  * GET /api/uploads/project/:projectId
  */
-router.get('/project/:projectId', async (req: Request, res: Response) => {
+router.get('/project/:projectId', authenticateToken, requirePolicy('file.list'), async (req: Request, res: Response) => {
   try {
     const projectId = parseInt(req.params.projectId, 10);
     
@@ -147,7 +148,7 @@ router.get('/project/:projectId', async (req: Request, res: Response) => {
  * Delete a project file
  * DELETE /api/uploads/:fileId
  */
-router.delete('/:fileId', async (req: Request, res: Response) => {
+router.delete('/:fileId', authenticateToken, requirePolicy('file.delete'), async (req: Request, res: Response) => {
   try {
     const fileId = parseInt(req.params.fileId, 10);
     

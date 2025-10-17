@@ -142,7 +142,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 // Create new project (requires project management permissions)
-router.post('/', (0, authEnhanced_1.requirePermission)('manage_projects'), async (req, res) => {
+router.post('/', (0, authEnhanced_1.requirePolicy)('project.create'), async (req, res) => {
     try {
         const projectData = req.body;
         // Generate project number if not provided
@@ -204,7 +204,7 @@ router.post('/', (0, authEnhanced_1.requirePermission)('manage_projects'), async
     }
 });
 // Update project
-router.put('/:id', (0, authEnhanced_1.requirePermission)('manage_projects'), async (req, res) => {
+router.put('/:id', (0, authEnhanced_1.requirePolicy)('project.update'), async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
@@ -354,7 +354,7 @@ router.post('/:id/activities', async (req, res) => {
     }
 });
 // Delete project (admin only)
-router.delete('/:id', (0, authEnhanced_1.requireRole)(['owner']), async (req, res) => {
+router.delete('/:id', (0, authEnhanced_1.requirePolicy)('project.delete'), async (req, res) => {
     try {
         const { id } = req.params;
         const project = await ProjectEnhanced_1.default.findByPk(id);

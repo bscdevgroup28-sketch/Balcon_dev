@@ -151,19 +151,13 @@ Material.init({
         type: sequelize_1.DataTypes.TEXT,
         allowNull: true,
     },
-    createdAt: {
-        type: sequelize_1.DataTypes.DATE,
-        allowNull: false,
-    },
-    updatedAt: {
-        type: sequelize_1.DataTypes.DATE,
-        allowNull: false,
-    },
+    // createdAt / updatedAt provided automatically
 }, {
     sequelize: database_1.sequelize,
     modelName: 'Material',
     tableName: 'materials',
     timestamps: true,
+    underscored: true,
     indexes: [
         {
             fields: ['name'],
@@ -174,15 +168,9 @@ Material.init({
         {
             fields: ['status'],
         },
-        {
-            fields: ['currentStock'],
-        },
-        {
-            fields: ['supplierName'],
-        },
-        {
-            fields: ['createdAt'],
-        },
+        { fields: ['current_stock'] },
+        { fields: ['supplier_name'] },
+        { fields: ['created_at'] },
     ],
     hooks: {
         beforeValidate: (material) => {

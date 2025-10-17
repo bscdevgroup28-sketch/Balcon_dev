@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { getAllFlags, upsertFlag, isFeatureEnabled } from '../services/featureFlagService';
-import { authenticateToken, requirePermission } from '../middleware/authEnhanced';
+import { authenticateToken, requirePolicy } from '../middleware/authEnhanced';
 import { logSecurityEvent } from '../utils/securityAudit';
 
 // NOTE: In a production system, add authentication & role-based guard middleware here.
 
 const router = Router();
 
-router.get('/', authenticateToken, requirePermission('canManageProjects'), async (req, res) => {
+router.get('/', authenticateToken, requirePolicy('feature.flag.list'), async (req, res) => {
   const flags = await getAllFlags();
   res.json(flags.map(f => ({
     key: f.key,
@@ -28,7 +28,7 @@ router.get('/check/:key', async (req, res) => {
   res.json({ key, enabled });
 });
 
-router.post('/', authenticateToken, requirePermission('canManageProjects'), async (req, res) => {
+router.post('/', authenticateToken, requirePolicy('feature.flag.upsert'), async (req, res) => {
   try {
     const flag = await upsertFlag(req.body);
     logSecurityEvent(req, {

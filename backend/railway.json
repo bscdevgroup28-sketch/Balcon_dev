@@ -7,6 +7,6 @@
     "numReplicas": 1,
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
-    "startCommand": "node dist/indexEnhanced.js"
+  "startCommand": "node dist/src/indexEnhanced.js"
   }
 }

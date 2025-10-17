@@ -3,58 +3,44 @@ import { AuthService } from '../services/authService';
 import { authenticateToken, requirePermission } from '../middleware/authEnhanced';
 import { User } from '../models/UserEnhanced';
 import { logger } from '../utils/logger';
-import { body, validationResult } from 'express-validator';
+import { z } from 'zod';
+import { validate } from '../middleware/validation';
+import { evaluatePassword } from '../security/passwordPolicy';
 import { bruteForceProtector } from '../middleware/bruteForceProtector';
 import { logSecurityEvent } from '../utils/securityAudit';
+import { RefreshToken } from '../models/RefreshToken';
 
 const router = express.Router();
 
-// Validation middlewares
-const loginValidation = [
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-];
+// Zod schemas
+const loginSchema = z.object({
+  email: z.string().email('Valid email is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters')
+});
 
-const registerValidation = [
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('firstName').notEmpty().withMessage('First name is required'),
-  body('lastName').notEmpty().withMessage('Last name is required'),
-  body('role').isIn(['customer', 'technician', 'team_leader', 'project_manager', 'office_manager', 'shop_manager', 'owner'])
-    .withMessage('Valid role is required')
-];
+const registerSchema = z.object({
+  email: z.string().email('Valid email is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  role: z.enum(['customer', 'technician', 'team_leader', 'project_manager', 'office_manager', 'shop_manager', 'owner']),
+  // Additional optional fields pass-through
+}).strict();
 
-// Change password validation: currentPassword optional to support first-login forced change
-const changePasswordValidation = [
-  body('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
-  body('currentPassword').optional()
-];
-
-// Helper function to handle validation errors
-const handleValidationErrors = (req: Request, res: Response): boolean => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: errors.array()
-    });
-    return false;
-  }
-  return true;
-};
+const changePasswordSchema = z.object({
+  newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+  currentPassword: z.string().optional()
+});
 
 // POST /api/auth/login
-router.post('/login', bruteForceProtector, loginValidation, async (req: Request, res: Response) => {
+router.post('/login', bruteForceProtector, validate({ body: loginSchema }), async (req: any, res: Response) => {
   try {
-    if (!handleValidationErrors(req, res)) return;
-
-    const { email, password } = req.body;
+    const { email, password } = req.validatedBody;
 
     const result = await AuthService.authenticateUser(email, password);
     
     if (!result) {
-      if ((req as any).recordAuthFailure) (req as any).recordAuthFailure();
+      try { (req as any).recordAuthFailure?.(); } catch { /* ignore in tests */ }
       logSecurityEvent(req, {
         action: 'auth.login',
         outcome: 'failure',
@@ -66,7 +52,7 @@ router.post('/login', bruteForceProtector, loginValidation, async (req: Request,
       });
     }
 
-    const { user, accessToken, refreshToken } = result;
+  const { user, accessToken, refreshToken } = result;
 
     // Set refresh token as httpOnly cookie
     res.cookie('refreshToken', refreshToken, {
@@ -76,7 +62,7 @@ router.post('/login', bruteForceProtector, loginValidation, async (req: Request,
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
-    if ((req as any).clearAuthFailures) (req as any).clearAuthFailures();
+  try { (req as any).clearAuthFailures?.(); } catch { /* ignore */ }
     logSecurityEvent(req, {
       action: 'auth.login',
       outcome: 'success',
@@ -93,11 +79,7 @@ router.post('/login', bruteForceProtector, loginValidation, async (req: Request,
           lastName: user.lastName,
           role: user.role,
           displayRole: user.getDisplayRole(),
-          permissions: {
-            canAccessFinancials: user.canAccessFinancials,
-            canManageProjects: user.canManageProjects,
-            canManageUsers: user.canManageUsers
-          },
+          permissions: user.permissions,
           isVerified: user.isVerified,
           lastLoginAt: user.lastLoginAt,
           mustChangePassword: (user as any).mustChangePassword === true
@@ -116,11 +98,9 @@ router.post('/login', bruteForceProtector, loginValidation, async (req: Request,
 });
 
 // POST /api/auth/register (requires admin privileges)
-router.post('/register', authenticateToken, requirePermission('canManageUsers'), registerValidation, async (req: any, res: Response) => {
+router.post('/register', authenticateToken, requirePermission('canManageUsers'), validate({ body: registerSchema }), async (req: any, res: Response) => {
   try {
-    if (!handleValidationErrors(req, res)) return;
-
-    const { email, password, firstName, lastName, role, ...userData } = req.body;
+    const { email, password, firstName, lastName, role, ...userData } = req.validatedBody;
 
     // Check if user already exists
     const existingUser = await User.findByEmail(email);
@@ -136,6 +116,11 @@ router.post('/register', authenticateToken, requirePermission('canManageUsers'),
       });
     }
 
+    // Enforce password policy
+    const pwEval = evaluatePassword(password);
+    if (!pwEval.valid) {
+      return res.status(400).json({ success: false, message: 'Password does not meet policy', errors: pwEval.errors });
+    }
     // Create user
     const user = await AuthService.createUser({
       email,
@@ -256,50 +241,101 @@ router.post('/logout', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/auth/revoke-all (invalidate all active refresh tokens for current user)
+router.post('/revoke-all', authenticateToken, async (req: any, res: Response) => {
+  try {
+    const userId = req.userId ?? req.user?.id;
+    if (!userId) throw new Error('No authenticated user context');
+    await AuthService.revokeAllUserTokens(userId);
+    logSecurityEvent(req, { action: 'auth.tokens.revoke_all', outcome: 'success', actorUserId: userId });
+    return res.json({ success: true, message: 'All refresh tokens revoked' });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[revoke-all] error', error);
+    logSecurityEvent(req, { action: 'auth.tokens.revoke_all', outcome: 'failure', meta: { error: (error as Error).message } });
+    return res.status(500).json({ success: false, message: 'Failed to revoke tokens', error: (error as Error).message });
+  }
+});
+
+// GET /api/auth/tokens (list active refresh tokens for current user)
+router.get('/tokens', authenticateToken, async (req: any, res: Response) => {
+  try {
+    const userId = req.userId!;
+    const page = Math.max(parseInt(req.query.page as string || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(req.query.pageSize as string || '25', 10), 1), 100);
+    const mask = (req.query.mask ?? 'true') !== 'false';
+    const offset = (page - 1) * pageSize;
+    const { count, rows } = await RefreshToken.findAndCountAll({ where: { userId }, order: [['createdAt', 'DESC']], limit: pageSize, offset });
+    logSecurityEvent(req, { action: 'auth.tokens.list', outcome: 'success', actorUserId: userId, meta: { count: rows.length, page, pageSize } });
+    res.json({
+      success: true,
+      page,
+      pageSize,
+      total: count,
+      data: rows.map(t => ({
+        id: t.id,
+        createdAt: t.createdAt,
+        expiresAt: t.expiresAt,
+        revokedAt: t.revokedAt,
+        reuseDetected: t.reuseDetected,
+        replacedByToken: mask && t.replacedByToken ? '***' : t.replacedByToken,
+        ipAddress: mask ? undefined : t.ipAddress,
+        userAgent: mask ? undefined : t.userAgent
+      }))
+    });
+  } catch (error) {
+    logSecurityEvent(req, { action: 'auth.tokens.list', outcome: 'failure', meta: { error: (error as Error).message } });
+    res.status(500).json({ success: false, message: 'Failed to list tokens' });
+  }
+});
+
 // GET /api/auth/me
 router.get('/me', authenticateToken, async (req: any, res: Response) => {
   try {
-    const user = req.user!;
+    const rawUser = req.user!;
+    // If the request middleware attached a plain object instead of a Sequelize instance,
+    // synthesize the expected helper methods/fields so the response shape stays stable.
+    const user: any = rawUser;
+    const safeGet = (fnName: string, fallback: any) => {
+      try { return typeof user[fnName] === 'function' ? user[fnName]() : fallback; } catch { return fallback; }
+    };
+    const fullName = safeGet('getFullName', [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email);
+    const displayRole = safeGet('getDisplayRole', (user.role || 'user').toString());
 
     res.json({
       success: true,
       data: {
         user: {
           id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.getFullName(),
-          role: user.role,
-          displayRole: user.getDisplayRole(),
-          permissions: {
-            canAccessFinancials: user.canAccessFinancials,
-            canManageProjects: user.canManageProjects,
-            canManageUsers: user.canManageUsers
-          },
-          isActive: user.isActive,
-          isVerified: user.isVerified,
-          lastLoginAt: user.lastLoginAt,
-          createdAt: user.createdAt,
-          mustChangePassword: (user as any).mustChangePassword === true
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            fullName,
+            role: user.role,
+            displayRole,
+            permissions: {
+              canAccessFinancials: user.canAccessFinancials ?? false,
+              canManageProjects: user.canManageProjects ?? false,
+              canManageUsers: user.canManageUsers ?? false
+            },
+            isActive: user.isActive !== false,
+            isVerified: user.isVerified === true,
+            lastLoginAt: user.lastLoginAt ?? null,
+            createdAt: user.createdAt ?? null,
+            mustChangePassword: (user as any).mustChangePassword === true
         }
       }
     });
   } catch (error) {
     logger.error('Get profile error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
 // PUT /api/auth/change-password
-router.put('/change-password', authenticateToken, changePasswordValidation, async (req: any, res: Response) => {
+router.put('/change-password', authenticateToken, validate({ body: changePasswordSchema }), async (req: any, res: Response) => {
   try {
-    if (!handleValidationErrors(req, res)) return;
-
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.validatedBody;
     const userId = req.userId!;
     const user = await User.findByPk(userId);
     if (!user) {
@@ -332,6 +368,11 @@ router.put('/change-password', authenticateToken, changePasswordValidation, asyn
       return res.status(400).json({ success: false, message: 'Current password is required' });
     }
 
+    // Evaluate new password strength
+    const pwEval = evaluatePassword(newPassword);
+    if (!pwEval.valid) {
+      return res.status(400).json({ success: false, message: 'Password does not meet policy', errors: pwEval.errors });
+    }
     const success = await AuthService.changePassword(userId, currentPassword, newPassword);
     if (!success) {
       logSecurityEvent(req, {
@@ -365,10 +406,11 @@ router.put('/change-password', authenticateToken, changePasswordValidation, asyn
 });
 
 // PUT /api/auth/reset-password/:userId (admin only)
-router.put('/reset-password/:userId', authenticateToken, requirePermission('canManageUsers'), async (req: any, res: Response) => {
+const adminResetSchema = z.object({ newPassword: z.string().min(8) });
+router.put('/reset-password/:userId', authenticateToken, requirePermission('canManageUsers'), validate({ body: adminResetSchema }), async (req: any, res: Response) => {
   try {
     const { userId } = req.params;
-    const { newPassword } = req.body;
+    const { newPassword } = req.validatedBody;
 
     if (!newPassword || newPassword.length < 8) {
       return res.status(400).json({
@@ -381,6 +423,10 @@ router.put('/reset-password/:userId', authenticateToken, requirePermission('canM
     const user = await User.findByPk(targetId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const pwEval = evaluatePassword(newPassword);
+    if (!pwEval.valid) {
+      return res.status(400).json({ success: false, message: 'Password does not meet policy', errors: pwEval.errors });
     }
     await user.updatePassword(newPassword);
     // Force password rotation after admin reset
@@ -441,10 +487,11 @@ router.get('/users', authenticateToken, requirePermission('canManageUsers'), asy
 });
 
 // PUT /api/auth/users/:userId/status (admin only)
-router.put('/users/:userId/status', authenticateToken, requirePermission('canManageUsers'), async (req: any, res: Response) => {
+const statusSchema = z.object({ isActive: z.boolean() });
+router.put('/users/:userId/status', authenticateToken, requirePermission('canManageUsers'), validate({ body: statusSchema }), async (req: any, res: Response) => {
   try {
     const { userId } = req.params;
-    const { isActive } = req.body;
+    const { isActive } = req.validatedBody;
 
     const user = await User.findByPk(userId);
     if (!user) {

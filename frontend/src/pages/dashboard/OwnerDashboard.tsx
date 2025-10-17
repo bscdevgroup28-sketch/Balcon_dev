@@ -14,6 +14,7 @@ import {
   ListItemText,
   ListItemAvatar,
   Divider,
+  Alert,
 } from '@mui/material';
 import {
   AttachMoney,
@@ -25,11 +26,13 @@ import {
   Warning,
   ArrowUpward,
   ArrowDownward,
+  Lightbulb,
 } from '@mui/icons-material';
 import { BaseDashboard } from '../../components/dashboard/BaseDashboard';
 import DashboardSection from '../../components/dashboard/DashboardSection';
 import { BusinessMetricsCard } from '../../components/dashboard/BusinessDashboardComponents';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
+import HealthScoreRing, { HealthMetric } from '../../components/dashboard/HealthScoreRing';
 
 const OwnerDashboard: React.FC = () => {
   // Mock data for demonstration - will be replaced with API calls
@@ -155,6 +158,113 @@ const OwnerDashboard: React.FC = () => {
       }
     >
   <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
+        {/* Business Health Score - Featured at Top */}
+        <Grid item xs={12} lg={6}>
+          <HealthScoreRing
+            overall={92}
+            breakdown={[
+              {
+                name: 'On-time Delivery',
+                score: 95,
+                trend: 'up',
+                trendValue: 3,
+                description: 'Projects completed on schedule',
+              },
+              {
+                name: 'Budget Adherence',
+                score: 88,
+                trend: 'flat',
+                trendValue: 0,
+                description: 'Projects within budget targets',
+              },
+              {
+                name: 'Customer Satisfaction',
+                score: 94,
+                trend: 'up',
+                trendValue: 5,
+                description: 'Client feedback scores',
+              },
+              {
+                name: 'Safety Compliance',
+                score: 91,
+                trend: 'down',
+                trendValue: -2,
+                description: 'Zero-incident work days',
+              },
+            ]}
+            size="large"
+            showTrends={true}
+          />
+        </Grid>
+
+        {/* Predictive Analytics Card */}
+        <Grid item xs={12} lg={6}>
+          <Card
+            sx={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              height: '100%',
+            }}
+          >
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Lightbulb sx={{ fontSize: 32 }} />
+                <Typography variant="h6" fontWeight={600}>
+                  AI-Powered Insights
+                </Typography>
+              </Box>
+
+              <Typography variant="h3" fontWeight={700} sx={{ mb: 1 }}>
+                $2.8M
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2, opacity: 0.9 }}>
+                Projected Q4 Revenue
+              </Typography>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                <TrendingUp />
+                <Typography variant="body2">
+                  +18% vs. Q3 projection
+                </Typography>
+              </Box>
+
+              <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.2)', mb: 2 }} />
+
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+                Recommended Actions:
+              </Typography>
+              <List dense>
+                <ListItem sx={{ py: 0.5, px: 0 }}>
+                  <Typography variant="body2">• Hire 2 additional technicians for capacity</Typography>
+                </ListItem>
+                <ListItem sx={{ py: 0.5, px: 0 }}>
+                  <Typography variant="body2">• Lock in steel prices before Q4 increase</Typography>
+                </ListItem>
+                <ListItem sx={{ py: 0.5, px: 0 }}>
+                  <Typography variant="body2">• Focus marketing on commercial sector (32% ROI)</Typography>
+                </ListItem>
+              </List>
+
+              <Alert
+                severity="warning"
+                icon={<Warning />}
+                sx={{
+                  mt: 2,
+                  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                  color: 'white',
+                  '& .MuiAlert-icon': {
+                    color: '#FFD700',
+                  },
+                }}
+              >
+                <Typography variant="caption" fontWeight={600}>
+                  Material costs trending up 8% - Update quotes accordingly
+                </Typography>
+              </Alert>
+            </CardContent>
+          </Card>
+        </Grid>
+
         {/* Executive KPI Cards */}
         <Grid item xs={12}>
           <DashboardSection title="Executive KPI Overview" id="owner-kpi-overview">

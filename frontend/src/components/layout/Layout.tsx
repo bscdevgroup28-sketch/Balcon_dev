@@ -5,7 +5,6 @@ import {
   Toolbar,
   Typography,
   IconButton,
-  Drawer,
   List,
   ListItem,
   ListItemIcon,
@@ -17,12 +16,16 @@ import {
   Badge,
   FormControlLabel,
   Switch,
+  Tooltip,
+  useMediaQuery,
+  Collapse,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Notifications,
   AccountCircle,
   Logout,
+  ChevronLeft,
 } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -31,6 +34,7 @@ import { logout } from '../../store/slices/authSlice';
 import { toggleSidebar } from '../../store/slices/uiSlice';
 import { getMenuItemsForRole, getRoleDisplayName } from '../../utils/roleUtils';
 import { useLayoutDensity } from '../../theme/LayoutDensityContext';
+import HealthStatus from '../system/HealthStatus';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -42,10 +46,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
   const { sidebarOpen } = useSelector((state: RootState) => state.ui);
+  const isMobile = useMediaQuery('(max-width: 900px)');
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const { density, toggleDensity } = useLayoutDensity();
 
-  const drawerWidth = 240;
+  const navWidth = sidebarOpen ? 240 : 0; // Hide completely when collapsed per new requirement
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -64,27 +69,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const menuItems = getMenuItemsForRole(user?.role || 'user');
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       {/* App Bar */}
       <AppBar
         position="fixed"
         sx={{
-          width: { sm: `calc(100% - ${sidebarOpen ? drawerWidth : 0}px)` },
-          ml: { sm: `${sidebarOpen ? drawerWidth : 0}px` },
-          transition: 'width 0.3s, margin 0.3s',
+          width: '100%',
+          transition: 'margin 0.3s',
         }}
         role="banner"
         aria-label="Application top bar"
       >
-        <Toolbar>
+        <Toolbar sx={{ minHeight: { xs: 64, sm: 64 } }}>
           <IconButton
             color="inherit"
-            aria-label={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-label={sidebarOpen ? 'Collapse navigation menu' : 'Expand navigation menu'}
             edge="start"
             onClick={() => dispatch(toggleSidebar())}
-            sx={{ mr: 2, display: { sm: sidebarOpen ? 'none' : 'block' } }}
+            sx={{ 
+              mr: 2,
+              minWidth: { xs: 48, sm: 40 },
+              minHeight: { xs: 48, sm: 40 },
+            }}
           >
-            <MenuIcon />
+            {sidebarOpen ? <ChevronLeft /> : <MenuIcon />}
           </IconButton>
 
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
@@ -103,13 +111,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {user ? getRoleDisplayName(user.role) : 'Guest'}
           </Typography>
 
+          <HealthStatus />
           <FormControlLabel
             sx={{ mr: 1, color: 'inherit' }}
             control={<Switch size="small" checked={density === 'compact'} onChange={toggleDensity} color="default" />}
             label={density === 'compact' ? 'Compact' : 'Comfortable'}
           />
 
-          <IconButton color="inherit" sx={{ display: { xs: 'none', sm: 'block' } }} aria-label="View notifications">
+          <IconButton color="inherit" sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 44, minHeight: 44 }} aria-label="View notifications">
             <Badge badgeContent={3} color="error">
               <Notifications />
             </Badge>
@@ -122,6 +131,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             aria-haspopup="true"
             onClick={handleProfileMenuOpen}
             color="inherit"
+            sx={{ minWidth: 44, minHeight: 44 }}
           >
             <Avatar sx={{ width: 32, height: 32 }}>
               {user?.firstName?.charAt(0) || 'U'}
@@ -130,94 +140,81 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Side Drawer */}
-      <Drawer
-        variant="temporary"
-        anchor="left"
-        open={sidebarOpen}
-        onClose={() => dispatch(toggleSidebar())}
-        sx={{
-          display: { xs: 'block', sm: 'none' },
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-          },
-        }}
-        ModalProps={{
-          keepMounted: true, // Better open performance on mobile
-        }}
-      >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div">
-            BC Builders
-          </Typography>
-        </Toolbar>
-        <Divider />
+      {/* Main Region with Inline Nav */}
+      <Box sx={{ display: 'flex', flexGrow: 1, pt: 8, minHeight: 0 }}>
+        {/* Inline navigation occupying previously empty left space */}
+        <Collapse in={sidebarOpen || isMobile} orientation="horizontal" unmountOnExit={!isMobile} collapsedSize={0} timeout={300}>
+          <Box
+            component="nav"
+            aria-label="Primary navigation"
+            sx={{
+              width: navWidth,
+              transition: 'width .3s',
+              borderRight: 1,
+              borderColor: 'divider',
+              overflowY: 'auto',
+              height: 'calc(100vh - 64px)',
+              backgroundColor: 'background.paper',
+              display: sidebarOpen ? 'block' : (isMobile ? 'block' : 'none')
+            }}
+          >
+            <Box sx={{ px: 2, py: 2, display: sidebarOpen ? 'block' : 'none' }}>
+              <Typography variant="subtitle1" fontWeight={600}>BC Builders</Typography>
+            </Box>
+            <Divider sx={{ display: sidebarOpen ? 'block' : 'none' }} />
+            <List role="list" aria-label="Primary navigation menu" sx={{ py: 0 }}>
+              {menuItems.map(item => {
+                const IconComponent = item.icon;
+                const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                const node = (
+                  <ListItem
+                    key={item.text}
+                    button
+                    onClick={() => navigate(item.path)}
+                    selected={active}
+                    aria-current={active ? 'page' : undefined}
+                    sx={{
+                      minHeight: 46,
+                      px: sidebarOpen ? 2 : 1.2,
+                      '&.Mui-selected': { backgroundColor: 'action.selected', fontWeight: 600 },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36, color: 'text.secondary' }}>
+                      <IconComponent />
+                    </ListItemIcon>
+                    {sidebarOpen && <ListItemText primary={item.text} />}
+                  </ListItem>
+                );
+                if (!sidebarOpen) {
+                  return (
+                    <Tooltip key={item.text} title={item.text} placement="right" arrow>
+                      <Box>{node}</Box>
+                    </Tooltip>
+                  );
+                }
+                return node;
+              })}
+            </List>
+          </Box>
+        </Collapse>
 
-  <List role="list" aria-label="Primary navigation menu (mobile)">
-          {menuItems.map((item) => {
-            const IconComponent = item.icon;
-            return (
-              <ListItem
-                button
-                key={item.text}
-                onClick={() => {
-                  navigate(item.path);
-                  dispatch(toggleSidebar()); // Close drawer on mobile after navigation
-                }}
-                selected={location.pathname === item.path}
-              >
-                <ListItemIcon>
-                  <IconComponent />
-                </ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItem>
-            );
-          })}
-        </List>
-      </Drawer>
-
-      {/* Desktop Drawer */}
-      <Drawer
-        variant="persistent"
-        anchor="left"
-        open={sidebarOpen}
-        sx={{
-          display: { xs: 'none', sm: 'block' },
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-          },
-        }}
-      >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div">
-            BC Builders
-          </Typography>
-        </Toolbar>
-        <Divider />
-
-  <List role="list" aria-label="Primary navigation menu">
-          {menuItems.map((item) => {
-            const IconComponent = item.icon;
-            return (
-              <ListItem
-                button
-                key={item.text}
-                onClick={() => navigate(item.path)}
-                selected={location.pathname === item.path}
-              >
-                <ListItemIcon>
-                  <IconComponent />
-                </ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItem>
-            );
-          })}
-        </List>
-      </Drawer>
+        {/* Content Area */}
+        <Box
+          component="main"
+          id="main-content"
+          sx={{
+            flexGrow: 1,
+            minWidth: 0,
+            px: { xs: 1, sm: 3 },
+            pb: { xs: 2, sm: 4 },
+            transition: 'padding .3s',
+            width: '100%',
+            overflowX: 'hidden'
+          }}
+        >
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>{children}</Box>
+        </Box>
+      </Box>
 
       {/* Profile Menu */}
       <Menu
@@ -254,18 +251,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         id="main-content"
         sx={{
           flexGrow: 1,
-          width: { sm: `calc(100% - ${sidebarOpen ? drawerWidth : 0}px)` },
-          ml: { sm: `${sidebarOpen ? drawerWidth : 0}px` },
-          transition: 'width 0.3s, margin 0.3s',
-          p: { xs: 1, sm: 3 }, // Less padding on mobile
+          width: '100%',
+    // removed legacy drawer margin; inline nav now handled in flex layout
+          transition: 'margin 0.3s',
+          display: 'flex',
+          flexDirection: 'column'
         }}
       >
         <Toolbar />
+        {/* Centering container to create balanced left/right gutters independent of drawer width */}
         <Box sx={{
-          maxWidth: '100%',
-          overflowX: 'auto', // Allow horizontal scrolling on small screens if needed
+          width: '100%',
+          maxWidth: 1600,
+          mx: 'auto',
+          px: { xs: 1, sm: 3 },
+          pb: { xs: 2, sm: 4 },
+          boxSizing: 'border-box'
         }}>
-          {children}
+          {/* Content wrapper ensures overflowing dashboards can scroll horizontally without affecting outer centering */}
+          <Box sx={{ width: '100%', overflowX: 'auto' }}>
+            {children}
+          </Box>
         </Box>
       </Box>
     </Box>

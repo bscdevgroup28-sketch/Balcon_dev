@@ -5,6 +5,7 @@ import { User } from '../models/UserEnhanced';
 import { Project } from '../models/ProjectEnhanced';
 import { ProjectActivity } from '../models/ProjectActivity';
 import { logger } from '../utils/logger';
+import { config } from '../config/environment';
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'balcon-builders-secret-key-2025';
@@ -38,9 +39,17 @@ export class WebSocketService {
   private connectedUsers: Map<number, string[]> = new Map(); // userId -> socketIds[]
 
   constructor(server: HTTPServer) {
+    const origins = config.server.frontendOrigins && config.server.frontendOrigins.length
+      ? config.server.frontendOrigins
+      : [process.env.FRONTEND_URL || 'http://localhost:3001'];
     this.io = new SocketIOServer(server, {
       cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+        origin: (origin: string | undefined, cb: any) => {
+          if (!origin) return cb(null, true);
+          if (origins.includes(origin)) return cb(null, true);
+          if (config.server.nodeEnv !== 'production' && /^http:\/\/localhost:\d+$/.test(origin)) return cb(null, true);
+          return cb(new Error('WS origin not allowed'));
+        },
         methods: ['GET', 'POST'],
         credentials: true
       },

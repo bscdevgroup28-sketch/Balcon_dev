@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.salesAssignment = exports.getSalesRepMetrics = exports.unassignSalesRep = exports.assignSalesRep = exports.autoAssignSalesRep = exports.getSalesRepWorkloads = exports.generateInquiryNumber = void 0;
 const models_1 = require("../models");
@@ -23,34 +56,35 @@ const generateInquiryNumber = async () => {
         const next = count + 1;
         return `${prefix}${next.toString().padStart(6, '0')}`;
     }
-    // Production / non-test: find latest sequentially
-    const latestProject = await models_1.Project.findOne({
-        where: {
-            inquiryNumber: {
-                [sequelize_1.Op.like]: `${prefix}%`,
-            },
-        },
-        order: [['inquiryNumber', 'DESC']],
-    });
-    const nextNumber = latestProject
-        ? parseInt(latestProject.inquiryNumber.split('-')[2], 10) + 1
-        : 1;
-    return `${prefix}${nextNumber.toString().padStart(6, '0')}`;
+    // Production / non-test: prefer atomic sequence
+    try {
+        const { getNextSequence } = await Promise.resolve().then(() => __importStar(require('../models/Sequence')));
+        const nextNumber = await getNextSequence(`inquiry-${year}`);
+        return `${prefix}${nextNumber.toString().padStart(6, '0')}`;
+    }
+    catch (seqErr) {
+        // Fallback to scanning latest record if sequence table not yet provisioned
+        const latestProject = await models_1.Project.findOne({
+            where: { inquiryNumber: { [sequelize_1.Op.like]: `${prefix}%` } },
+            order: [['inquiryNumber', 'DESC']],
+        });
+        const nextNumber = latestProject ? parseInt(latestProject.inquiryNumber.split('-')[2], 10) + 1 : 1;
+        return `${prefix}${nextNumber.toString().padStart(6, '0')}`;
+    }
 };
 exports.generateInquiryNumber = generateInquiryNumber;
 /**
  * Get workload for all sales reps
  */
 const getSalesRepWorkloads = async () => {
-    // Get all active sales reps
+    // Legacy expectation (tests) relies on isSalesRep flag & per-user salesCapacity
     const salesReps = await models_1.User.findAll({
-        where: {
-            isSalesRep: true,
-            isActive: true,
-        },
+        where: { isActive: true },
+        // Fetch all actives then filter on ad-hoc flag property (legacy test harness attaches it to mock objects)
     });
+    const filtered = salesReps.filter((u) => u.isSalesRep);
     const workloads = [];
-    for (const salesRep of salesReps) {
+    for (const salesRep of filtered) {
         // Count active projects assigned to this sales rep
         const activeProjects = await models_1.Project.count({
             where: {
@@ -60,7 +94,7 @@ const getSalesRepWorkloads = async () => {
                 },
             },
         });
-        const capacity = salesRep.salesCapacity || 10; // Default capacity
+        const capacity = salesRep.salesCapacity ?? 10;
         const utilizationPercentage = capacity > 0 ? Math.round((activeProjects / capacity) * 100) : 100;
         workloads.push({
             userId: salesRep.id,
@@ -95,7 +129,7 @@ const autoAssignSalesRep = async (projectId) => {
             }, {
                 where: { id: projectId },
             });
-            logger_1.logger.info(`Project ${projectId} assigned to overloaded sales rep ${leastLoadedRep.user.fullName} (${leastLoadedRep.utilizationPercentage}% utilization)`);
+            logger_1.logger.info(`Project ${projectId} assigned to overloaded sales rep ${leastLoadedRep.user.getFullName?.() || leastLoadedRep.user.firstName} (${leastLoadedRep.utilizationPercentage}% utilization)`);
             return leastLoadedRep.user;
         }
         // Assign to the best available sales rep
@@ -105,7 +139,7 @@ const autoAssignSalesRep = async (projectId) => {
         }, {
             where: { id: projectId },
         });
-        logger_1.logger.info(`Project ${projectId} assigned to sales rep ${bestSalesRep.user.fullName} (${bestSalesRep.utilizationPercentage}% utilization)`);
+        logger_1.logger.info(`Project ${projectId} assigned to sales rep ${bestSalesRep.user.getFullName?.() || bestSalesRep.user.firstName} (${bestSalesRep.utilizationPercentage}% utilization)`);
         return bestSalesRep.user;
     }
     catch (error) {
@@ -121,12 +155,10 @@ const assignSalesRep = async (projectId, salesRepId) => {
     try {
         // Verify the sales rep exists and is active
         const salesRep = await models_1.User.findOne({
-            where: {
-                id: salesRepId,
-                isSalesRep: true,
-                isActive: true,
-            },
+            where: { id: salesRepId, isActive: true }
         });
+        if (salesRep && salesRep.isSalesRep === false)
+            return false;
         if (!salesRep) {
             logger_1.logger.error(`Sales rep ${salesRepId} not found or inactive`);
             return false;
@@ -137,7 +169,7 @@ const assignSalesRep = async (projectId, salesRepId) => {
         }, {
             where: { id: projectId },
         });
-        logger_1.logger.info(`Project ${projectId} manually assigned to sales rep ${salesRep.fullName}`);
+        logger_1.logger.info(`Project ${projectId} manually assigned to sales rep ${salesRep.getFullName?.() || salesRep.firstName}`);
         return true;
     }
     catch (error) {

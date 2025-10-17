@@ -98,7 +98,7 @@ router.patch('/read-all', async (req, res) => {
     }
 });
 // Create notification (admin only)
-router.post('/', (0, authEnhanced_1.requirePermission)('manage_users'), async (req, res) => {
+router.post('/', (0, authEnhanced_1.requirePolicy)('notification.create'), async (req, res) => {
     try {
         const { userId, type, title, message, metadata } = req.body;
         const notification = {
@@ -129,7 +129,7 @@ router.post('/', (0, authEnhanced_1.requirePermission)('manage_users'), async (r
     }
 });
 // Create broadcast notification (admin only)
-router.post('/broadcast', (0, authEnhanced_1.requirePermission)('manage_users'), async (req, res) => {
+router.post('/broadcast', (0, authEnhanced_1.requirePolicy)('notification.broadcast'), async (req, res) => {
     try {
         const { type, title, message, metadata, userIds } = req.body;
         const broadcastNotifications = [];

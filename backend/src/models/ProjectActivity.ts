@@ -142,24 +142,15 @@ ProjectActivity.init({
   sequelize,
   modelName: 'ProjectActivity',
   tableName: 'enhanced_project_activities',
-  underscored: true,
+  // Use camelCase columns under SQLite (global config sets underscored false for sqlite).
+  underscored: false,
   timestamps: true,
   indexes: [
-    {
-      fields: ['project_id'],
-    },
-    {
-      fields: ['user_id'],
-    },
-    {
-      fields: ['activity_type'],
-    },
-    {
-      fields: ['created_at'],
-    },
-    {
-      fields: ['project_id', 'created_at'],
-    },
+    { fields: ['projectId'] },
+    { fields: ['userId'] },
+    { fields: ['activityType'] },
+    { fields: ['createdAt'] },
+    { fields: ['projectId', 'createdAt'] },
   ],
 });
 

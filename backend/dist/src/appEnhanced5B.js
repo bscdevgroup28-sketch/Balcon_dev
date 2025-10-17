@@ -7,6 +7,7 @@ exports.balConApp5B = exports.BalConBuildersApp5B = void 0;
 const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 // import { Server as SocketIOServer } from 'socket.io'; // Commented out for now
+// DEPRECATED: Historical variant kept temporarily; scheduled for removal after production stabilization.
 const cors_1 = __importDefault(require("cors"));
 const corsConfig_1 = require("./config/corsConfig");
 const helmet_1 = __importDefault(require("helmet"));

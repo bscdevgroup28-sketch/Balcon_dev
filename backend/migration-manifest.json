@@ -1,0 +1,82 @@
+[
+  {
+    "name": "0000-baseline-core-tables.ts",
+    "sha256": "0c710ee95a4e13fbd18fadccb64652fa64ba27b6d683fa3abb62aa47c7e683f9"
+  },
+  {
+    "name": "001-add-sprint4-inquiry-system.ts",
+    "sha256": "cc6e7e019849ffd52566dbec66d46790fe078a5a69d8daed58e93ebcce5bb9aa"
+  },
+  {
+    "name": "002-create-project-files-table.ts",
+    "sha256": "521e79657545f51cd7179d65ef55aac8c901ee953b21d0963fba41fc1475590c"
+  },
+  {
+    "name": "003-add-new-roles-and-demo-users.ts",
+    "sha256": "0c9e95d93c69ed1fb7abcd75fb0fb50451f6dbe3d83751c5a2d0f56102693a63"
+  },
+  {
+    "name": "004-create-materials-table.ts",
+    "sha256": "eb39703b02b4dcd6c7fce892d81f9e0bbc10fb695b399c298e63222a2016c004"
+  },
+  {
+    "name": "20250922-0000-create-enhanced-users-table.ts",
+    "sha256": "cd9867072ee9a41a6e6696f7280d6169a7f0d25ef095d06bb813fd47cac540e2"
+  },
+  {
+    "name": "20250922-0001-baseline.ts",
+    "sha256": "8380e1f1438f02b428cb6f9e065c7d86db1327c28466dd05b512805e531a3b8b"
+  },
+  {
+    "name": "20250922-0002-user-must-change-password.ts",
+    "sha256": "2b7de1804c3d5d02d5be69bc9135f4316e1850c55c657cec9b530f119a28d4d1"
+  },
+  {
+    "name": "20250922-0003-create-feature-flags.ts",
+    "sha256": "1985e3bacf90cbf25db254c0f5facb5aaff0640ac4d5895406ef99754011a755"
+  },
+  {
+    "name": "20250926-0003-create-security-audit-events.ts",
+    "sha256": "62a64e6a08a2d0bd01b86e94cac1f618371963e94d63caf7b82fa9ffc243625d"
+  },
+  {
+    "name": "20250926-0004-create-work-orders.ts",
+    "sha256": "67b2570526d674375018f332e21c39f234ba270f4e6d9cffb212e9b21ec6c0ab"
+  },
+  {
+    "name": "20250926-0005-create-event-log.ts",
+    "sha256": "c55449fc5bc767e66274679e5d2d0e2fd983bb61e93c704b573c5cb434824280"
+  },
+  {
+    "name": "20250926-0006-create-inventory-transactions.ts",
+    "sha256": "0d4c7f86b930172cd59d449ccfc250902a4360f1ff33cd34ba16aa8666ff15c4"
+  },
+  {
+    "name": "20250926-0007-create-kpi-daily-snapshots.ts",
+    "sha256": "854195873f64f23e97122771a7f6a103a48446fa0959e8509e16e5e436c54c73"
+  },
+  {
+    "name": "20250926-0008-create-refresh-tokens.ts",
+    "sha256": "db01b8fde0607599006e7a5b1f2b50b71690c2d05c6dc736c7c4f8e6637b2998"
+  },
+  {
+    "name": "202509270901-initial-baseline.ts",
+    "sha256": "06777c8564433cc209e6b7743ae17f61764f419d275658cdeda05459b60f5718"
+  },
+  {
+    "name": "202509270945-add-foreign-keys.ts",
+    "sha256": "9c907b314afc6274faee2e9499b35ad5dad2cc56466a3080683ac5ff5a3f0618"
+  },
+  {
+    "name": "202509270955-align-user-fk.ts",
+    "sha256": "17eed7dcb8ed50f2deeb1132be8c44e0bb02d4c50b77c53b82dc3ec81c01ea50"
+  },
+  {
+    "name": "202509271000-add-performance-indexes.ts",
+    "sha256": "371facd61c275a259c6ead76ac1f4de4d5ef588dc9c3837fc2c31ae75c8da874"
+  },
+  {
+    "name": "20250928-1100-add-active-refresh-token-index.ts",
+    "sha256": "6510579b39690b625eb3fa88dbdf98257f80e99adbf4374a7304ff0f07cf1eb1"
+  }
+]

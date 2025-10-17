@@ -119,20 +119,13 @@ ProjectFile.init(
     sequelize,
     tableName: 'project_files',
     timestamps: true,
-    underscored: true,
+    // Migration created camelCase columns (projectId, originalName, etc.), so disable underscored to match
+    underscored: false,
     indexes: [
-      {
-        fields: ['project_id'],
-      },
-      {
-        fields: ['uploaded_by'],
-      },
-      {
-        fields: ['file_type'],
-      },
-      {
-        fields: ['created_at'],
-      },
+      { fields: ['projectId'] },
+      { fields: ['uploadedBy'] },
+      { fields: ['fileType'] },
+      { fields: ['createdAt'] },
     ],
   }
 );

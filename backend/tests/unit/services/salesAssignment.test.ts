@@ -216,13 +216,12 @@ describe('Sales Assignment Service', () => {
   const result = await assignSalesRep(123, 5);
 
       expect(result).toBe(true);
-      expect(MockUser.findOne).toHaveBeenCalledWith({
-        where: {
-          id: 5,
-          isSalesRep: true,
-          isActive: true,
-        },
-      });
+        expect(MockUser.findOne).toHaveBeenCalledWith({
+          where: {
+            id: 5,
+            isActive: true,
+          },
+        });
       expect(MockProject.update).toHaveBeenCalledWith(
         {
           assignedSalesRepId: 5,

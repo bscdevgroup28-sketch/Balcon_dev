@@ -3,7 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.up = up;
 exports.down = down;
 const sequelize_1 = require("sequelize");
-async function up({ context }) {
+async function up(arg) {
+    const context = arg.context || arg;
     const table = 'feature_flags';
     const tables = await context.showAllTables();
     if (Array.isArray(tables) && tables.includes(table))
@@ -23,7 +24,8 @@ async function up({ context }) {
     await context.addIndex(table, ['key'], { unique: true, name: 'feature_flags_key_idx' });
     await context.addIndex(table, ['enabled'], { name: 'feature_flags_enabled_idx' });
 }
-async function down({ context }) {
+async function down(arg) {
+    const context = arg.context || arg;
     const table = 'feature_flags';
     const tables = await context.showAllTables();
     if (Array.isArray(tables) && tables.includes(table)) {

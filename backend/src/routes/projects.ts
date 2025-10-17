@@ -15,6 +15,9 @@ import {
 import { logger } from '../utils/logger';
 import { generateInquiryNumber, autoAssignSalesRep } from '../services/salesAssignment';
 import { emailService } from '../services/emailNotification';
+import { eventBus, createEvent } from '../events/eventBus';
+import { authenticateToken, requirePolicy } from '../middleware/authEnhanced';
+import { Actions } from '../security/actions';
 
 const router = Router();
 
@@ -60,7 +63,7 @@ router.get(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
           {
             model: User,
@@ -110,7 +113,7 @@ router.get(
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
           {
             model: User,
@@ -142,6 +145,8 @@ router.get(
 // POST /api/projects - Create a new project
 router.post(
   '/',
+  authenticateToken,
+  requirePolicy(Actions.PROJECT_CREATE),
   validate({ body: createProjectSchema }),
   async (req: ValidatedRequest<CreateProjectInput>, res: Response) => {
     try {
@@ -202,7 +207,7 @@ router.post(
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+          attributes: ['id', 'firstName', 'lastName', 'email'],
         },
         {
           model: User,
@@ -239,6 +244,8 @@ router.post(
         inquiryNumber,
         assignedSalesRep: assignedSalesRep?.id
       });
+
+      eventBus.emitEvent(createEvent('project.created', { id: project.id, inquiryNumber, userId }));
 
       res.status(201).json({
         data: responsePayload,
@@ -280,14 +287,16 @@ router.put(
         actualCompletionDate: updateData.actualCompletionDate ? new Date(updateData.actualCompletionDate) : undefined,
       };
 
-      await project.update(processedUpdateData);
+  const statusBefore = project.get('status');
+  await project.update(processedUpdateData);
+  eventBus.emitEvent(createEvent('project.updated', { id: project.id, statusBefore, statusAfter: project.get('status') }));
 
       const updatedProject = await Project.findByPk(id, {
         include: [
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'firstName', 'lastName', 'email', 'company'],
+            attributes: ['id', 'firstName', 'lastName', 'email'],
           },
         ],
       });
@@ -325,7 +334,8 @@ router.delete(
         });
       }
 
-      await project.destroy();
+  await project.destroy();
+  eventBus.emitEvent(createEvent('project.deleted', { id: project.id }));
 
       logger.info('Project deleted', { projectId: id });
 

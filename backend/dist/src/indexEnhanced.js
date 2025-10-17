@@ -3,12 +3,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.startEnhancedApplication = startEnhancedApplication;
 const logger_1 = require("./utils/logger");
 const appEnhanced_1 = require("./appEnhanced");
+const bootstrap_1 = require("./scripts/bootstrap");
+const tracing_1 = require("./observability/tracing");
 // Enhanced application startup
 async function startEnhancedApplication() {
     try {
         logger_1.logger.info('🚀 Starting Bal-Con Builders Enhanced Application...');
+        // Phase 14: optional tracing bootstrap
+        (0, tracing_1.initTracingIfEnabled)();
         logger_1.logger.info('📋 Phase 5: Advanced Feature Enhancement');
         logger_1.logger.info('🔧 Features: Authentication, Real-time, Database Integration');
+        // Preflight migrations via custom loader
+        await (0, bootstrap_1.ensureMigrations)(true);
         // Start the enhanced application
         await appEnhanced_1.balConApp.start();
         // Log successful startup

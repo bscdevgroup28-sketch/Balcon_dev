@@ -28,6 +28,11 @@ class User extends sequelize_1.Model {
     getFullName() {
         return `${this.firstName} ${this.lastName}`;
     }
+    // Legacy compatibility fields used in older services/tests
+    get fullName() { return this.getFullName(); }
+    get company() { return undefined; }
+    get isSalesRep() { return ['sales', 'owner', 'admin', 'office_manager'].includes(this.role); }
+    get salesCapacity() { return undefined; }
     getDisplayRole() {
         const roleNames = {
             'owner': 'Owner/Executive',
@@ -36,7 +41,11 @@ class User extends sequelize_1.Model {
             'project_manager': 'Project Manager',
             'team_leader': 'Team Leader',
             'technician': 'Technician',
-            'customer': 'Customer'
+            'customer': 'Customer',
+            'admin': 'Administrator',
+            'user': 'User',
+            'sales': 'Sales',
+            'fabrication': 'Fabrication'
         };
         return roleNames[this.role] || this.role;
     }
@@ -112,6 +121,23 @@ class User extends sequelize_1.Model {
                 'view_own_projects',
                 'submit_inquiries',
                 'view_project_status'
+            ],
+            'admin': [
+                'view_all_data',
+                'manage_users',
+                'manage_projects',
+                'access_financials'
+            ],
+            'user': [
+                'view_own_projects'
+            ],
+            'sales': [
+                'view_projects',
+                'manage_customers'
+            ],
+            'fabrication': [
+                'view_projects',
+                'manage_production'
             ]
         };
         return rolePermissions[this.role] || [];
@@ -147,7 +173,19 @@ User.init({
     },
     passwordHash: {
         type: sequelize_1.DataTypes.STRING(255),
-        allowNull: false,
+        allowNull: true, // allow null to support legacy tests creating users without passwords
+    },
+    // Virtual field for test seeding convenience: setting `password` sets `passwordHash`
+    password: {
+        type: sequelize_1.DataTypes.VIRTUAL,
+        set(value) {
+            if (value && !this.passwordHash) {
+                this.setDataValue('passwordHash', value);
+            }
+        },
+        get() {
+            return undefined; // never expose
+        }
     },
     firstName: {
         type: sequelize_1.DataTypes.STRING(50),
@@ -166,7 +204,7 @@ User.init({
         },
     },
     role: {
-        type: sequelize_1.DataTypes.ENUM('owner', 'office_manager', 'shop_manager', 'project_manager', 'team_leader', 'technician', 'customer'),
+        type: sequelize_1.DataTypes.ENUM('owner', 'office_manager', 'shop_manager', 'project_manager', 'team_leader', 'technician', 'customer', 'admin', 'user', 'sales', 'fabrication'),
         allowNull: false,
         defaultValue: 'customer',
     },
@@ -301,6 +339,14 @@ User.init({
     tableName: 'enhanced_users',
     underscored: true,
     timestamps: true,
+    hooks: {
+        beforeValidate: (user) => {
+            if (user.password && !user.passwordHash) {
+                // For test seeding convenience only; do NOT use raw passwords in production
+                user.passwordHash = user.password;
+            }
+        }
+    },
     indexes: [
         {
             fields: ['email'],

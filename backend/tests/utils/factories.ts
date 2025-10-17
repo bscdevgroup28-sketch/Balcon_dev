@@ -6,10 +6,9 @@ export const createTestUser = async (overrides: any = {}) => {
     firstName: 'Test',
     lastName: 'User',
     email: `test_${Date.now()}_${Math.random().toString(36).slice(2,6)}@example.com`,
-    phone: '+15550000',
     role: 'user',
     isActive: true,
-    isSalesRep: false,
+    passwordHash: 'temp',
     ...overrides,
   } as any);
 };
@@ -19,8 +18,7 @@ export const createTestSalesRep = async (overrides: any = {}) => {
     firstName: 'Rep',
     lastName: 'User',
     role: 'sales',
-    isSalesRep: true,
-    salesCapacity: 10,
+    passwordHash: 'temp',
     ...overrides,
   });
 };

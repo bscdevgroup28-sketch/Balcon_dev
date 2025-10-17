@@ -1,0 +1,55 @@
+name: Nightly Analytics & Capacity Pipeline
+
+on:
+  schedule:
+    - cron: '15 3 * * *' # 03:15 UTC nightly
+  workflow_dispatch:
+
+jobs:
+  analytics:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Residuals & Anomalies
+        run: |
+          npm run analytics:residuals || true
+          npm run analytics:residuals:update || true
+          npm run analytics:residuals:anom || true
+          npm run analytics:residuals:anom:update || true
+          npm run analytics:residuals:history || true
+          npm run analytics:residuals:adaptive || true
+          npm run analytics:residuals:adaptive:update || true
+      - name: Capacity & Scaling
+        run: |
+          npm run capacity:derive || true
+          npm run capacity:update || true
+          npm run scaling:advice || true
+      - name: Capture Metrics Snapshot
+        run: |
+          node -e "const fs=require('fs');const snap=require('./dist/src/monitoring/metrics');" || true
+      - name: Archive Logs / Artifacts
+        run: |
+          mkdir -p artifacts
+          if [ -d perf-history ]; then cp -r perf-history artifacts/; fi
+          if [ -d metrics-schema ]; then cp -r metrics-schema artifacts/; fi
+          tar -czf nightly-artifacts.tar.gz artifacts || true
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-artifacts
+          path: nightly-artifacts.tar.gz
+          if-no-files-found: warn

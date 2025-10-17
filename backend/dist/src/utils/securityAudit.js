@@ -1,7 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getRecentSecurityEvents = getRecentSecurityEvents;
 exports.logSecurityEvent = logSecurityEvent;
 const logger_1 = require("./logger");
+const securityMetrics_1 = require("./securityMetrics");
+const SecurityAuditEvent_1 = require("../models/SecurityAuditEvent");
+// In-memory ring buffer for recent security events (lightweight audit query stub)
+const MAX_BUFFER = 500;
+const auditBuffer = [];
+function getRecentSecurityEvents(filter) {
+    let data = auditBuffer.slice();
+    if (filter?.action)
+        data = data.filter(e => e.action === filter.action);
+    if (filter?.outcome)
+        data = data.filter(e => e.outcome === filter.outcome);
+    if (filter?.since)
+        data = data.filter(e => e.timestamp >= filter.since);
+    return data;
+}
 // Central helper to emit structured security/audit events.
 function logSecurityEvent(req, evt) {
     try {
@@ -26,6 +42,53 @@ function logSecurityEvent(req, evt) {
             audit: true,
             event
         });
+        // Store in ring buffer (volatile)
+        auditBuffer.push(event);
+        if (auditBuffer.length > MAX_BUFFER)
+            auditBuffer.shift();
+        // Async persist (fire-and-forget) – avoid blocking request path
+        (async () => {
+            try {
+                await SecurityAuditEvent_1.SecurityAuditEvent.create({
+                    action: event.action,
+                    outcome: event.outcome,
+                    actorUserId: event.actorUserId,
+                    actorRole: event.actorRole,
+                    targetUserId: event.targetUserId,
+                    ip: event.ip,
+                    requestId: event.requestId,
+                    meta: event.meta,
+                    createdAt: new Date(event.timestamp)
+                });
+            }
+            catch (persistErr) {
+                logger_1.logger.debug('Audit persist failure (non-fatal)', { error: persistErr.message });
+            }
+        })();
+        // Lightweight metrics mapping
+        switch (event.action) {
+            case 'auth.login':
+                (0, securityMetrics_1.inc)(event.outcome === 'success' ? 'loginSuccess' : 'loginFailure');
+                break;
+            case 'auth.refresh.rotate':
+                if (event.outcome === 'success')
+                    (0, securityMetrics_1.inc)('refreshRotate');
+                else
+                    (0, securityMetrics_1.inc)('refreshFailure');
+                break;
+            case 'auth.refresh.reuse_detected':
+                (0, securityMetrics_1.inc)('refreshReuseDetected');
+                break;
+            case 'auth.tokens.revoke_all':
+                if (event.outcome === 'success')
+                    (0, securityMetrics_1.inc)('revokeAll');
+                break;
+            case 'auth.tokens.list':
+                (0, securityMetrics_1.inc)('tokensListed');
+                break;
+            default:
+                break;
+        }
     }
     catch (e) {
         // Fallback logging if audit emission fails

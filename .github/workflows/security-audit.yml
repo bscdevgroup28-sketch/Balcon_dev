@@ -1,0 +1,36 @@
+name: Weekly Dependency Security Audit
+
+on:
+  schedule:
+    - cron: '0 3 * * 1' # Every Monday 03:00 UTC
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: 18
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install (root workspaces)
+        run: npm install --workspaces
+
+      - name: Backend Production Audit
+        working-directory: backend
+        run: npm audit --production || true
+
+      - name: Frontend Production Audit
+        working-directory: frontend
+        run: npm audit --production || true
+
+      - name: Summarize
+        run: echo "Audit completed (non-blocking). Review logs for actionable vulnerabilities." 

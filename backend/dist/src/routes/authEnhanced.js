@@ -8,51 +8,40 @@ const authService_1 = require("../services/authService");
 const authEnhanced_1 = require("../middleware/authEnhanced");
 const UserEnhanced_1 = require("../models/UserEnhanced");
 const logger_1 = require("../utils/logger");
-const express_validator_1 = require("express-validator");
+const zod_1 = require("zod");
+const validation_1 = require("../middleware/validation");
+const passwordPolicy_1 = require("../security/passwordPolicy");
 const bruteForceProtector_1 = require("../middleware/bruteForceProtector");
 const securityAudit_1 = require("../utils/securityAudit");
+const RefreshToken_1 = require("../models/RefreshToken");
 const router = express_1.default.Router();
-// Validation middlewares
-const loginValidation = [
-    (0, express_validator_1.body)('email').isEmail().withMessage('Valid email is required'),
-    (0, express_validator_1.body)('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-];
-const registerValidation = [
-    (0, express_validator_1.body)('email').isEmail().withMessage('Valid email is required'),
-    (0, express_validator_1.body)('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-    (0, express_validator_1.body)('firstName').notEmpty().withMessage('First name is required'),
-    (0, express_validator_1.body)('lastName').notEmpty().withMessage('Last name is required'),
-    (0, express_validator_1.body)('role').isIn(['customer', 'technician', 'team_leader', 'project_manager', 'office_manager', 'shop_manager', 'owner'])
-        .withMessage('Valid role is required')
-];
-// Change password validation: currentPassword optional to support first-login forced change
-const changePasswordValidation = [
-    (0, express_validator_1.body)('newPassword').isLength({ min: 8 }).withMessage('New password must be at least 8 characters'),
-    (0, express_validator_1.body)('currentPassword').optional()
-];
-// Helper function to handle validation errors
-const handleValidationErrors = (req, res) => {
-    const errors = (0, express_validator_1.validationResult)(req);
-    if (!errors.isEmpty()) {
-        res.status(400).json({
-            success: false,
-            message: 'Validation failed',
-            errors: errors.array()
-        });
-        return false;
-    }
-    return true;
-};
+// Zod schemas
+const loginSchema = zod_1.z.object({
+    email: zod_1.z.string().email('Valid email is required'),
+    password: zod_1.z.string().min(6, 'Password must be at least 6 characters')
+});
+const registerSchema = zod_1.z.object({
+    email: zod_1.z.string().email('Valid email is required'),
+    password: zod_1.z.string().min(8, 'Password must be at least 8 characters'),
+    firstName: zod_1.z.string().min(1, 'First name is required'),
+    lastName: zod_1.z.string().min(1, 'Last name is required'),
+    role: zod_1.z.enum(['customer', 'technician', 'team_leader', 'project_manager', 'office_manager', 'shop_manager', 'owner']),
+    // Additional optional fields pass-through
+}).strict();
+const changePasswordSchema = zod_1.z.object({
+    newPassword: zod_1.z.string().min(8, 'New password must be at least 8 characters'),
+    currentPassword: zod_1.z.string().optional()
+});
 // POST /api/auth/login
-router.post('/login', bruteForceProtector_1.bruteForceProtector, loginValidation, async (req, res) => {
+router.post('/login', bruteForceProtector_1.bruteForceProtector, (0, validation_1.validate)({ body: loginSchema }), async (req, res) => {
     try {
-        if (!handleValidationErrors(req, res))
-            return;
-        const { email, password } = req.body;
+        const { email, password } = req.validatedBody;
         const result = await authService_1.AuthService.authenticateUser(email, password);
         if (!result) {
-            if (req.recordAuthFailure)
-                req.recordAuthFailure();
+            try {
+                req.recordAuthFailure?.();
+            }
+            catch { /* ignore in tests */ }
             (0, securityAudit_1.logSecurityEvent)(req, {
                 action: 'auth.login',
                 outcome: 'failure',
@@ -71,8 +60,10 @@ router.post('/login', bruteForceProtector_1.bruteForceProtector, loginValidation
             sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
-        if (req.clearAuthFailures)
-            req.clearAuthFailures();
+        try {
+            req.clearAuthFailures?.();
+        }
+        catch { /* ignore */ }
         (0, securityAudit_1.logSecurityEvent)(req, {
             action: 'auth.login',
             outcome: 'success',
@@ -89,11 +80,7 @@ router.post('/login', bruteForceProtector_1.bruteForceProtector, loginValidation
                     lastName: user.lastName,
                     role: user.role,
                     displayRole: user.getDisplayRole(),
-                    permissions: {
-                        canAccessFinancials: user.canAccessFinancials,
-                        canManageProjects: user.canManageProjects,
-                        canManageUsers: user.canManageUsers
-                    },
+                    permissions: user.permissions,
                     isVerified: user.isVerified,
                     lastLoginAt: user.lastLoginAt,
                     mustChangePassword: user.mustChangePassword === true
@@ -111,11 +98,9 @@ router.post('/login', bruteForceProtector_1.bruteForceProtector, loginValidation
     }
 });
 // POST /api/auth/register (requires admin privileges)
-router.post('/register', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePermission)('canManageUsers'), registerValidation, async (req, res) => {
+router.post('/register', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePermission)('canManageUsers'), (0, validation_1.validate)({ body: registerSchema }), async (req, res) => {
     try {
-        if (!handleValidationErrors(req, res))
-            return;
-        const { email, password, firstName, lastName, role, ...userData } = req.body;
+        const { email, password, firstName, lastName, role, ...userData } = req.validatedBody;
         // Check if user already exists
         const existingUser = await UserEnhanced_1.User.findByEmail(email);
         if (existingUser) {
@@ -128,6 +113,11 @@ router.post('/register', authEnhanced_1.authenticateToken, (0, authEnhanced_1.re
                 success: false,
                 message: 'User with this email already exists'
             });
+        }
+        // Enforce password policy
+        const pwEval = (0, passwordPolicy_1.evaluatePassword)(password);
+        if (!pwEval.valid) {
+            return res.status(400).json({ success: false, message: 'Password does not meet policy', errors: pwEval.errors });
         }
         // Create user
         const user = await authService_1.AuthService.createUser({
@@ -240,10 +230,72 @@ router.post('/logout', async (req, res) => {
         });
     }
 });
+// POST /api/auth/revoke-all (invalidate all active refresh tokens for current user)
+router.post('/revoke-all', authEnhanced_1.authenticateToken, async (req, res) => {
+    try {
+        const userId = req.userId ?? req.user?.id;
+        if (!userId)
+            throw new Error('No authenticated user context');
+        await authService_1.AuthService.revokeAllUserTokens(userId);
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.tokens.revoke_all', outcome: 'success', actorUserId: userId });
+        return res.json({ success: true, message: 'All refresh tokens revoked' });
+    }
+    catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[revoke-all] error', error);
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.tokens.revoke_all', outcome: 'failure', meta: { error: error.message } });
+        return res.status(500).json({ success: false, message: 'Failed to revoke tokens', error: error.message });
+    }
+});
+// GET /api/auth/tokens (list active refresh tokens for current user)
+router.get('/tokens', authEnhanced_1.authenticateToken, async (req, res) => {
+    try {
+        const userId = req.userId;
+        const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+        const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || '25', 10), 1), 100);
+        const mask = (req.query.mask ?? 'true') !== 'false';
+        const offset = (page - 1) * pageSize;
+        const { count, rows } = await RefreshToken_1.RefreshToken.findAndCountAll({ where: { userId }, order: [['createdAt', 'DESC']], limit: pageSize, offset });
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.tokens.list', outcome: 'success', actorUserId: userId, meta: { count: rows.length, page, pageSize } });
+        res.json({
+            success: true,
+            page,
+            pageSize,
+            total: count,
+            data: rows.map(t => ({
+                id: t.id,
+                createdAt: t.createdAt,
+                expiresAt: t.expiresAt,
+                revokedAt: t.revokedAt,
+                reuseDetected: t.reuseDetected,
+                replacedByToken: mask && t.replacedByToken ? '***' : t.replacedByToken,
+                ipAddress: mask ? undefined : t.ipAddress,
+                userAgent: mask ? undefined : t.userAgent
+            }))
+        });
+    }
+    catch (error) {
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.tokens.list', outcome: 'failure', meta: { error: error.message } });
+        res.status(500).json({ success: false, message: 'Failed to list tokens' });
+    }
+});
 // GET /api/auth/me
 router.get('/me', authEnhanced_1.authenticateToken, async (req, res) => {
     try {
-        const user = req.user;
+        const rawUser = req.user;
+        // If the request middleware attached a plain object instead of a Sequelize instance,
+        // synthesize the expected helper methods/fields so the response shape stays stable.
+        const user = rawUser;
+        const safeGet = (fnName, fallback) => {
+            try {
+                return typeof user[fnName] === 'function' ? user[fnName]() : fallback;
+            }
+            catch {
+                return fallback;
+            }
+        };
+        const fullName = safeGet('getFullName', [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email);
+        const displayRole = safeGet('getDisplayRole', (user.role || 'user').toString());
         res.json({
             success: true,
             data: {
@@ -252,18 +304,18 @@ router.get('/me', authEnhanced_1.authenticateToken, async (req, res) => {
                     email: user.email,
                     firstName: user.firstName,
                     lastName: user.lastName,
-                    fullName: user.getFullName(),
+                    fullName,
                     role: user.role,
-                    displayRole: user.getDisplayRole(),
+                    displayRole,
                     permissions: {
-                        canAccessFinancials: user.canAccessFinancials,
-                        canManageProjects: user.canManageProjects,
-                        canManageUsers: user.canManageUsers
+                        canAccessFinancials: user.canAccessFinancials ?? false,
+                        canManageProjects: user.canManageProjects ?? false,
+                        canManageUsers: user.canManageUsers ?? false
                     },
-                    isActive: user.isActive,
-                    isVerified: user.isVerified,
-                    lastLoginAt: user.lastLoginAt,
-                    createdAt: user.createdAt,
+                    isActive: user.isActive !== false,
+                    isVerified: user.isVerified === true,
+                    lastLoginAt: user.lastLoginAt ?? null,
+                    createdAt: user.createdAt ?? null,
                     mustChangePassword: user.mustChangePassword === true
                 }
             }
@@ -271,18 +323,13 @@ router.get('/me', authEnhanced_1.authenticateToken, async (req, res) => {
     }
     catch (error) {
         logger_1.logger.error('Get profile error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error'
-        });
+        res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
 // PUT /api/auth/change-password
-router.put('/change-password', authEnhanced_1.authenticateToken, changePasswordValidation, async (req, res) => {
+router.put('/change-password', authEnhanced_1.authenticateToken, (0, validation_1.validate)({ body: changePasswordSchema }), async (req, res) => {
     try {
-        if (!handleValidationErrors(req, res))
-            return;
-        const { currentPassword, newPassword } = req.body;
+        const { currentPassword, newPassword } = req.validatedBody;
         const userId = req.userId;
         const user = await UserEnhanced_1.User.findByPk(userId);
         if (!user) {
@@ -311,6 +358,11 @@ router.put('/change-password', authEnhanced_1.authenticateToken, changePasswordV
                 meta: { reason: 'missing_current_password', userId }
             });
             return res.status(400).json({ success: false, message: 'Current password is required' });
+        }
+        // Evaluate new password strength
+        const pwEval = (0, passwordPolicy_1.evaluatePassword)(newPassword);
+        if (!pwEval.valid) {
+            return res.status(400).json({ success: false, message: 'Password does not meet policy', errors: pwEval.errors });
         }
         const success = await authService_1.AuthService.changePassword(userId, currentPassword, newPassword);
         if (!success) {
@@ -342,10 +394,11 @@ router.put('/change-password', authEnhanced_1.authenticateToken, changePasswordV
     }
 });
 // PUT /api/auth/reset-password/:userId (admin only)
-router.put('/reset-password/:userId', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePermission)('canManageUsers'), async (req, res) => {
+const adminResetSchema = zod_1.z.object({ newPassword: zod_1.z.string().min(8) });
+router.put('/reset-password/:userId', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePermission)('canManageUsers'), (0, validation_1.validate)({ body: adminResetSchema }), async (req, res) => {
     try {
         const { userId } = req.params;
-        const { newPassword } = req.body;
+        const { newPassword } = req.validatedBody;
         if (!newPassword || newPassword.length < 8) {
             return res.status(400).json({
                 success: false,
@@ -356,6 +409,10 @@ router.put('/reset-password/:userId', authEnhanced_1.authenticateToken, (0, auth
         const user = await UserEnhanced_1.User.findByPk(targetId);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        const pwEval = (0, passwordPolicy_1.evaluatePassword)(newPassword);
+        if (!pwEval.valid) {
+            return res.status(400).json({ success: false, message: 'Password does not meet policy', errors: pwEval.errors });
         }
         await user.updatePassword(newPassword);
         // Force password rotation after admin reset
@@ -413,10 +470,11 @@ router.get('/users', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requir
     }
 });
 // PUT /api/auth/users/:userId/status (admin only)
-router.put('/users/:userId/status', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePermission)('canManageUsers'), async (req, res) => {
+const statusSchema = zod_1.z.object({ isActive: zod_1.z.boolean() });
+router.put('/users/:userId/status', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePermission)('canManageUsers'), (0, validation_1.validate)({ body: statusSchema }), async (req, res) => {
     try {
         const { userId } = req.params;
-        const { isActive } = req.body;
+        const { isActive } = req.validatedBody;
         const user = await UserEnhanced_1.User.findByPk(userId);
         if (!user) {
             return res.status(404).json({

@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
 import { logSecurityEvent } from '../utils/securityAudit';
+import { authorize } from '../security/policyEngine';
+import { metrics } from '../monitoring/metrics';
 
 // Extend Express Request interface to include user
 declare global {
@@ -33,6 +35,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
   if (!token) {
     logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'missing' } });
+    metrics.increment('auth.failures');
     res.status(401).json({ 
       error: 'Access token required',
       message: 'Please provide a valid authentication token'
@@ -45,6 +48,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     if (!jwtSecret) {
       logger.error('JWT_SECRET not configured');
       logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'misconfiguration' } });
+      metrics.increment('auth.failures');
       res.status(500).json({ 
         error: 'Server configuration error',
         message: 'Authentication system not properly configured'
@@ -52,26 +56,40 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
+    const decoded: any = jwt.verify(token, jwtSecret);
+    const userId = decoded.id ?? decoded.userId; // support both payload shapes
+    // Normalize permissions: may be array OR object of booleans
+    let perms: string[] = [];
+    if (Array.isArray(decoded.permissions)) {
+      perms = decoded.permissions;
+    } else if (decoded.permissions && typeof decoded.permissions === 'object') {
+      perms = Object.entries(decoded.permissions)
+        .filter(([, v]) => !!v)
+        .map(([k]) => k);
+    }
     req.user = {
-      id: decoded.id,
+      id: userId,
       email: decoded.email,
       role: decoded.role,
-      permissions: decoded.permissions || []
+      permissions: perms
     };
+    (req as any).userId = userId;
 
   logger.info(`✅ Authenticated user: ${decoded.email} (${decoded.role})`);
-  logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'success', meta: { userId: decoded.id, role: decoded.role } });
+  logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'success', meta: { userId, role: decoded.role } });
+  metrics.increment('auth.success');
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'expired' } });
+      metrics.increment('auth.failures');
       res.status(401).json({ 
         error: 'Token expired',
         message: 'Your session has expired. Please log in again.'
       });
     } else if (error instanceof jwt.JsonWebTokenError) {
       logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'invalid' } });
+      metrics.increment('auth.failures');
       res.status(401).json({ 
         error: 'Invalid token',
         message: 'The provided authentication token is invalid.'
@@ -79,6 +97,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     } else {
       logger.error('Authentication error:', error);
       logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'error' } });
+      metrics.increment('auth.failures');
       res.status(401).json({ 
         error: 'Authentication failed',
         message: 'Unable to authenticate the request.'
@@ -130,6 +149,29 @@ export const requirePermission = (requiredPermission: string) => {
       return;
     }
 
+    next();
+  };
+};
+
+// Generic policy middleware: pass canonical action id and optional resource resolver
+export const requirePolicy = (action: string, resolveResource?: (req: Request) => Promise<{ type: string; ownerId?: number; attributes?: any } | null> ) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required', message: 'User must be authenticated' });
+    }
+    let resource = null;
+    if (resolveResource) {
+      try { resource = await resolveResource(req); } catch { /* ignore resolver errors */ }
+    }
+    const decision = authorize({
+      user: req.user,
+      action,
+      resource: resource || undefined,
+      request: req
+    });
+    if (!decision.allow) {
+      return res.status(403).json({ error: 'PolicyDenied', message: decision.reason || 'Access denied' });
+    }
     next();
   };
 };

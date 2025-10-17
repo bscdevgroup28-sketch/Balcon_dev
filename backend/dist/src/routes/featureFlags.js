@@ -6,7 +6,7 @@ const authEnhanced_1 = require("../middleware/authEnhanced");
 const securityAudit_1 = require("../utils/securityAudit");
 // NOTE: In a production system, add authentication & role-based guard middleware here.
 const router = (0, express_1.Router)();
-router.get('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePermission)('canManageProjects'), async (req, res) => {
+router.get('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)('feature.flag.list'), async (req, res) => {
     const flags = await (0, featureFlagService_1.getAllFlags)();
     res.json(flags.map(f => ({
         key: f.key,
@@ -25,7 +25,7 @@ router.get('/check/:key', async (req, res) => {
     const enabled = await (0, featureFlagService_1.isFeatureEnabled)(key, { userRole, userId });
     res.json({ key, enabled });
 });
-router.post('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePermission)('canManageProjects'), async (req, res) => {
+router.post('/', authEnhanced_1.authenticateToken, (0, authEnhanced_1.requirePolicy)('feature.flag.upsert'), async (req, res) => {
     try {
         const flag = await (0, featureFlagService_1.upsertFlag)(req.body);
         (0, securityAudit_1.logSecurityEvent)(req, {

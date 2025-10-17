@@ -10,7 +10,7 @@ import {
   IdParamInput,
 } from '../utils/validation';
 import { logger } from '../utils/logger';
-import { authenticateToken, requireRole } from '../middleware/authEnhanced';
+import { authenticateToken, requirePolicy } from '../middleware/authEnhanced';
 import { logSecurityEvent } from '../utils/securityAudit';
 // removed unused bcrypt import
 
@@ -20,7 +20,7 @@ const router = Router();
 router.get(
   '/',
   authenticateToken,
-  requireRole(['owner']),
+  requirePolicy('user.list'),
   async (req: Request, res: Response) => {
     try {
       const users = await User.findAll({
@@ -82,7 +82,7 @@ router.get(
 router.post(
   '/',
   authenticateToken,
-  requireRole(['owner']),
+  requirePolicy('user.create'),
   validate({ body: createUserSchema }),
   async (req: ValidatedRequest<CreateUserInput>, res: Response) => {
     try {
@@ -198,7 +198,7 @@ router.put(
 router.delete(
   '/:id',
   authenticateToken,
-  requireRole(['owner']),
+  requirePolicy('user.delete'),
   validate({ params: idParamSchema }),
   async (req: ValidatedRequest<any, any, IdParamInput>, res: Response) => {
     try {

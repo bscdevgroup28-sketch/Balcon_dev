@@ -1,6 +1,6 @@
 import { DataTypes, Model, Optional, Association } from 'sequelize';
 import { sequelize } from '../config/database';
-import { User } from './User';
+import { User } from './UserEnhanced';
 import { Project } from './Project';
 
 export interface QuoteAttributes {
@@ -93,7 +93,7 @@ Quote.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'users',
+        model: 'enhanced_users', // TODO: future alignment to 'users' table via migration
         key: 'id',
       },
     },

@@ -1,7 +1,6 @@
 import { webSocketService } from './websocketService';
-
-// Base API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+import { API_BASE_URL } from '../config/api';
+// NOTE: Deprecated internal base URL logic removed. All code now sources API base via config/api.ts
 
 interface APIResponse<T = any> {
   success: boolean;

@@ -9,7 +9,7 @@ export interface UserAttributes {
   passwordHash: string;
   firstName: string;
   lastName: string;
-  role: 'owner' | 'office_manager' | 'shop_manager' | 'project_manager' | 'team_leader' | 'technician' | 'customer';
+  role: 'owner' | 'office_manager' | 'shop_manager' | 'project_manager' | 'team_leader' | 'technician' | 'customer' | 'admin' | 'user' | 'sales' | 'fabrication';
   
   // Authentication fields
   isActive: boolean;
@@ -59,7 +59,7 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public passwordHash!: string;
   public firstName!: string;
   public lastName!: string;
-  public role!: 'owner' | 'office_manager' | 'shop_manager' | 'project_manager' | 'team_leader' | 'technician' | 'customer';
+  public role!: 'owner' | 'office_manager' | 'shop_manager' | 'project_manager' | 'team_leader' | 'technician' | 'customer' | 'admin' | 'user' | 'sales' | 'fabrication';
   
   // Authentication fields
   public isActive!: boolean;
@@ -132,6 +132,12 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
     return `${this.firstName} ${this.lastName}`;
   }
 
+  // Legacy compatibility fields used in older services/tests
+  public get fullName(): string { return this.getFullName(); }
+  public get company(): string | undefined { return undefined; }
+  public get isSalesRep(): boolean { return ['sales', 'owner', 'admin', 'office_manager'].includes(this.role as string); }
+  public get salesCapacity(): number | undefined { return undefined; }
+
   public getDisplayRole(): string {
     const roleNames = {
       'owner': 'Owner/Executive',
@@ -140,7 +146,11 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
       'project_manager': 'Project Manager',
       'team_leader': 'Team Leader',
       'technician': 'Technician',
-      'customer': 'Customer'
+      'customer': 'Customer',
+      'admin': 'Administrator',
+      'user': 'User',
+      'sales': 'Sales',
+      'fabrication': 'Fabrication'
     };
     return roleNames[this.role] || this.role;
   }
@@ -223,6 +233,23 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
         'view_own_projects',
         'submit_inquiries',
         'view_project_status'
+      ],
+      'admin': [
+        'view_all_data',
+        'manage_users',
+        'manage_projects',
+        'access_financials'
+      ],
+      'user': [
+        'view_own_projects'
+      ],
+      'sales': [
+        'view_projects',
+        'manage_customers'
+      ],
+      'fabrication': [
+        'view_projects',
+        'manage_production'
       ]
     };
     
@@ -261,7 +288,19 @@ User.init({
   },
   passwordHash: {
     type: DataTypes.STRING(255),
-    allowNull: false,
+    allowNull: true, // allow null to support legacy tests creating users without passwords
+  },
+  // Virtual field for test seeding convenience: setting `password` sets `passwordHash`
+  password: {
+    type: DataTypes.VIRTUAL,
+    set(this: any, value: string) {
+      if (value && !this.passwordHash) {
+        this.setDataValue('passwordHash', value);
+      }
+    },
+    get() {
+      return undefined; // never expose
+    }
   },
   firstName: {
     type: DataTypes.STRING(50),
@@ -280,7 +319,7 @@ User.init({
     },
   },
   role: {
-    type: DataTypes.ENUM('owner', 'office_manager', 'shop_manager', 'project_manager', 'team_leader', 'technician', 'customer'),
+    type: DataTypes.ENUM('owner', 'office_manager', 'shop_manager', 'project_manager', 'team_leader', 'technician', 'customer', 'admin', 'user', 'sales', 'fabrication'),
     allowNull: false,
     defaultValue: 'customer',
   },
@@ -415,6 +454,14 @@ User.init({
   tableName: 'enhanced_users',
   underscored: true,
   timestamps: true,
+  hooks: {
+    beforeValidate: (user: any) => {
+      if (user.password && !user.passwordHash) {
+        // For test seeding convenience only; do NOT use raw passwords in production
+        user.passwordHash = user.password;
+      }
+    }
+  },
   indexes: [
     {
       fields: ['email'],

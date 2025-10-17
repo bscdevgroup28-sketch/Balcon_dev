@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 import { z } from 'zod';
 import { sequelize } from '../config/database';
 import { Material } from '../models';
+import { withCache, cacheKeys, cacheTags, invalidateTag, del, set } from '../utils/cache';
 import { validate, ValidatedRequest } from '../middleware/validation';
 import {
   createMaterialSchema,
@@ -15,6 +16,7 @@ import {
   IdParamInput,
 } from '../utils/validation';
 import { logger } from '../utils/logger';
+import { eventBus, createEvent } from '../events/eventBus';
 
 const router = Router();
 
@@ -57,9 +59,6 @@ router.get(
                 { [Op.gt]: sequelize.col('reorderPoint') }
               ]
             };
-            break;
-          case 'normal':
-            where.currentStock = { [Op.gt]: sequelize.col('minimumStock') };
             break;
         }
       }
@@ -106,7 +105,7 @@ router.get(
 
 // GET /api/materials/:id - Get a specific material
 router.get(
-  '/:id',
+  '/:id(\\d+)',
   validate({ params: idParamSchema }),
   async (req: ValidatedRequest<any, any, IdParamInput>, res: Response) => {
     try {
@@ -140,9 +139,23 @@ router.post(
     try {
       const materialData = req.validatedBody!;
 
-      const material = await Material.create(materialData);
+    const material = await Material.create(materialData);
 
-      logger.info(`Material created: ${material.name} (ID: ${material.id})`);
+    logger.info(`Material created: ${material.name} (ID: ${material.id})`);
+    eventBus.emitEvent(createEvent('material.created', { id: material.id, name: material.name }));
+    try {
+  // Direct key deletion plus tag invalidation for stronger consistency
+  try { del(cacheKeys.materialCategories); } catch { /* ignore */ }
+  invalidateTag(cacheTags.materials);
+      // Write-through repopulation for strong consistency post-create
+      const cats = await Material.findAll({
+        attributes: [[Material.sequelize!.fn('DISTINCT', Material.sequelize!.col('category')), 'category']],
+        where: { status: 'active' },
+        raw: true
+      });
+      const list = cats.map((c:any)=>c.category).filter(Boolean).sort();
+      try { set(cacheKeys.materialCategories, list, parseInt(process.env.CACHE_TTL_MATERIAL_CATEGORIES_MS || '30000'), [cacheTags.materials]); } catch { /* ignore */ }
+    } catch { /* ignore */ }
 
       res.status(201).json({
         data: material,
@@ -160,7 +173,7 @@ router.post(
 
 // PUT /api/materials/:id - Update a material
 router.put(
-  '/:id',
+  '/:id(\\d+)',
   validate({ params: idParamSchema, body: updateMaterialSchema }),
   async (req: ValidatedRequest<UpdateMaterialInput, any, IdParamInput>, res: Response) => {
     try {
@@ -176,7 +189,9 @@ router.put(
         });
       }
 
-      await material.update(updateData);
+    await material.update(updateData);
+    eventBus.emitEvent(createEvent('material.updated', { id: material.id, changes: Object.keys(updateData) }));
+    try { invalidateTag(cacheTags.materials); } catch { /* ignore */ }
 
       logger.info(`Material updated: ${material.name} (ID: ${material.id})`);
 
@@ -196,7 +211,7 @@ router.put(
 
 // DELETE /api/materials/:id - Delete a material
 router.delete(
-  '/:id',
+  '/:id(\\d+)',
   validate({ params: idParamSchema }),
   async (req: ValidatedRequest<any, any, IdParamInput>, res: Response) => {
     try {
@@ -211,8 +226,9 @@ router.delete(
         });
       }
 
-      await material.destroy();
-
+    await material.destroy();
+    eventBus.emitEvent(createEvent('material.deleted', { id: material.id }));
+    try { invalidateTag(cacheTags.materials); } catch { /* ignore */ }
       logger.info(`Material deleted: ${material.name} (ID: ${material.id})`);
 
       res.json({
@@ -231,24 +247,31 @@ router.delete(
 // GET /api/materials/categories - Get unique material categories
 router.get('/categories', async (req: ValidatedRequest, res: Response) => {
   try {
-    const categories = await Material.findAll({
-      attributes: [
-        [Material.sequelize!.fn('DISTINCT', Material.sequelize!.col('category')), 'category']
-      ],
-      where: {
-        status: 'active',
-      },
-      raw: true,
-    });
-
-    const categoryList = categories
-      .map((cat: any) => cat.category)
-      .filter(Boolean)
-      .sort();
-
-    res.json({
-      data: categoryList,
-    });
+    const ttlMs = parseInt(process.env.CACHE_TTL_MATERIAL_CATEGORIES_MS || '30000');
+    const bypass = (req as any).query?.bypassCache === 'true';
+    const loader = async () => {
+      const categories = await Material.findAll({
+        attributes: [
+          [Material.sequelize!.fn('DISTINCT', Material.sequelize!.col('category')), 'category']
+        ],
+        where: { status: 'active' },
+        raw: true,
+      });
+      return categories
+        .map((cat: any) => cat.category)
+        .filter(Boolean)
+        .sort();
+    };
+    const categoryList = bypass
+      ? await loader()
+      : await withCache(
+          cacheKeys.materialCategories,
+          ttlMs,
+          loader,
+          [cacheTags.materials]
+        );
+    res.setHeader('Cache-Control', 'public, max-age=30');
+    res.json({ data: categoryList, cached: !bypass });
   } catch (error) {
     logger.error('Error fetching material categories:', error);
     res.status(500).json({
@@ -261,21 +284,26 @@ router.get('/categories', async (req: ValidatedRequest, res: Response) => {
 // GET /api/materials/low-stock - Get materials with low stock
 router.get('/low-stock', async (req: ValidatedRequest, res: Response) => {
   try {
-    const materials = await Material.findAll({
-      where: {
-        status: 'active',
-        currentStock: {
-          [Op.lte]: sequelize.col('minimumStock'),
-        },
+    const ttlMs = parseInt(process.env.CACHE_TTL_MATERIALS_LOW_STOCK_MS || '15000');
+    const materials = await withCache(
+      cacheKeys.materialLowStock,
+      ttlMs,
+      async () => {
+        const rows = await Material.findAll({
+          where: {
+            status: 'active',
+            currentStock: { [Op.lte]: sequelize.col('minimumStock') },
+          },
+          order: [['currentStock', 'ASC']],
+        });
+        return rows.map(r => r.toJSON());
       },
-      order: [['currentStock', 'ASC']],
-    });
-
+      [cacheTags.materials]
+    );
     res.json({
       data: materials,
-      meta: {
-        total: materials.length,
-      },
+      meta: { total: materials.length },
+      cached: true
     });
   } catch (error) {
     logger.error('Error fetching low stock materials:', error);
@@ -288,7 +316,7 @@ router.get('/low-stock', async (req: ValidatedRequest, res: Response) => {
 
 // PUT /api/materials/:id/stock - Update material stock
 router.put(
-  '/:id/stock',
+  '/:id(\\d+)/stock',
   validate({
     params: idParamSchema,
     body: z.object({
@@ -322,12 +350,27 @@ router.put(
         }
       }
 
+  const previousStock = material.currentStock;
       await material.update({
         currentStock: newStock,
         notes: notes ? `${material.notes || ''}\nStock updated: ${new Date().toISOString()} - ${notes}`.trim() : material.notes,
       });
+  try { invalidateTag(cacheTags.materials); } catch { /* ignore */ }
 
-      logger.info(`Material stock updated: ${material.name} (ID: ${material.id}) - New stock: ${newStock}`);
+  logger.info(`Material stock updated: ${material.name} (ID: ${material.id}) - New stock: ${newStock}`);
+  eventBus.emitEvent(createEvent('material.stock.changed', { id: material.id, previousStock, newStock }));
+  // Emit inventory transaction event (logical; persistence to dedicated table can be added in service layer later)
+  const direction = newStock > previousStock ? 'in' : 'out';
+  const delta = Math.abs(newStock - previousStock);
+  if (delta !== 0) {
+    eventBus.emitEvent(createEvent('inventory.transaction.recorded', {
+      materialId: material.id,
+      direction,
+      quantity: delta,
+      resultingStock: newStock,
+      type: 'adjustment'
+    }));
+  }
 
       res.json({
         data: material,

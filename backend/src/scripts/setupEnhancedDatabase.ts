@@ -36,13 +36,15 @@ export const initializeDatabase = async (): Promise<void> => {
     // Setup associations
     setupAssociations();
 
+    const inProd = process.env.NODE_ENV === 'production';
     const forceSync = process.env.DB_FORCE_SYNC === 'true';
-    if (forceSync) {
-      logger.warn('⚠️  DB_FORCE_SYNC=true - performing destructive sync (force: true)');
+    if (inProd) {
+      logger.info('ℹ️  Production mode: skipping sequelize.sync (migrations required).');
+    } else {
+      if (forceSync) logger.warn('⚠️  DB_FORCE_SYNC=true - performing destructive sync (force: true)');
+      await sequelize.sync({ force: forceSync, alter: false });
+      logger.info('✅ Enhanced database tables created/updated successfully (sync path)');
     }
-  await sequelize.sync({ force: forceSync, alter: false });
-    
-    logger.info('✅ Enhanced database tables created/updated successfully');
   } catch (error) {
     logger.error('❌ Database initialization failed:', error);
     throw error;
@@ -58,7 +60,7 @@ export const resetDatabase = async (): Promise<void> => {
     setupAssociations();
 
     // Drop and recreate all tables
-  await sequelize.sync({ force: true });
+    await sequelize.sync({ force: true });
     
     logger.info('✅ Database reset completed');
   } catch (error) {
@@ -330,6 +332,13 @@ export const createEnhancedSeedData = async (): Promise<void> => {
 // Main initialization function
 export const setupEnhancedDatabase = async (): Promise<void> => {
   try {
+    // Ensure all migrations applied first to avoid missing columns (e.g., export_jobs.fileKey)
+    try {
+      const { runAllMigrations } = await import('./migrationLoader');
+      await runAllMigrations();
+    } catch (mErr) {
+      logger.warn('[setupEnhancedDatabase] Failed to apply migrations prior to sync (continuing): ' + (mErr as any)?.message);
+    }
     await initializeDatabase();
     await createEnhancedSeedData();
     logger.info('🎉 Enhanced database setup completed successfully!');

@@ -1,6 +1,7 @@
 import express, { Application, Request, Response } from 'express';
 import { createServer } from 'http';
 // import { Server as SocketIOServer } from 'socket.io'; // Commented out for now
+// DEPRECATED: Historical variant kept temporarily; scheduled for removal after production stabilization.
 import cors from 'cors';
 import { buildCorsOptions } from './config/corsConfig';
 import helmet from 'helmet';

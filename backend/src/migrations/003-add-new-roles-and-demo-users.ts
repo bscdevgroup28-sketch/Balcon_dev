@@ -1,33 +1,20 @@
 import { QueryInterface, Op } from 'sequelize';
 
 export const up = async (queryInterface: QueryInterface): Promise<void> => {
-  // First, add the new role enum values to the existing enum type
-  await queryInterface.sequelize.query(
-    `ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'owner';`
-  );
-  
-  await queryInterface.sequelize.query(
-    `ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'office_manager';`
-  );
-  
-  await queryInterface.sequelize.query(
-    `ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'shop_manager';`
-  );
-  
-  await queryInterface.sequelize.query(
-    `ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'project_manager';`
-  );
-  
-  await queryInterface.sequelize.query(
-    `ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'team_leader';`
-  );
-  
-  await queryInterface.sequelize.query(
-    `ALTER TYPE "enum_Users_role" ADD VALUE IF NOT EXISTS 'technician';`
-  );
+  const dialect = queryInterface.sequelize.getDialect();
+  if (dialect === 'postgres') {
+    // Extend existing enum (Postgres only). Enum naming may vary; adjust if needed.
+    const enumName = 'enum_users_role';
+    const roles = ['owner','office_manager','shop_manager','project_manager','team_leader','technician'];
+    for (const r of roles) {
+      await queryInterface.sequelize.query(`DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid WHERE t.typname = '${enumName}' AND e.enumlabel='${r}') THEN ALTER TYPE "${enumName}" ADD VALUE '${r}'; END IF; END $$;`);
+    }
+  } else {
+    // SQLite / other: skip enum alterations (Sequelize models handle allowed values)
+  }
 
-  // Insert demo users for each role
-  await queryInterface.bulkInsert('Users', [
+  // Insert demo users for each role (table name is lowercase 'users')
+  await queryInterface.bulkInsert('users', [
     {
       email: 'owner@balconbuilders.com',
       firstName: 'Richard',
@@ -105,7 +92,7 @@ export const up = async (queryInterface: QueryInterface): Promise<void> => {
 
 export const down = async (queryInterface: QueryInterface): Promise<void> => {
   // Remove demo users
-  await queryInterface.bulkDelete('Users', {
+  await queryInterface.bulkDelete('users', {
     email: {
       [Op.in]: [
         'owner@balconbuilders.com',

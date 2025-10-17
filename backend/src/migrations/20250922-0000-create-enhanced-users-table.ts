@@ -3,7 +3,12 @@ import { QueryInterface, DataTypes } from 'sequelize';
 // Initial explicit creation for enhanced_users table (idempotent)
 // If table already exists (previously created via sync), migration is a no-op.
 
-export async function up({ context }: { context: QueryInterface }) {
+export async function up(arg: { context: QueryInterface } | QueryInterface) {
+  const context: QueryInterface = (arg as any).context || (arg as any);
+  if (!context || !(context as any).sequelize) {
+    console.warn('[migration enhanced-users] Missing query interface context; skipping');
+    return;
+  }
   const tableName = 'enhanced_users';
   const tableExists = await context.sequelize.getQueryInterface().showAllTables()
     .then((tables: string[] | unknown) => {
@@ -58,8 +63,9 @@ export async function up({ context }: { context: QueryInterface }) {
   await context.addIndex(tableName, ['email_verification_token'], { name: 'enhanced_users_evt_idx' });
 }
 
-export async function down({ context }: { context: QueryInterface }) {
-  // Only drop if table exists
+export async function down(arg: { context: QueryInterface } | QueryInterface) {
+  const context: QueryInterface = (arg as any).context || (arg as any);
+  if (!context || !(context as any).sequelize) return;
   const tableName = 'enhanced_users';
   const qi = context.sequelize.getQueryInterface();
   const tables = await qi.showAllTables();

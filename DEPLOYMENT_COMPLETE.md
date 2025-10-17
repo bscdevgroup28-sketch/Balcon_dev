@@ -38,6 +38,7 @@
 - **Frontend CI**: Lint → Type Check → Build → Deploy  
 - **Triggers**: Push to `main` branch
 - **Path-based**: Only affected services deploy
+ - **(Recommended Additions)**: Metrics schema drift (`npm run metrics:schema:drift`) & performance guard (`npm run perf:guard`) pre-deploy steps
 
 ---
 
@@ -115,6 +116,13 @@ RAILWAY_FRONTEND_SERVICE_ID=your_frontend_service_uuid
 | `JWT_EXPIRES_IN` | Token lifetime | `7d` |
 | `SENDGRID_API_KEY` | Email service | Not set |
 | `EMAIL_FROM` | From address | `noreply@balconbuilders.com` |
+| `SLO_AVAILABILITY_TARGET` | Availability SLO target (0-1) | `0.995` |
+| `ANOMALY_ALPHA` | EMA smoothing for anomaly metrics | `0.2` |
+| `ANOMALY_LOG_THRESHOLD` | Z-score threshold for anomaly logging | `3` |
+| `TRACING_ENABLED` | Enable Phase 14 tracing bootstrap | `false` |
+| `OTEL_SERVICE_NAME` | OpenTelemetry logical service name | `balcon-backend` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector URL | unset |
+| `RESIDUAL_THRESHOLD_STD_MULTIPLIER` | Adaptive residual band multiplier | `3` |
 
 ---
 
@@ -130,6 +138,13 @@ RAILWAY_FRONTEND_SERVICE_ID=your_frontend_service_uuid
 - **Current**: Local file storage (`uploads/` folder)
 - **Recommended**: Migrate to cloud storage (Google Cloud Storage) for production
 - **Timeline**: After initial deployment validation
+
+### Predictive / Capacity Metrics
+- Gauges (`capacity.*`, `scaling.*`, `analytics.forecast.residual_*`) remain 0 until pipeline scripts run.
+- Add a nightly scheduler or GitHub Action (see `DEPLOYMENT_SETUP.md`).
+
+### Tracing
+- Disabled by default. Enable with `TRACING_ENABLED=true` after installing OpenTelemetry deps.
 
 ---
 
@@ -184,6 +199,9 @@ RAILWAY_FRONTEND_SERVICE_ID=your_frontend_service_uuid
 ✅ **Health checks passing**  
 ✅ **Authentication flow working**  
 ✅ **API endpoints responding**  
+✅ **SLO & anomaly gauges reflect traffic**  
+✅ **Capacity & scaling gauges populated (post first pipeline run)**  
+✅ **Schema drift & perf guard clean (if integrated)**  
 
 ---
 

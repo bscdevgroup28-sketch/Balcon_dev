@@ -46,7 +46,7 @@ export const testSprint4Features = async (req: Request, res: Response): Promise<
           salesRepsFound: workloads.length,
           workloads: workloads.map(w => ({
             salesRepId: w.userId,
-            name: w.user.fullName,
+            name: w.user.getFullName ? w.user.getFullName() : `${w.user.firstName} ${w.user.lastName}`,
             activeProjects: w.activeProjects,
             capacity: w.capacity,
             utilization: w.utilizationPercentage
@@ -87,8 +87,8 @@ export const testSprint4Features = async (req: Request, res: Response): Promise<
           inquiryNumber: testProject.inquiryNumber,
           assignedSalesRep: assignedSalesRep ? {
             id: assignedSalesRep.id,
-            name: assignedSalesRep.fullName,
-            isSalesRep: assignedSalesRep.isSalesRep
+            name: assignedSalesRep.getFullName ? assignedSalesRep.getFullName() : `${assignedSalesRep.firstName} ${assignedSalesRep.lastName}`,
+            isSalesRep: true
           } : null,
           autoAssignmentWorked: !!assignedSalesRep
         }
@@ -137,7 +137,8 @@ export const testSprint4Features = async (req: Request, res: Response): Promise<
     try {
       const userCount = await User.count();
       const projectCount = await Project.count();
-      const salesRepCount = await User.count({ where: { isSalesRep: true } });
+  // Approximate sales reps as users with role in sales-capable roles
+  const salesRepCount = await User.count({ where: { role: ['sales','owner','admin','office_manager'] as any } });
 
       testResults.tests.databaseIntegrity = {
         status: 'PASSED',
@@ -225,8 +226,13 @@ export const createTestData = async (req: Request, res: Response): Promise<void>
         phone: '555-TEST-REP',
         role: 'sales',
         isActive: true,
-        isSalesRep: true,
-        salesCapacity: 15
+        isVerified: true,
+        passwordHash: 'temp',
+        permissions: [],
+        canAccessFinancials: false,
+        canManageProjects: true,
+        canManageUsers: false,
+        mustChangePassword: false
       }
     });
 
@@ -238,11 +244,15 @@ export const createTestData = async (req: Request, res: Response): Promise<void>
         lastName: 'Customer',
         email: 'test.customer@example.com',
         phone: '555-TEST-CUST',
-        company: 'Test Company Inc.',
         role: 'user',
         isActive: true,
-        isSalesRep: false,
-        salesCapacity: 0
+        isVerified: true,
+        passwordHash: 'temp',
+        permissions: [],
+        canAccessFinancials: false,
+        canManageProjects: false,
+        canManageUsers: false,
+        mustChangePassword: false
       }
     });
 
@@ -251,12 +261,12 @@ export const createTestData = async (req: Request, res: Response): Promise<void>
       data: {
         salesRep: {
           id: salesRep.id,
-          name: salesRep.fullName,
+          name: salesRep.getFullName ? salesRep.getFullName() : `${salesRep.firstName} ${salesRep.lastName}`,
           created: salesRepCreated
         },
         customer: {
           id: customer.id,
-          name: customer.fullName,
+          name: customer.getFullName ? customer.getFullName() : `${customer.firstName} ${customer.lastName}`,
           created: customerCreated
         }
       }

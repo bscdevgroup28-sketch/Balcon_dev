@@ -8,10 +8,15 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const UserEnhanced_1 = require("../models/UserEnhanced");
 const logger_1 = require("../utils/logger");
 const securityAudit_1 = require("../utils/securityAudit");
+const crypto_1 = __importDefault(require("crypto"));
+const RefreshToken_1 = require("../models/RefreshToken");
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'balcon-builders-secret-key-2025';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+// Note: do NOT cache refresh token lifetime; tests may override env var at runtime
+function getRefreshTokenTtl() {
+    return process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+}
 // Authentication service class
 class AuthService {
     // Generate access token
@@ -48,7 +53,7 @@ class AuthService {
             type: 'refresh'
         };
         const options = {
-            expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+            expiresIn: getRefreshTokenTtl(),
             issuer: 'balcon-builders',
             audience: 'balcon-builders-app'
         };
@@ -60,16 +65,16 @@ class AuthService {
             const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET, {
                 issuer: 'balcon-builders',
                 audience: 'balcon-builders-app'
-            });
+            }); // jwt.verify respects exp
             return decoded;
         }
         catch (error) {
-            logger_1.logger.warn('Token verification failed:', error);
+            logger_1.logger.warn('Token verification failed:', error instanceof Error ? error.message : error);
             return null;
         }
     }
     // Authenticate user with email and password
-    static async authenticateUser(email, password) {
+    static async authenticateUser(email, password, meta) {
         try {
             // Find user by email
             const user = await UserEnhanced_1.User.findByEmail(email);
@@ -96,6 +101,7 @@ class AuthService {
             // Generate tokens
             const accessToken = this.generateAccessToken(user);
             const refreshToken = this.generateRefreshToken(user);
+            await this.persistRefreshToken(user.id, refreshToken, meta);
             logger_1.logger.info(`User authenticated successfully: ${email} (${user.role})`);
             (0, securityAudit_1.logSecurityEvent)(undefined, { action: 'auth.login', outcome: 'success', meta: { userId: user.id, email: user.email, role: user.role } });
             return {
@@ -110,7 +116,7 @@ class AuthService {
         }
     }
     // Refresh access token
-    static async refreshToken(refreshToken) {
+    static async refreshToken(refreshToken, meta) {
         try {
             // Verify refresh token
             const payload = this.verifyToken(refreshToken);
@@ -122,18 +128,65 @@ class AuthService {
             if (!user || !user.isActive) {
                 return null;
             }
-            // Generate new tokens
+            // Look up existing stored token hash
+            const incomingHash = this.hashToken(refreshToken);
+            const stored = await RefreshToken_1.RefreshToken.findOne({ where: { userId: user.id, tokenHash: incomingHash, revokedAt: null } });
+            if (!stored) {
+                // Reuse or unknown token -> log and deny
+                (0, securityAudit_1.logSecurityEvent)(undefined, { action: 'auth.refresh.reuse_detected', outcome: 'failure', actorUserId: user.id, meta: { reason: 'unknown_token' } });
+                return null;
+            }
+            if (new Date(stored.expiresAt).getTime() < Date.now()) {
+                await stored.update({ revokedAt: new Date() });
+                return null;
+            }
+            // Rotate: revoke old token and issue a new one
             const newAccessToken = this.generateAccessToken(user);
             const newRefreshToken = this.generateRefreshToken(user);
-            return {
-                accessToken: newAccessToken,
-                refreshToken: newRefreshToken
-            };
+            await stored.update({ revokedAt: new Date(), replacedByToken: this.hashToken(newRefreshToken) });
+            await this.persistRefreshToken(user.id, newRefreshToken, meta);
+            (0, securityAudit_1.logSecurityEvent)(undefined, { action: 'auth.refresh.rotate', outcome: 'success', actorUserId: user.id, meta: { replaced: stored.id } });
+            return { accessToken: newAccessToken, refreshToken: newRefreshToken };
         }
         catch (error) {
             logger_1.logger.error('Token refresh error:', error);
             return null;
         }
+    }
+    // --- Refresh Token Persistence & Helpers ---
+    static hashToken(token) {
+        return crypto_1.default.createHash('sha256').update(token).digest('hex');
+    }
+    static decodeExpiry(refreshJwt) {
+        // Use decode (non-verified) only for storage convenience; if missing exp, fall back to 7d
+        try {
+            const decoded = jsonwebtoken_1.default.decode(refreshJwt);
+            if (decoded?.exp)
+                return new Date(decoded.exp * 1000);
+            return null;
+        }
+        catch {
+            return null;
+        }
+    }
+    static async persistRefreshToken(userId, rawToken, meta) {
+        const tokenHash = this.hashToken(rawToken);
+        const expiresAt = this.decodeExpiry(rawToken) || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await RefreshToken_1.RefreshToken.create({ userId, tokenHash, expiresAt, ipAddress: meta?.ip, userAgent: meta?.ua });
+    }
+    static async revokeAllUserTokens(userId) {
+        await RefreshToken_1.RefreshToken.update({ revokedAt: new Date() }, { where: { userId, revokedAt: null } });
+    }
+    static async detectAndFlagReuse(userId, tokenHash) {
+        const existing = await RefreshToken_1.RefreshToken.findOne({ where: { userId, tokenHash } });
+        if (!existing)
+            return false;
+        if (existing.revokedAt) {
+            await existing.update({ reuseDetected: true });
+            (0, securityAudit_1.logSecurityEvent)(undefined, { action: 'auth.refresh.reuse_detected', outcome: 'failure', actorUserId: userId, meta: { tokenId: existing.id } });
+            return true;
+        }
+        return false;
     }
     // Create user with password
     static async createUser(userData, password) {

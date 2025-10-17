@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const authEnhanced_1 = require("../middleware/authEnhanced");
 const models_1 = require("../models");
 const fileUpload_1 = require("../middleware/fileUpload");
 const validation_1 = require("../middleware/validation");
@@ -15,7 +16,7 @@ const router = (0, express_1.Router)();
 // Validation schemas
 // removed unused uploadFilesSchema definition
 // POST /api/files/upload - Upload files for a project
-router.post('/upload', fileUpload_1.upload.array('files', 10), fileUpload_1.checkTotalFileSize, async (req, res) => {
+router.post('/upload', (0, authEnhanced_1.requirePolicy)('file.upload'), fileUpload_1.upload.array('files', 10), fileUpload_1.checkTotalFileSize, async (req, res) => {
     try {
         const projectId = parseInt(req.body.projectId, 10);
         const description = req.body.description;
@@ -97,7 +98,7 @@ router.post('/upload', fileUpload_1.upload.array('files', 10), fileUpload_1.chec
     }
 });
 // GET /api/files/project/:projectId - Get all files for a project
-router.get('/project/:projectId', (0, validation_1.validate)({ params: zod_1.z.object({ projectId: zod_1.z.string().transform(val => parseInt(val, 10)) }) }), async (req, res) => {
+router.get('/project/:projectId', (0, authEnhanced_1.requirePolicy)('file.list'), (0, validation_1.validate)({ params: zod_1.z.object({ projectId: zod_1.z.string().transform(val => parseInt(val, 10)) }) }), async (req, res) => {
     try {
         const { projectId } = req.validatedParams;
         // TODO: Add authorization check - user must own project or be admin
@@ -140,7 +141,7 @@ router.get('/project/:projectId', (0, validation_1.validate)({ params: zod_1.z.o
     }
 });
 // GET /api/files/:fileName - Serve file
-router.get('/:fileName', async (req, res) => {
+router.get('/:fileName', (0, authEnhanced_1.requirePolicy)('file.read'), async (req, res) => {
     try {
         const { fileName } = req.params;
         const projectFile = await models_1.ProjectFile.findOne({
@@ -179,7 +180,7 @@ router.get('/:fileName', async (req, res) => {
     }
 });
 // DELETE /api/files/:fileId - Delete a file
-router.delete('/:fileId', (0, validation_1.validate)({ params: zod_1.z.object({ fileId: zod_1.z.string().transform(val => parseInt(val, 10)) }) }), async (req, res) => {
+router.delete('/:fileId', (0, authEnhanced_1.requirePolicy)('file.delete'), (0, validation_1.validate)({ params: zod_1.z.object({ fileId: zod_1.z.string().transform(val => parseInt(val, 10)) }) }), async (req, res) => {
     try {
         const { fileId } = req.validatedParams;
         const projectFile = await models_1.ProjectFile.findByPk(fileId);

@@ -31,8 +31,13 @@ export const createSeedData = async (): Promise<void> => {
       phone: '555-0100',
       role: 'admin',
       isActive: true,
-      isSalesRep: false,
-      salesCapacity: 0
+        isVerified: true,
+        passwordHash: 'temp',
+        permissions: [],
+        canAccessFinancials: true,
+        canManageProjects: true,
+        canManageUsers: true,
+        mustChangePassword: false
     });
 
     // Create sales representatives
@@ -43,8 +48,13 @@ export const createSeedData = async (): Promise<void> => {
       phone: '555-0101',
       role: 'sales',
       isActive: true,
-      isSalesRep: true,
-      salesCapacity: 15
+        isVerified: true,
+        passwordHash: 'temp',
+        permissions: [],
+        canAccessFinancials: false,
+        canManageProjects: true,
+        canManageUsers: false,
+        mustChangePassword: false
     });
 
     const salesRep2 = await User.create({
@@ -54,8 +64,13 @@ export const createSeedData = async (): Promise<void> => {
       phone: '555-0102',
       role: 'sales',
       isActive: true,
-      isSalesRep: true,
-      salesCapacity: 12
+        isVerified: true,
+        passwordHash: 'temp',
+        permissions: [],
+        canAccessFinancials: false,
+        canManageProjects: true,
+        canManageUsers: false,
+        mustChangePassword: false
     });
 
     // Create test customer
@@ -64,11 +79,15 @@ export const createSeedData = async (): Promise<void> => {
       lastName: 'Customer',
       email: 'customer@example.com',
       phone: '555-0200',
-      company: 'ABC Construction',
       role: 'user',
       isActive: true,
-      isSalesRep: false,
-      salesCapacity: 0
+        isVerified: true,
+        passwordHash: 'temp',
+        permissions: [],
+        canAccessFinancials: false,
+        canManageProjects: false,
+        canManageUsers: false,
+        mustChangePassword: false
     });
 
     // Create a sample project

@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setupEnhancedDatabase = exports.createEnhancedSeedData = exports.resetDatabase = exports.initializeDatabase = void 0;
 // DEPRECATION: This script formerly targeted a separate enhancedSequelize instance.
@@ -32,12 +65,17 @@ const initializeDatabase = async () => {
         logger_1.logger.info('🔄 Initializing enhanced database...');
         // Setup associations
         setupAssociations();
+        const inProd = process.env.NODE_ENV === 'production';
         const forceSync = process.env.DB_FORCE_SYNC === 'true';
-        if (forceSync) {
-            logger_1.logger.warn('⚠️  DB_FORCE_SYNC=true - performing destructive sync (force: true)');
+        if (inProd) {
+            logger_1.logger.info('ℹ️  Production mode: skipping sequelize.sync (migrations required).');
         }
-        await database_1.sequelize.sync({ force: forceSync, alter: false });
-        logger_1.logger.info('✅ Enhanced database tables created/updated successfully');
+        else {
+            if (forceSync)
+                logger_1.logger.warn('⚠️  DB_FORCE_SYNC=true - performing destructive sync (force: true)');
+            await database_1.sequelize.sync({ force: forceSync, alter: false });
+            logger_1.logger.info('✅ Enhanced database tables created/updated successfully (sync path)');
+        }
     }
     catch (error) {
         logger_1.logger.error('❌ Database initialization failed:', error);
@@ -317,6 +355,14 @@ exports.createEnhancedSeedData = createEnhancedSeedData;
 // Main initialization function
 const setupEnhancedDatabase = async () => {
     try {
+        // Ensure all migrations applied first to avoid missing columns (e.g., export_jobs.fileKey)
+        try {
+            const { runAllMigrations } = await Promise.resolve().then(() => __importStar(require('./migrationLoader')));
+            await runAllMigrations();
+        }
+        catch (mErr) {
+            logger_1.logger.warn('[setupEnhancedDatabase] Failed to apply migrations prior to sync (continuing): ' + mErr?.message);
+        }
         await (0, exports.initializeDatabase)();
         await (0, exports.createEnhancedSeedData)();
         logger_1.logger.info('🎉 Enhanced database setup completed successfully!');

@@ -8,7 +8,7 @@ cmds = ["npm ci"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "node dist/indexEnhanced.js"
+cmd = "node dist/src/indexEnhanced.js"
 
 [variables]
 NODE_ENV = "production"

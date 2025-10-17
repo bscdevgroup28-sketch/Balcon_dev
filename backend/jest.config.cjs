@@ -27,4 +27,5 @@ module.exports = {
       lines: 40,
     }
   },
+  maxWorkers: 1, // serialize tests to avoid sqlite/migration race conditions
 };

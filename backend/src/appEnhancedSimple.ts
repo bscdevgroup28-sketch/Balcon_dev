@@ -1,6 +1,7 @@
 import express, { Application, Request, Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
+// DEPRECATED: This simplified variant retained for reference. Use appEnhanced.ts only for runtime.
 import helmet from 'helmet';
 import compression from 'compression';
 // Removed morgan in favor of custom requestLoggingMiddleware

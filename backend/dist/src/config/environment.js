@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.config = void 0;
+exports.validateRuntime = validateRuntime;
 const zod_1 = require("zod");
 const dotenv = __importStar(require("dotenv"));
 // Load environment variables from .env file
@@ -54,6 +55,8 @@ const envSchema = zod_1.z.object({
     REDIS_URL: zod_1.z.string().optional(),
     JWT_SECRET: zod_1.z.string(),
     JWT_EXPIRES_IN: zod_1.z.string().default('7d'),
+    FRONTEND_URL: zod_1.z.string().optional(),
+    FRONTEND_ORIGINS: zod_1.z.string().optional(),
     // Email configuration
     SENDGRID_API_KEY: zod_1.z.string().optional(),
     EMAIL_FROM: zod_1.z.string().default('noreply@balconbuilders.com'),
@@ -74,6 +77,18 @@ const envSchema = zod_1.z.object({
     GOOGLE_CLOUD_STORAGE_BUCKET: zod_1.z.string().optional(),
     CORS_ORIGIN: zod_1.z.string().default('*'),
     LOG_LEVEL: zod_1.z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+    // Observability toggles
+    ADV_METRICS_ENABLED: zod_1.z.string().optional(),
+    PROM_DEFAULT_METRICS: zod_1.z.string().optional(),
+    // Rate limiting / brute force controls
+    AUTH_MAX_ATTEMPTS_WINDOW: zod_1.z.string().optional(),
+    AUTH_ATTEMPT_WINDOW_MS: zod_1.z.string().optional(),
+    AUTH_BASE_LOCK_MS: zod_1.z.string().optional(),
+    AUTH_MAX_LOCK_MS: zod_1.z.string().optional(),
+    GLOBAL_RATE_LIMIT_WINDOW_MS: zod_1.z.string().optional(),
+    GLOBAL_RATE_LIMIT_MAX: zod_1.z.string().optional(),
+    REFRESH_TOKEN_RETENTION_DAYS: zod_1.z.string().optional(),
+    REFRESH_TOKEN_CLEANUP_INTERVAL_MS: zod_1.z.string().optional(),
 });
 const parseEnv = () => {
     try {
@@ -95,6 +110,37 @@ const parseEnv = () => {
     }
 };
 const env = parseEnv();
+// Production safety guard: disallow SQLite fallback in production to prevent ephemeral data loss
+if (env.NODE_ENV === 'production' && env.DATABASE_URL && env.DATABASE_URL.startsWith('sqlite')) {
+    console.error('❌ Refusing to start: DATABASE_URL is using sqlite in production. Set a Postgres DATABASE_URL.');
+    process.exit(1);
+}
+// Derive frontend origins list (comma separated) prioritizing FRONTEND_ORIGINS > FRONTEND_URL > defaults
+const derivedFrontendOrigins = (() => {
+    const list = [];
+    if (env.FRONTEND_ORIGINS) {
+        env.FRONTEND_ORIGINS.split(',').map(v => v.trim()).filter(Boolean).forEach(v => list.push(v));
+    }
+    else if (env.FRONTEND_URL) {
+        list.push(env.FRONTEND_URL.trim());
+    }
+    // Development defaults
+    if (!list.length && env.NODE_ENV !== 'production') {
+        list.push('http://localhost:3000', 'http://localhost:3001');
+    }
+    return Array.from(new Set(list));
+})();
+// Enforce no wildcard origin in production
+if (env.NODE_ENV === 'production') {
+    if (derivedFrontendOrigins.some(o => o === '*' || o === 'http://localhost:3000')) {
+        console.error('❌ Refusing to start: In production you must configure FRONTEND_ORIGINS (no * or localhost).');
+        process.exit(1);
+    }
+    if (!derivedFrontendOrigins.length) {
+        console.error('❌ Refusing to start: No FRONTEND_URL / FRONTEND_ORIGINS specified for CORS in production.');
+        process.exit(1);
+    }
+}
 exports.config = {
     server: {
         port: parseInt(env.PORT),
@@ -103,13 +149,14 @@ exports.config = {
         baseUrl: env.NODE_ENV === 'production'
             ? 'https://api.balconbuilders.com'
             : `http://localhost:${parseInt(env.PORT)}`,
+        frontendOrigins: derivedFrontendOrigins,
     },
     database: {
         url: env.DATABASE_URL,
         pool: (() => {
             const base = {
-                max: 20,
-                min: 5,
+                max: 10,
+                min: 0,
                 acquire: 30000,
                 idle: 10000,
             };
@@ -120,8 +167,9 @@ exports.config = {
             const envAcquire = process.env.DB_POOL_ACQUIRE && !isNaN(Number(process.env.DB_POOL_ACQUIRE)) ? Number(process.env.DB_POOL_ACQUIRE) : undefined;
             const nodeEnv = env.NODE_ENV;
             if (nodeEnv === 'production') {
-                base.max = base.max * 2; // allow more concurrency
-                base.min = Math.max(base.min, 5);
+                base.max = 5; // keep within managed Postgres connection limits
+                base.min = 0;
+                base.acquire = 120000; // allow cold starts / resumed databases extra time
                 base.idle = 15000;
             }
             else if (nodeEnv === 'test') {
@@ -177,4 +225,36 @@ exports.config = {
     logging: {
         level: env.LOG_LEVEL,
     },
+    features: {
+        advancedMetrics: env.ADV_METRICS_ENABLED !== 'false',
+        promDefault: env.PROM_DEFAULT_METRICS === 'true'
+    },
+    limits: {
+        auth: {
+            maxAttempts: parseInt(process.env.AUTH_MAX_ATTEMPTS_WINDOW || '5'),
+            windowMs: parseInt(process.env.AUTH_ATTEMPT_WINDOW_MS || `${15 * 60 * 1000}`),
+            baseLockMs: parseInt(process.env.AUTH_BASE_LOCK_MS || '300000'),
+            maxLockMs: parseInt(process.env.AUTH_MAX_LOCK_MS || `${60 * 60 * 1000}`)
+        },
+        global: {
+            windowMs: parseInt(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || '60000'),
+            max: parseInt(process.env.GLOBAL_RATE_LIMIT_MAX || '900')
+        }
+    },
+    tokens: {
+        refreshRetentionDays: parseInt(process.env.REFRESH_TOKEN_RETENTION_DAYS || '30'),
+        refreshCleanupIntervalMs: parseInt(process.env.REFRESH_TOKEN_CLEANUP_INTERVAL_MS || `${6 * 60 * 60 * 1000}`) // 6h default
+    }
 };
+// Simple runtime self-check (can be expanded later)
+function validateRuntime() {
+    const errors = [];
+    // Re-read critical secrets directly from process.env so tests can simulate removal
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === '')
+        errors.push('JWT secret missing');
+    if (!exports.config.database.url)
+        errors.push('Database URL missing');
+    if (exports.config.limits.auth.maxAttempts < 3)
+        errors.push('Auth max attempts too low (<3)');
+    return { ok: errors.length === 0, errors };
+}

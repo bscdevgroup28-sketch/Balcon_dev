@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect, useCallback, ReactNode } from 'react';
 
 export type DensityMode = 'comfortable' | 'compact';
 
@@ -22,14 +22,16 @@ export function LayoutDensityProvider({ children, defaultDensity }: { children: 
     }
   }, []);
 
-  const setDensity = (mode: DensityMode) => {
+  const setDensity = useCallback((mode: DensityMode) => {
     setDensityState(mode);
     localStorage.setItem(STORAGE_KEY, mode);
-  };
+  }, []);
 
-  const toggleDensity = () => setDensity(density === 'comfortable' ? 'compact' : 'comfortable');
+  const toggleDensity = useCallback(() => {
+    setDensityState(prev => prev === 'comfortable' ? 'compact' : 'comfortable');
+  }, []);
 
-  const value = useMemo(() => ({ density, setDensity, toggleDensity }), [density]);
+  const value = useMemo(() => ({ density, setDensity, toggleDensity }), [density, setDensity, toggleDensity]);
 
   return (
     <LayoutDensityContext.Provider value={value}>{children}</LayoutDensityContext.Provider>

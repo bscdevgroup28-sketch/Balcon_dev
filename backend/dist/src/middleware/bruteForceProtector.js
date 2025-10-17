@@ -7,15 +7,21 @@ exports.bruteForceSnapshot = bruteForceSnapshot;
 const LRUCache = require('lru-cache');
 const logger_1 = require("../utils/logger");
 const securityAudit_1 = require("../utils/securityAudit");
-// Configurable thresholds
-const MAX_ATTEMPTS_WINDOW = parseInt(process.env.AUTH_MAX_ATTEMPTS_WINDOW || '5');
-const WINDOW_MS = parseInt(process.env.AUTH_ATTEMPT_WINDOW_MS || `${15 * 60 * 1000}`); // 15 min
-const BASE_LOCK_MS = parseInt(process.env.AUTH_BASE_LOCK_MS || '300000'); // 5 min
-const MAX_LOCK_MS = parseInt(process.env.AUTH_MAX_LOCK_MS || `${60 * 60 * 1000}`); // 1 hour
+const securityMetrics_1 = require("../utils/securityMetrics");
+const environment_1 = require("../config/environment");
+// Dynamic thresholds sourced from runtime config to allow test overrides
+function limits() {
+    return {
+        MAX_ATTEMPTS_WINDOW: environment_1.config.limits.auth.maxAttempts,
+        WINDOW_MS: environment_1.config.limits.auth.windowMs,
+        BASE_LOCK_MS: environment_1.config.limits.auth.baseLockMs,
+        MAX_LOCK_MS: environment_1.config.limits.auth.maxLockMs
+    };
+}
 // LRU to avoid unbounded memory (keyed by ip+identifier)
 const attempts = new LRUCache({
     max: 5000,
-    ttl: WINDOW_MS * 4, // keep some historical context
+    ttl: limits().WINDOW_MS * 4,
 });
 function keyFor(ip, identifier) {
     return `${ip}:${identifier || 'anon'}`;
@@ -38,6 +44,7 @@ function bruteForceProtector(req, res, next) {
                 count: info.count
             }
         });
+        (0, securityMetrics_1.inc)('authLockActive');
         return res.status(429).json({
             success: false,
             message: 'Too many failed attempts. Try again later.',
@@ -54,10 +61,11 @@ function bruteForceProtector(req, res, next) {
         info.count += 1;
         info.lastAttempt = now;
         // Reset window if outside
-        if (now - info.firstAttempt > WINDOW_MS) {
+        if (now - info.firstAttempt > limits().WINDOW_MS) {
             info.firstAttempt = now;
             info.count = 1;
         }
+        const { MAX_ATTEMPTS_WINDOW, BASE_LOCK_MS, MAX_LOCK_MS } = limits();
         if (info.count >= MAX_ATTEMPTS_WINDOW) {
             // Exponential backoff: attempts over window => lock doubling each overflow tier
             const overflow = info.count - MAX_ATTEMPTS_WINDOW + 1;
@@ -69,6 +77,7 @@ function bruteForceProtector(req, res, next) {
                 outcome: 'locked',
                 meta: { identifier, count: info.count, lockMs }
             });
+            (0, securityMetrics_1.inc)('authLockouts');
         }
         attempts.set(cacheKey, info);
     };

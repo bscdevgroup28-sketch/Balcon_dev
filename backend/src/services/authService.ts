@@ -4,11 +4,16 @@ import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/UserEnhanced';
 import { logger } from '../utils/logger';
 import { logSecurityEvent } from '../utils/securityAudit';
+import crypto from 'crypto';
+import { RefreshToken } from '../models/RefreshToken';
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'balcon-builders-secret-key-2025';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+// Note: do NOT cache refresh token lifetime; tests may override env var at runtime
+function getRefreshTokenTtl() {
+  return process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+}
 
 // JWT Payload interface
 export interface JWTPayload {
@@ -69,7 +74,7 @@ export class AuthService {
     };
 
     const options: SignOptions = {
-      expiresIn: REFRESH_TOKEN_EXPIRES_IN,
+      expiresIn: getRefreshTokenTtl(),
       issuer: 'balcon-builders',
       audience: 'balcon-builders-app'
     } as SignOptions;
@@ -83,17 +88,16 @@ export class AuthService {
       const decoded = jwt.verify(token, JWT_SECRET, {
         issuer: 'balcon-builders',
         audience: 'balcon-builders-app'
-      }) as JWTPayload;
-      
+      }) as JWTPayload; // jwt.verify respects exp
       return decoded;
     } catch (error) {
-      logger.warn('Token verification failed:', error);
+      logger.warn('Token verification failed:', error instanceof Error ? error.message : error);
       return null;
     }
   }
 
   // Authenticate user with email and password
-  static async authenticateUser(email: string, password: string): Promise<{
+  static async authenticateUser(email: string, password: string, meta?: { ip?: string, ua?: string }): Promise<{
     user: User;
     accessToken: string;
     refreshToken: string;
@@ -126,8 +130,9 @@ export class AuthService {
       await user.updateLastLogin();
 
       // Generate tokens
-      const accessToken = this.generateAccessToken(user);
-      const refreshToken = this.generateRefreshToken(user);
+  const accessToken = this.generateAccessToken(user);
+  const refreshToken = this.generateRefreshToken(user);
+  await this.persistRefreshToken(user.id, refreshToken, meta);
 
   logger.info(`User authenticated successfully: ${email} (${user.role})`);
   logSecurityEvent(undefined, { action: 'auth.login', outcome: 'success', meta: { userId: user.id, email: user.email, role: user.role } });
@@ -144,13 +149,13 @@ export class AuthService {
   }
 
   // Refresh access token
-  static async refreshToken(refreshToken: string): Promise<{
+  static async refreshToken(refreshToken: string, meta?: { ip?: string, ua?: string }): Promise<{
     accessToken: string;
     refreshToken: string;
   } | null> {
     try {
       // Verify refresh token
-      const payload = this.verifyToken(refreshToken);
+  const payload = this.verifyToken(refreshToken);
       if (!payload || payload.type !== 'refresh') {
         return null;
       }
@@ -161,18 +166,64 @@ export class AuthService {
         return null;
       }
 
-      // Generate new tokens
+      // Look up existing stored token hash
+      const incomingHash = this.hashToken(refreshToken);
+      const stored = await RefreshToken.findOne({ where: { userId: user.id, tokenHash: incomingHash, revokedAt: null } });
+      if (!stored) {
+        // Reuse or unknown token -> log and deny
+  logSecurityEvent(undefined, { action: 'auth.refresh.reuse_detected', outcome: 'failure', actorUserId: user.id, meta: { reason: 'unknown_token' } });
+        return null;
+      }
+      if (new Date(stored.expiresAt).getTime() < Date.now()) {
+        await stored.update({ revokedAt: new Date() });
+        return null;
+      }
+      // Rotate: revoke old token and issue a new one
       const newAccessToken = this.generateAccessToken(user);
       const newRefreshToken = this.generateRefreshToken(user);
-
-      return {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken
-      };
+      await stored.update({ revokedAt: new Date(), replacedByToken: this.hashToken(newRefreshToken) });
+      await this.persistRefreshToken(user.id, newRefreshToken, meta);
+  logSecurityEvent(undefined, { action: 'auth.refresh.rotate', outcome: 'success', actorUserId: user.id, meta: { replaced: stored.id } });
+      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
     } catch (error) {
       logger.error('Token refresh error:', error);
       return null;
     }
+  }
+
+  // --- Refresh Token Persistence & Helpers ---
+  static hashToken(token: string) {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  static decodeExpiry(refreshJwt: string): Date | null {
+    // Use decode (non-verified) only for storage convenience; if missing exp, fall back to 7d
+    try {
+      const decoded: any = jwt.decode(refreshJwt);
+      if (decoded?.exp) return new Date(decoded.exp * 1000);
+      return null;
+    } catch { return null; }
+  }
+
+  static async persistRefreshToken(userId: number, rawToken: string, meta?: { ip?: string, ua?: string }) {
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = this.decodeExpiry(rawToken) || new Date(Date.now() + 7*24*60*60*1000);
+    await RefreshToken.create({ userId, tokenHash, expiresAt, ipAddress: meta?.ip, userAgent: meta?.ua } as any);
+  }
+
+  static async revokeAllUserTokens(userId: number) {
+    await RefreshToken.update({ revokedAt: new Date() }, { where: { userId, revokedAt: null } });
+  }
+
+  static async detectAndFlagReuse(userId: number, tokenHash: string) {
+    const existing = await RefreshToken.findOne({ where: { userId, tokenHash } });
+    if (!existing) return false;
+    if (existing.revokedAt) {
+      await existing.update({ reuseDetected: true });
+  logSecurityEvent(undefined, { action: 'auth.refresh.reuse_detected', outcome: 'failure', actorUserId: userId, meta: { tokenId: existing.id } });
+      return true;
+    }
+    return false;
   }
 
   // Create user with password

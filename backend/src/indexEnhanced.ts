@@ -1,14 +1,21 @@
 import { logger } from './utils/logger';
 import { balConApp } from './appEnhanced';
+import { ensureMigrations } from './scripts/bootstrap';
+import { initTracingIfEnabled } from './observability/tracing';
 
 // Enhanced application startup
 async function startEnhancedApplication(): Promise<void> {
   try {
-    logger.info('🚀 Starting Bal-Con Builders Enhanced Application...');
+  logger.info('🚀 Starting Bal-Con Builders Enhanced Application...');
+  // Phase 14: optional tracing bootstrap
+  initTracingIfEnabled();
     logger.info('📋 Phase 5: Advanced Feature Enhancement');
     logger.info('🔧 Features: Authentication, Real-time, Database Integration');
 
-    // Start the enhanced application
+  // Preflight migrations via custom loader
+  await ensureMigrations(true);
+
+  // Start the enhanced application
     await balConApp.start();
 
     // Log successful startup

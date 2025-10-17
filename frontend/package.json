@@ -17,6 +17,7 @@
     "@supabase/supabase-js": "^2.55.0",
     "axios": "^1.6.8",
     "date-fns": "^2.30.0",
+    "dayjs": "^1.11.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-error-boundary": "^4.0.11",

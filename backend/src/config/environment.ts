@@ -21,6 +21,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().optional(),
   JWT_SECRET: z.string(),
   JWT_EXPIRES_IN: z.string().default('7d'),
+  FRONTEND_URL: z.string().optional(),
+  FRONTEND_ORIGINS: z.string().optional(),
   
   // Email configuration
   SENDGRID_API_KEY: z.string().optional(),
@@ -45,6 +47,18 @@ const envSchema = z.object({
   GOOGLE_CLOUD_STORAGE_BUCKET: z.string().optional(),
   CORS_ORIGIN: z.string().default('*'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  // Observability toggles
+  ADV_METRICS_ENABLED: z.string().optional(),
+  PROM_DEFAULT_METRICS: z.string().optional(),
+  // Rate limiting / brute force controls
+  AUTH_MAX_ATTEMPTS_WINDOW: z.string().optional(),
+  AUTH_ATTEMPT_WINDOW_MS: z.string().optional(),
+  AUTH_BASE_LOCK_MS: z.string().optional(),
+  AUTH_MAX_LOCK_MS: z.string().optional(),
+  GLOBAL_RATE_LIMIT_WINDOW_MS: z.string().optional(),
+  GLOBAL_RATE_LIMIT_MAX: z.string().optional(),
+  REFRESH_TOKEN_RETENTION_DAYS: z.string().optional(),
+  REFRESH_TOKEN_CLEANUP_INTERVAL_MS: z.string().optional(),
 });
 
 const parseEnv = () => {
@@ -68,6 +82,39 @@ const parseEnv = () => {
 
 const env = parseEnv();
 
+// Production safety guard: disallow SQLite fallback in production to prevent ephemeral data loss
+if (env.NODE_ENV === 'production' && env.DATABASE_URL && env.DATABASE_URL.startsWith('sqlite')) {
+  console.error('❌ Refusing to start: DATABASE_URL is using sqlite in production. Set a Postgres DATABASE_URL.');
+  process.exit(1);
+}
+
+// Derive frontend origins list (comma separated) prioritizing FRONTEND_ORIGINS > FRONTEND_URL > defaults
+const derivedFrontendOrigins = (() => {
+  const list: string[] = [];
+  if (env.FRONTEND_ORIGINS) {
+    env.FRONTEND_ORIGINS.split(',').map(v => v.trim()).filter(Boolean).forEach(v => list.push(v));
+  } else if (env.FRONTEND_URL) {
+    list.push(env.FRONTEND_URL.trim());
+  }
+  // Development defaults
+  if (!list.length && env.NODE_ENV !== 'production') {
+    list.push('http://localhost:3000', 'http://localhost:3001');
+  }
+  return Array.from(new Set(list));
+})();
+
+// Enforce no wildcard origin in production
+if (env.NODE_ENV === 'production') {
+  if (derivedFrontendOrigins.some(o => o === '*' || o === 'http://localhost:3000')) {
+    console.error('❌ Refusing to start: In production you must configure FRONTEND_ORIGINS (no * or localhost).');
+    process.exit(1);
+  }
+  if (!derivedFrontendOrigins.length) {
+    console.error('❌ Refusing to start: No FRONTEND_URL / FRONTEND_ORIGINS specified for CORS in production.');
+    process.exit(1);
+  }
+}
+
 export const config = {
   server: {
     port: parseInt(env.PORT),
@@ -76,13 +123,14 @@ export const config = {
     baseUrl: env.NODE_ENV === 'production' 
       ? 'https://api.balconbuilders.com' 
       : `http://localhost:${parseInt(env.PORT)}`,
+    frontendOrigins: derivedFrontendOrigins,
   },
   database: {
     url: env.DATABASE_URL,
     pool: (() => {
       const base = {
-        max: 20,
-        min: 5,
+        max: 10,
+        min: 0,
         acquire: 30000,
         idle: 10000,
       };
@@ -94,8 +142,9 @@ export const config = {
 
       const nodeEnv = env.NODE_ENV;
       if (nodeEnv === 'production') {
-        base.max = base.max * 2; // allow more concurrency
-        base.min = Math.max(base.min, 5);
+        base.max = 5; // keep within managed Postgres connection limits
+        base.min = 0;
+        base.acquire = 120000; // allow cold starts / resumed databases extra time
         base.idle = 15000;
       } else if (nodeEnv === 'test') {
         base.max = 2; base.min = 0; base.idle = 2000; base.acquire = 5000; // keep test lightweight
@@ -146,4 +195,34 @@ export const config = {
   logging: {
     level: env.LOG_LEVEL,
   },
+  features: {
+    advancedMetrics: env.ADV_METRICS_ENABLED !== 'false',
+    promDefault: env.PROM_DEFAULT_METRICS === 'true'
+  },
+  limits: {
+    auth: {
+      maxAttempts: parseInt(process.env.AUTH_MAX_ATTEMPTS_WINDOW || '5'),
+      windowMs: parseInt(process.env.AUTH_ATTEMPT_WINDOW_MS || `${15 * 60 * 1000}`),
+      baseLockMs: parseInt(process.env.AUTH_BASE_LOCK_MS || '300000'),
+      maxLockMs: parseInt(process.env.AUTH_MAX_LOCK_MS || `${60 * 60 * 1000}`)
+    },
+    global: {
+      windowMs: parseInt(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || '60000'),
+      max: parseInt(process.env.GLOBAL_RATE_LIMIT_MAX || '900')
+    }
+  }
+  ,tokens: {
+    refreshRetentionDays: parseInt(process.env.REFRESH_TOKEN_RETENTION_DAYS || '30'),
+    refreshCleanupIntervalMs: parseInt(process.env.REFRESH_TOKEN_CLEANUP_INTERVAL_MS || `${6 * 60 * 60 * 1000}`) // 6h default
+  }
 };
+
+// Simple runtime self-check (can be expanded later)
+export function validateRuntime(): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+  // Re-read critical secrets directly from process.env so tests can simulate removal
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === '') errors.push('JWT secret missing');
+  if (!config.database.url) errors.push('Database URL missing');
+  if (config.limits.auth.maxAttempts < 3) errors.push('Auth max attempts too low (<3)');
+  return { ok: errors.length === 0, errors };
+}

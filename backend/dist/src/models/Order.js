@@ -52,7 +52,7 @@ Order.init({
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: false,
         references: {
-            model: 'users',
+            model: 'enhanced_users', // TODO: future alignment to 'users'
             key: 'id',
         },
     },

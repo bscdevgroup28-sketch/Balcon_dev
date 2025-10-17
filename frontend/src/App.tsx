@@ -13,6 +13,7 @@ import ShopManagerDashboard from './pages/dashboard/ShopManagerDashboard';
 import ProjectManagerDashboard from './pages/dashboard/ProjectManagerDashboard';
 import TeamLeaderDashboard from './pages/dashboard/TeamLeaderDashboard';
 import TechnicianDashboard from './pages/dashboard/TechnicianDashboard';
+import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
 import ProjectsPage from './pages/projects/ProjectsPage';
 import ProjectDetailPage from './pages/projects/ProjectDetailPage';
 import ProjectWizard from './components/projects/ProjectWizard';
@@ -21,6 +22,7 @@ import OrdersPage from './pages/orders/OrdersPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import MaterialsPage from './pages/materials/MaterialsPage';
 import UsersPage from './pages/admin/UsersPage';
+import WebhooksAdmin from './pages/webhooks/WebhooksAdmin';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotificationProvider from './components/feedback/NotificationProvider';
 import HelpCenter from './components/help/HelpCenter';
@@ -29,7 +31,7 @@ import { getDashboardPath } from './utils/roleUtils';
 import { LayoutDensityProvider } from './theme/LayoutDensityContext';
 
 const App: React.FC = () => {
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, token } = useSelector((state: RootState) => state.auth);
 
   // Landing page component for demo selection
   const LandingPage = () => (
@@ -158,6 +160,7 @@ const App: React.FC = () => {
                   <Route path="/quotes" element={<QuotesPage />} />
                   <Route path="/orders" element={<OrdersPage />} />
                   <Route path="/materials" element={<MaterialsPage />} />
+                  <Route path="/analytics" element={<AnalyticsDashboard token={token || ''} />} />
                   <Route path="/profile" element={<ProfilePage />} />
                   
                   {/* Admin Routes */}
@@ -168,6 +171,7 @@ const App: React.FC = () => {
                         <Routes>
                           <Route path="/" element={<AdminDashboard />} />
                           <Route path="/users" element={<UsersPage />} />
+                          <Route path="/webhooks" element={<WebhooksAdmin token={token || ''} />} />
                           <Route path="/settings" element={<div>System Settings</div>} />
                         </Routes>
                       </ProtectedRoute>
