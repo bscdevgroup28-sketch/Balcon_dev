@@ -1,15 +1,5 @@
 [build]
 builder = "nixpacks"
 
-[deploy]
-startCommand = "cd backend && node dist/indexEnhanced.js"
-healthcheckPath = "/api/health"
-healthcheckTimeout = 300
-restartPolicyType = "always"
-
-[[services]]
-name = "backend"
-source = "backend/"
-
-[build.env]
-NODE_ENV = "production"
+# Root manifest intentionally minimal to avoid overriding per-service configs.
+# Backend and frontend services have their own railway.json files.
