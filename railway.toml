@@ -1,5 +1,0 @@
-[build]
-builder = "nixpacks"
-
-# Root manifest intentionally minimal to avoid overriding per-service configs.
-# Backend and frontend services have their own railway.json files.
