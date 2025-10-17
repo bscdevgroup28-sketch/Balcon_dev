@@ -4,6 +4,7 @@ import { Home, NavigateNext } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import DashboardContainer from './DashboardContainer';
+import BCBuildersPanel from '../brand/BCBuildersPanel';
 import { UserRole } from '../../types/auth';
 import { getRoleDisplayName } from '../../utils/roleUtils';
 
@@ -35,43 +36,55 @@ export const BaseDashboard: React.FC<BaseDashboardProps> = ({
 
   return (
     <DashboardContainer fullHeight>
-      {/* Breadcrumb Navigation */}
-      <Breadcrumbs
-        separator={<NavigateNext fontSize="small" />}
-        sx={{ mb: 2 }}
-      >
-        {allBreadcrumbs.map((crumb, index) => (
-          crumb.href ? (
-            <Link
-              key={index}
-              color="inherit"
-              href={crumb.href}
-              sx={{ display: 'flex', alignItems: 'center' }}
-            >
-              {index === 0 && <Home sx={{ mr: 0.5 }} fontSize="inherit" />}
-              {crumb.label}
-            </Link>
-          ) : (
-            <Typography key={index} color="text.primary">
-              {crumb.label}
-            </Typography>
-          )
-        ))}
-      </Breadcrumbs>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '280px 1fr' }, gap: { xs: 0, md: 3 } }}>
+        {/* Left rail with BC Builders panel on md+ */}
+        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+          <Box sx={{ position: 'sticky', top: { md: 88 }, maxHeight: 'calc(100vh - 96px)' }}>
+            <BCBuildersPanel />
+          </Box>
+        </Box>
 
-      {/* Dashboard Header */}
-      <DashboardHeader 
-        title={title} 
-        subtitle={subtitle} 
-        actions={actions} 
-        role={role}
-        user={user}
-      />
+        {/* Main column */}
+        <Box>
+          {/* Breadcrumb Navigation */}
+          <Breadcrumbs
+            separator={<NavigateNext fontSize="small" />}
+            sx={{ mb: 2 }}
+          >
+            {allBreadcrumbs.map((crumb, index) => (
+              crumb.href ? (
+                <Link
+                  key={index}
+                  color="inherit"
+                  href={crumb.href}
+                  sx={{ display: 'flex', alignItems: 'center' }}
+                >
+                  {index === 0 && <Home sx={{ mr: 0.5 }} fontSize="inherit" />}
+                  {crumb.label}
+                </Link>
+              ) : (
+                <Typography key={index} color="text.primary">
+                  {crumb.label}
+                </Typography>
+              )
+            ))}
+          </Breadcrumbs>
 
-      {/* Dashboard Content */}
-      <DashboardContent role={role}>
-        {children}
-      </DashboardContent>
+          {/* Dashboard Header */}
+          <DashboardHeader 
+            title={title} 
+            subtitle={subtitle} 
+            actions={actions} 
+            role={role}
+            user={user}
+          />
+
+          {/* Dashboard Content */}
+          <DashboardContent role={role}>
+            {children}
+          </DashboardContent>
+        </Box>
+      </Box>
     </DashboardContainer>
   );
 };
