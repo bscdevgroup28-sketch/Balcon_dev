@@ -8,6 +8,7 @@
     "numReplicas": 1,
     "sleepApplication": false,
     "restartPolicyType": "ON_FAILURE",
-    "startCommand": "npx serve -s build -l $PORT"
+    "startCommand": "npx serve -s build -l $PORT",
+    "healthcheckPath": "/"
   }
 }
