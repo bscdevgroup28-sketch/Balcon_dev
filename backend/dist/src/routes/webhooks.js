@@ -9,8 +9,10 @@ const authEnhanced_1 = require("../middleware/authEnhanced");
 const webhooks_1 = require("../services/webhooks");
 const crypto_1 = __importDefault(require("crypto"));
 const router = (0, express_1.Router)();
+// Note: admin-only access to webhook management endpoints
+const adminOnly = [authEnhanced_1.authenticateToken, (0, authEnhanced_1.requireRole)(['admin', 'owner'])];
 // List subscriptions (optionally filter by eventType)
-router.get('/', authEnhanced_1.authenticateToken, async (req, res) => {
+router.get('/', adminOnly, async (req, res) => {
     const where = {};
     if (req.query.eventType)
         where.eventType = req.query.eventType;
@@ -18,7 +20,7 @@ router.get('/', authEnhanced_1.authenticateToken, async (req, res) => {
     res.json(subs.map(s => ({ id: s.id, eventType: s.eventType, targetUrl: s.targetUrl, isActive: s.isActive, failureCount: s.failureCount, lastSuccessAt: s.lastSuccessAt, lastFailureAt: s.lastFailureAt })));
 });
 // Create subscription (secret auto-generated if omitted)
-router.post('/', authEnhanced_1.authenticateToken, async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
     const { eventType, targetUrl, secret } = req.body || {};
     if (!eventType || !targetUrl)
         return res.status(400).json({ error: 'BadRequest', message: 'eventType and targetUrl required' });
@@ -26,15 +28,36 @@ router.post('/', authEnhanced_1.authenticateToken, async (req, res) => {
     const sub = await models_1.WebhookSubscription.create({ eventType, targetUrl, secret: sec });
     res.status(201).json({ id: sub.id, eventType: sub.eventType, targetUrl: sub.targetUrl, secret: sub.secret, isActive: sub.isActive });
 });
+// Delete
+// Place non-parameterized deliveries routes BEFORE parameterized ':id' routes to avoid conflicts
+// List deliveries (filter by subscriptionId, status, eventType)
+router.get('/deliveries', adminOnly, async (req, res) => {
+    const where = {};
+    if (req.query.subscriptionId)
+        where.subscriptionId = req.query.subscriptionId;
+    if (req.query.status)
+        where.status = req.query.status;
+    if (req.query.eventType)
+        where.eventType = req.query.eventType;
+    const deliveries = await models_1.WebhookDelivery.findAll({ where, order: [['id', 'DESC']], limit: 100 });
+    res.json(deliveries);
+});
+// Retry a failed delivery
+router.post('/deliveries/:id/retry', adminOnly, async (req, res) => {
+    const success = await (0, webhooks_1.retryDelivery)(parseInt(req.params.id));
+    if (!success)
+        return res.status(400).json({ error: 'BadRequest', message: 'Cannot retry delivery' });
+    res.json({ message: 'Retry enqueued' });
+});
 // Get subscription
-router.get('/:id', authEnhanced_1.authenticateToken, async (req, res) => {
+router.get('/:id', adminOnly, async (req, res) => {
     const sub = await models_1.WebhookSubscription.findByPk(req.params.id);
     if (!sub)
         return res.status(404).json({ error: 'NotFound', message: 'Subscription not found' });
     res.json({ id: sub.id, eventType: sub.eventType, targetUrl: sub.targetUrl, isActive: sub.isActive, failureCount: sub.failureCount, lastSuccessAt: sub.lastSuccessAt, lastFailureAt: sub.lastFailureAt });
 });
 // Rotate secret
-router.post('/:id/rotate-secret', authEnhanced_1.authenticateToken, async (req, res) => {
+router.post('/:id/rotate-secret', adminOnly, async (req, res) => {
     const sub = await models_1.WebhookSubscription.findByPk(req.params.id);
     if (!sub)
         return res.status(404).json({ error: 'NotFound', message: 'Subscription not found' });
@@ -43,7 +66,7 @@ router.post('/:id/rotate-secret', authEnhanced_1.authenticateToken, async (req, 
     res.json({ id: sub.id, secret: newSecret });
 });
 // Enable / Disable
-router.patch('/:id', authEnhanced_1.authenticateToken, async (req, res) => {
+router.patch('/:id', adminOnly, async (req, res) => {
     const sub = await models_1.WebhookSubscription.findByPk(req.params.id);
     if (!sub)
         return res.status(404).json({ error: 'NotFound', message: 'Subscription not found' });
@@ -59,30 +82,11 @@ router.patch('/:id', authEnhanced_1.authenticateToken, async (req, res) => {
     res.json({ id: sub.id, eventType: sub.eventType, targetUrl: sub.targetUrl, isActive: sub.isActive });
 });
 // Delete
-router.delete('/:id', authEnhanced_1.authenticateToken, async (req, res) => {
+router.delete('/:id', adminOnly, async (req, res) => {
     const sub = await models_1.WebhookSubscription.findByPk(req.params.id);
     if (!sub)
         return res.status(404).json({ error: 'NotFound', message: 'Subscription not found' });
     await sub.destroy();
     res.status(204).end();
-});
-// List deliveries (filter by subscriptionId, status, eventType)
-router.get('/deliveries', authEnhanced_1.authenticateToken, async (req, res) => {
-    const where = {};
-    if (req.query.subscriptionId)
-        where.subscriptionId = req.query.subscriptionId;
-    if (req.query.status)
-        where.status = req.query.status;
-    if (req.query.eventType)
-        where.eventType = req.query.eventType;
-    const deliveries = await models_1.WebhookDelivery.findAll({ where, order: [['id', 'DESC']], limit: 100 });
-    res.json(deliveries);
-});
-// Retry a failed delivery
-router.post('/deliveries/:id/retry', authEnhanced_1.authenticateToken, async (req, res) => {
-    const success = await (0, webhooks_1.retryDelivery)(parseInt(req.params.id));
-    if (!success)
-        return res.status(400).json({ error: 'BadRequest', message: 'Cannot retry delivery' });
-    res.json({ message: 'Retry enqueued' });
 });
 exports.default = router;

@@ -1,10 +1,12 @@
 import React from 'react';
+import { Box } from '@mui/material';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
 import Layout from './components/layout/Layout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import ResetPassword from './pages/auth/ResetPassword';
 import CustomerDashboard from './pages/dashboard/CustomerDashboard';
 import AdminDashboard from './pages/dashboard/AdminDashboard';
 import OwnerDashboard from './pages/dashboard/OwnerDashboard';
@@ -29,6 +31,8 @@ import HelpCenter from './components/help/HelpCenter';
 import { RootState } from './store/store';
 import { getDashboardPath } from './utils/roleUtils';
 import { LayoutDensityProvider } from './theme/LayoutDensityContext';
+import { flags } from './config/featureFlags';
+import LayoutNew from './components/layout/LayoutNew';
 
 const App: React.FC = () => {
   const { user, token } = useSelector((state: RootState) => state.auth);
@@ -51,9 +55,24 @@ const App: React.FC = () => {
     <NotificationProvider>
       <LayoutDensityProvider>
       <Routes>
+        {/* Preview route for new layout (feature-flagged) */}
+        {flags.newLayout && (
+          <Route
+            path="/preview/new-layout"
+            element={
+              <LayoutNew>
+                <Box sx={{ p: 2 }}>
+                  <h2>New Layout Preview</h2>
+                  <p>This route is guarded by REACT_APP_NEW_LAYOUT=true at build time.</p>
+                </Box>
+              </LayoutNew>
+            }
+          />
+        )}
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
+  <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/register" element={<Register />} />
         
         {/* Protected Routes */}

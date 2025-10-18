@@ -20,6 +20,10 @@ import {
   alpha,
   IconButton,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import {
   BusinessCenter,
@@ -37,6 +41,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, setUser } from '../../store/slices/authSlice';
 import { RootState } from '../../store/store';
 import { UserRole } from '../../types/auth';
+import { authAPI } from '../../services/api';
 
 interface DemoAccount {
   role: UserRole;
@@ -124,6 +129,14 @@ const Login: React.FC = () => {
     password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStatus, setForgotStatus] = useState<'idle'|'loading'|'success'|'error'>('idle');
+  const [forgotMessage, setForgotMessage] = useState<string>('');
+
+  // Real-time validation
+  const emailValid = /[^\s@]+@[^\s@]+\.[^\s@]+/.test(formData.email);
+  const passwordValid = formData.password.length >= 6;
 
   const from = location.state?.from?.pathname || '/dashboard';
 
@@ -148,6 +161,7 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!emailValid || !passwordValid) return;
     await performLogin(formData);
   };
 
@@ -300,6 +314,8 @@ const Login: React.FC = () => {
                     value={formData.email}
                     onChange={handleChange}
                     disabled={isLoading}
+                    error={formData.email.length > 0 && !emailValid}
+                    helperText={formData.email.length > 0 && !emailValid ? 'Enter a valid email' : ' '}
                     sx={{ mb: 2 }}
                   />
                   <TextField
@@ -314,6 +330,8 @@ const Login: React.FC = () => {
                     value={formData.password}
                     onChange={handleChange}
                     disabled={isLoading}
+                    error={formData.password.length > 0 && !passwordValid}
+                    helperText={formData.password.length > 0 && !passwordValid ? 'At least 6 characters' : ' '}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
@@ -335,7 +353,7 @@ const Login: React.FC = () => {
                     fullWidth
                     variant="contained"
                     size="large"
-                    disabled={isLoading}
+                    disabled={isLoading || !emailValid || !passwordValid}
                     sx={{ 
                       mb: 2,
                       py: 1.5,
@@ -346,8 +364,11 @@ const Login: React.FC = () => {
                   </Button>
 
                   <Box textAlign="center">
-                    <Link component={RouterLink} to="/register" variant="body2">
+                    <Link component={RouterLink} to="/register" variant="body2" sx={{ mr: 2 }}>
                       Don't have an account? Sign Up
+                    </Link>
+                    <Link component="button" type="button" variant="body2" onClick={() => { setForgotOpen(true); setForgotEmail(formData.email); }}>
+                      Forgot Password?
                     </Link>
                   </Box>
                 </Box>
@@ -461,6 +482,53 @@ const Login: React.FC = () => {
               ))}
             </Grid>
           </Box>
+
+          {/* Forgot Password Dialog */}
+          <Dialog open={forgotOpen} onClose={() => setForgotOpen(false)} fullWidth maxWidth="sm">
+            <DialogTitle>Reset your password</DialogTitle>
+            <DialogContent>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Enter your account email. If it exists, we'll send a password reset link.
+              </Typography>
+              <TextField
+                fullWidth
+                label="Email"
+                type="email"
+                value={forgotEmail}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForgotEmail(e.target.value)}
+                autoFocus
+                error={forgotEmail.length > 0 && !/[^\s@]+@[^\s@]+\.[^\s@]+/.test(forgotEmail)}
+                helperText={forgotEmail.length > 0 && !/[^\s@]+@[^\s@]+\.[^\s@]+/.test(forgotEmail) ? 'Enter a valid email' : ' '}
+              />
+              {forgotStatus === 'success' && (
+                <Alert severity="success" sx={{ mt: 2 }}>{forgotMessage || 'If the email exists, a reset link has been sent.'}</Alert>
+              )}
+              {forgotStatus === 'error' && (
+                <Alert severity="error" sx={{ mt: 2 }}>{forgotMessage || 'Something went wrong. Please try again later.'}</Alert>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setForgotOpen(false)} disabled={forgotStatus === 'loading'}>Close</Button>
+              <Button
+                variant="contained"
+                onClick={async () => {
+                  try {
+                    setForgotStatus('loading');
+                    setForgotMessage('');
+                    await authAPI.requestPasswordReset(forgotEmail);
+                    setForgotStatus('success');
+                    setForgotMessage('If the email exists, a reset link has been sent.');
+                  } catch (e: any) {
+                    setForgotStatus('error');
+                    setForgotMessage(e?.response?.data?.message || 'Unable to process request');
+                  }
+                }}
+                disabled={forgotStatus === 'loading' || !/[^\s@]+@[^\s@]+\.[^\s@]+/.test(forgotEmail)}
+              >
+                {forgotStatus === 'loading' ? <CircularProgress size={20} /> : 'Send reset link'}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       </Container>
     </Box>

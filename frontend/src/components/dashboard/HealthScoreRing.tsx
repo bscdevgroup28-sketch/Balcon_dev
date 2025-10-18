@@ -112,6 +112,7 @@ const HealthScoreRing: React.FC<HealthScoreRingProps> = ({
                 color: `${theme.palette.grey[300]}`,
                 position: 'absolute',
               }}
+              aria-hidden="true"
             />
             {/* Score ring */}
             <CircularProgress
@@ -125,6 +126,7 @@ const HealthScoreRing: React.FC<HealthScoreRingProps> = ({
                   strokeLinecap: 'round',
                 },
               }}
+              aria-label={`Overall health score: ${overall} out of 100`}
             />
             {/* Center text */}
             <Box
@@ -230,6 +232,7 @@ const HealthScoreRing: React.FC<HealthScoreRingProps> = ({
                           color: `${theme.palette.grey[300]}`,
                           position: 'absolute',
                         }}
+                        aria-hidden="true"
                       />
                       {/* Score mini ring */}
                       <CircularProgress
@@ -240,6 +243,7 @@ const HealthScoreRing: React.FC<HealthScoreRingProps> = ({
                         sx={{
                           color: getScoreColor(metric.score),
                         }}
+                        aria-label={`${metric.name} score: ${metric.score} out of 100`}
                       />
                       {/* Center number */}
                       <Box

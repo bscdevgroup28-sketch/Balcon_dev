@@ -98,8 +98,8 @@ export class BalConBuildersApp {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-    // Compression
-    this.app.use(compression());
+  // Compression (cast to any to avoid TS overload mismatch)
+  this.app.use(compression() as any);
 
     // Structured request logging
     this.app.use(requestLoggingMiddleware);

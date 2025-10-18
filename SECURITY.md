@@ -34,7 +34,7 @@ This document outlines the security measures and best practices for the BalCon p
 - Issued on login with 1h expiration
 - Refresh tokens for session extension
 - Role-based permissions (Owner, Admin, etc.)
-- Secure storage (httpOnly cookies recommended)
+- Secure storage in httpOnly cookies (access + refresh), cleared on logout; server also supports Authorization header fallback
 
 ### Rate Limiting
 - Per-user/IP limits on sensitive endpoints
@@ -42,6 +42,10 @@ This document outlines the security measures and best practices for the BalCon p
 - Redis-backed for distributed enforcement
 
 ## Data Protection
+### File Handling
+- Upload MIME allowlist (images, PDFs, office docs, CAD, text/CSV) and size limits
+- Downloads set `X-Content-Type-Options: nosniff`; non-images served as attachments
+- Future: granular access control on private files
 
 ### Exports
 - Files stored locally or S3 with presigned URLs

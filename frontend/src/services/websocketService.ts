@@ -76,6 +76,8 @@ class WebSocketService {
           this.isConnecting = false;
           this.reconnectAttempts = 0;
           this.emit('connected');
+          // Refresh analytics on (re)connect to ensure dashboard data is up to date
+          try { this.refreshAnalytics(); } catch {}
           resolve();
         });
 
@@ -129,11 +131,13 @@ class WebSocketService {
     // Project updates
     this.socket.on('project_updated', (data) => {
       this.emit('projectUpdate', data);
+      try { this.refreshAnalytics(); } catch {}
     });
 
     // Project activities
     this.socket.on('project_activity', (activity: ProjectActivityData) => {
       this.emit('projectActivity', activity);
+      try { this.refreshAnalytics(); } catch {}
     });
 
     // Typing indicators
@@ -145,11 +149,31 @@ class WebSocketService {
       this.emit('userStoppedTyping', data);
     });
 
+    // Order and inventory signals (if emitted by server)
+    this.socket.on('order_updated', () => { try { this.refreshAnalytics(); } catch {} });
+    this.socket.on('inventory_changed', () => { try { this.refreshAnalytics(); } catch {} });
+
+  // Backend-wide analytics update hint (legacy/aux handlers)
+  this.socket.on('analytics_update', () => { try { this.refreshAnalytics(); } catch {} });
+
     // Error handling
     this.socket.on('error', (error) => {
       console.error('Socket.IO error:', error);
       this.emit('socketError', error);
     });
+  }
+
+  private refreshAnalytics(): void {
+    // Lazy import redux store to avoid circular deps at module init
+    import('../store/store').then(({ store }: any) => {
+      import('../store/slices/analyticsSlice').then(({ fetchAnalyticsSummary, fetchAnalyticsTrends, fetchAnalyticsAnomalies, fetchAnalyticsForecast }) => {
+        const dispatch = store.dispatch as any;
+        dispatch(fetchAnalyticsSummary());
+        dispatch(fetchAnalyticsTrends('30d'));
+        dispatch(fetchAnalyticsAnomalies({ range: '30d' }));
+        dispatch(fetchAnalyticsForecast({ metric: 'ordersCreated', horizon: 14 }));
+      });
+    }).catch(() => {/* noop */});
   }
 
   // Disconnect from Socket.IO

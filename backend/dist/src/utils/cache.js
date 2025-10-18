@@ -169,7 +169,8 @@ exports.cacheKeys = {
 };
 exports.cacheTags = {
     materials: 'materials',
-    analytics: 'analytics'
+    analytics: 'analytics',
+    attention: 'attention'
 };
 // Gauges for observability
 try {
@@ -177,10 +178,16 @@ try {
     metrics_1.metrics.registerGauge('cache.tags', () => tagIndex.size);
     metrics_1.metrics.registerGauge('cache.inflight', () => inFlight.size);
     metrics_1.metrics.registerGauge('cache.hit_ratio', () => {
-        const hits = metrics_1.metrics.snapshot().counters['cache.hit'] || 0;
-        const misses = metrics_1.metrics.snapshot().counters['cache.miss'] || 0;
-        const denom = hits + misses;
-        return denom === 0 ? 0 : hits / denom;
+        try {
+            const counters = metrics_1.metrics.counters || {};
+            const hits = counters['cache.hit'] || 0;
+            const misses = counters['cache.miss'] || 0;
+            const denom = hits + misses;
+            return denom === 0 ? 0 : hits / denom;
+        }
+        catch {
+            return 0;
+        }
     });
 }
 catch { /* ignore */ }

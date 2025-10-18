@@ -18,6 +18,7 @@ function schedule(jobType: string, intervalMs: number): ScheduledTask {
   const task: ScheduledTask = { id, jobType, intervalMs, nextRun: Date.now() + intervalMs, active: true };
   const run = () => {
     if (!task.active) return;
+    // Enqueue the job; unit tests expect triggers to happen even under NODE_ENV=test
     try {
       jobQueue.enqueue(task.jobType, {});
       metrics.increment('scheduler.triggered');
@@ -29,6 +30,7 @@ function schedule(jobType: string, intervalMs: number): ScheduledTask {
   };
   // initial delay equal to interval (no immediate fire)
   task.handle = setTimeout(run, task.intervalMs);
+  if (typeof task.handle.unref === 'function') task.handle.unref();
   tasks.set(id, task);
   metrics.increment('scheduler.scheduled');
   return task;

@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { Parser as Json2CsvParser } from 'json2csv';
 import { authenticateToken } from '../middleware/authEnhanced';
 import { metrics } from '../monitoring/metrics';
+import { startSpan, endSpan } from '../monitoring/tracing';
 
 // New cache keys for Phase 7 endpoints
 const trendCacheKey = (range: string) => `analytics:trends:${range}`;
@@ -42,6 +43,7 @@ function csvRateLimit(req: any, res: Response, next: NextFunction) {
 
 // GET /api/analytics/summary - latest KPI snapshot (simple first version)
 router.get('/summary', authenticateToken, async (req: any, res: Response) => {
+  const span = startSpan('analytics.summary');
   try {
     const ttlMs = parseInt(process.env.CACHE_TTL_ANALYTICS_SUMMARY_MS || '60000');
     const payload = await withCache(
@@ -63,11 +65,12 @@ router.get('/summary', authenticateToken, async (req: any, res: Response) => {
   } catch (err) {
     logger.error('Failed to fetch KPI summary', err);
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load KPI summary' });
-  }
+  } finally { endSpan(span, 'ok'); }
 });
 
 // GET /api/analytics/trends?range=30d|90d|365d (defaults 30d)
 router.get('/trends', authenticateToken, async (req: any, res: Response) => {
+  const span = startSpan('analytics.trends', { range: String(req.query.range || '30d') });
   try {
     const range = (req.query.range as string) || '30d';
     const days = range === '90d' ? 90 : range === '365d' ? 365 : 30;
@@ -125,11 +128,12 @@ router.get('/trends', authenticateToken, async (req: any, res: Response) => {
   } catch (err) {
     logger.error('Failed to fetch analytics trends', err);
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load trends' });
-  }
+  } finally { endSpan(span, 'ok'); }
 });
 
 // GET /api/analytics/distribution/materials?field=category|status (default category)
 router.get('/distribution/materials', authenticateToken, async (req: any, res: Response) => {
+  const span = startSpan('analytics.distribution', { field: String(req.query.field || 'category') });
   try {
     const field = (req.query.field as string) || 'category';
     if (!['category','status'].includes(field)) {
@@ -154,11 +158,12 @@ router.get('/distribution/materials', authenticateToken, async (req: any, res: R
   } catch (err) {
     logger.error('Failed to fetch materials distribution', err);
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load distribution' });
-  }
+  } finally { endSpan(span, 'ok'); }
 });
 
 // CSV export for trends
 router.get('/trends.csv', authenticateToken, csvRateLimit, async (req: any, res: Response) => {
+  const span = startSpan('analytics.trends.csv', { range: String(req.query.range || '30d') });
   try {
     const range = (req.query.range as string) || '30d';
     const days = range === '90d' ? 90 : range === '365d' ? 365 : 30;
@@ -190,11 +195,12 @@ router.get('/trends.csv', authenticateToken, csvRateLimit, async (req: any, res:
   } catch (err) {
     logger.error('Failed to export trends CSV', err);
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to export trends CSV' });
-  }
+  } finally { endSpan(span, 'ok'); }
 });
 
 // CSV export for material distribution
 router.get('/distribution/materials.csv', authenticateToken, csvRateLimit, async (req: any, res: Response) => {
+  const span = startSpan('analytics.distribution.csv', { field: String(req.query.field || 'category') });
   try {
     const field = (req.query.field as string) || 'category';
     if (!['category','status'].includes(field)) {
@@ -219,7 +225,7 @@ router.get('/distribution/materials.csv', authenticateToken, csvRateLimit, async
   } catch (err) {
     logger.error('Failed to export materials distribution CSV', err);
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to export distribution CSV' });
-  }
+  } finally { endSpan(span, 'ok'); }
 });
 
 export default router;
@@ -228,6 +234,7 @@ export default router;
 // GET /api/analytics/anomalies?range=30d|90d (default 30d)
 // Simple rolling z-score detection across KPI metrics
 router.get('/anomalies', authenticateToken, async (req: any, res: Response) => {
+  const span = startSpan('analytics.anomalies', { range: String(req.query.range || '30d') });
   try {
     const range = (req.query.range as string) || '30d';
     const days = range === '90d' ? 90 : 30;
@@ -289,13 +296,14 @@ router.get('/anomalies', authenticateToken, async (req: any, res: Response) => {
   } catch (err) {
     logger.error('Failed to compute anomalies', err);
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load anomalies' });
-  }
+  } finally { endSpan(span, 'ok'); }
 });
 
 // ------------------ Phase 7: Simple Forecast Endpoint ------------------
 // GET /api/analytics/forecast?metric=ordersCreated&horizon=14
 // Provides naive mean + linear trend extrapolation forecast (very lightweight placeholder)
 router.get('/forecast', authenticateToken, async (req: any, res: Response) => {
+  const span = startSpan('analytics.forecast', { metric: String(req.query.metric || 'ordersCreated'), horizon: Number(req.query.horizon || 14) });
   try {
     const metric = (req.query.metric as string) || 'ordersCreated';
     const horizon = Math.min(parseInt((req.query.horizon as string) || '14', 10), 60);
@@ -339,5 +347,5 @@ router.get('/forecast', authenticateToken, async (req: any, res: Response) => {
     metrics.increment('analytics.forecast.error');
     logger.error('Failed to compute forecast', err);
     res.status(500).json({ error: 'Internal Server Error', message: 'Failed to compute forecast' });
-  }
+  } finally { endSpan(span, 'ok'); }
 });

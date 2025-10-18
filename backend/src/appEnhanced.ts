@@ -1,7 +1,10 @@
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
+// cookie-parser is optional; import with fallback typing to avoid TS issues if types are missing
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cookieParser = require('cookie-parser');
 import compression from 'compression';
 // Removed morgan in favor of custom requestLoggingMiddleware
 import dotenv from 'dotenv';
@@ -42,20 +45,36 @@ import workOrderRoutes from './routes/workOrders';
 import inventoryTransactionRoutes from './routes/inventoryTransactions';
 import analyticsRoutes from './routes/analytics';
 import exportRoutes from './routes/exports';
+import webhookRoutes from './routes/webhooks';
 import securityRoutes from './routes/security';
 import jobsRoutes from './routes/jobs';
+import changeOrderRoutes from './routes/changeOrders';
+import invoiceRoutes from './routes/invoices';
+import auditRoutes from './routes/audit';
+import purchaseOrderRoutes from './routes/purchaseOrders';
+import integrationsRoutes from './routes/integrations';
+import opsRoutes from './routes/ops';
 import { metrics } from './monitoring/metrics';
 import { securityMetricsToPrometheus } from './utils/securityMetrics';
 import { advancedRegistry } from './monitoring/advancedMetrics';
 import { jobQueue } from './jobs/jobQueue';
 import { kpiSnapshotHandler } from './jobs/handlers/kpiSnapshotJob';
+import runRetentionCleanup from './jobs/handlers/retentionJob';
 import { scheduler } from './jobs/scheduler';
 import { withCache, cacheKeys, cacheTags } from './utils/cache';
-import { KpiDailySnapshot, ExportJob, Material, Order, Project } from './models';
+import { KpiDailySnapshot, ExportJob, Material, Order, Project, Invoice } from './models';
 import { registerWebhookJob, publishEvent } from './services/webhooks';
+// Side-effect import: register analytics cache invalidation listeners
+import './events/listeners/analyticsCacheInvalidation';
+// Side-effect import: Slack notifications on domain events
+import './events/listeners/slackNotifications';
 import { getStorage } from './services/storage';
 import fs from 'fs';
 import os from 'os';
+import { trackDimension } from './monitoring/cardinality';
+import { startAdvisoryMonitor } from './services/advisoryService';
+import { csrfIssueHandler, csrfProtect } from './middleware/csrf';
+import { idempotencyMiddleware } from './middleware/idempotency';
 // path & metrics already imported above
 
 // Enhanced Express Application with WebSocket support
@@ -73,7 +92,13 @@ export class BalConBuildersApp {
   this.initializeMiddleware();
     this.initializeRoutes();
     this.initializeErrorHandling();
-  this.initializeJobs();
+  // Avoid background jobs during tests or when explicitly disabled
+  const disableJobs = (process.env.DISABLE_BACKGROUND_JOBS || '').toLowerCase() === 'true';
+  if (process.env.NODE_ENV !== 'test' && !disableJobs) {
+    this.initializeJobs();
+  } else {
+    logger.info('🧪 Background jobs disabled for test or by flag DISABLE_BACKGROUND_JOBS=true');
+  }
     // Startup diagnostics
     const maskedDb = (config.database.url || '').replace(/:[^:@/]+@/, ':****@');
     logger.info(`[startup] NODE_ENV=${config.server.nodeEnv} PORT=${this.port}`);
@@ -86,6 +111,10 @@ export class BalConBuildersApp {
     try {
       jobQueue.recoverPersisted?.();
       jobQueue.register('kpi.snapshot', kpiSnapshotHandler);
+      // Phase 14: data retention cleanup job
+      jobQueue.register('retention.cleanup', async () => {
+        await runRetentionCleanup();
+      });
       // Export job processor: generate CSV (in-memory for now) and store data URL placeholder
   jobQueue.register('export.generate', async (job) => {
         const start = Date.now();
@@ -101,6 +130,11 @@ export class BalConBuildersApp {
             rows = await Order.findAll({ limit: 5000 });
           } else if (ej.type === 'projects_csv') {
             rows = await Project.findAll({ limit: 5000 });
+          } else if (ej.type === 'invoices_csv') {
+            rows = await Invoice.findAll({ limit: 5000 });
+          } else if (ej.type === 'payments_csv') {
+            // For payments, export paid invoices as payment records
+            rows = await Invoice.findAll({ where: { status: 'paid' }, limit: 5000 });
           }
           const plain = rows.map(r => r.get({ plain: true }));
           const fields = Object.keys(plain[0] || { id: 1 });
@@ -135,6 +169,13 @@ export class BalConBuildersApp {
       if (snapInterval && snapInterval > 0) {
         scheduler.schedule('kpi.snapshot', snapInterval);
       }
+      // Schedule retention cleanup (default daily) if not disabled
+      const retentionInterval = process.env.RETENTION_CLEANUP_INTERVAL_MS && parseInt(process.env.RETENTION_CLEANUP_INTERVAL_MS);
+      const defaultDaily = 24 * 60 * 60 * 1000;
+      const intervalForRetention = (retentionInterval && retentionInterval > 0) ? retentionInterval : defaultDaily;
+      if (intervalForRetention > 0) {
+        scheduler.schedule('retention.cleanup', intervalForRetention);
+      }
       // Cache warming for analytics summary (Phase 7 prep) if enabled
       const warmInterval = process.env.ANALYTICS_SUMMARY_WARM_INTERVAL_MS && parseInt(process.env.ANALYTICS_SUMMARY_WARM_INTERVAL_MS);
       if (warmInterval && warmInterval > 0) {
@@ -166,7 +207,7 @@ export class BalConBuildersApp {
               logger.warn('[tokens] metrics refresh failed', { error: e.message });
             }
           }, interval);
-          h.unref();
+          try { h.unref(); } catch { /* older node versions */ }
           this.intervals.push(h);
           logger.info(`[tokens] Metrics refresh interval active (${interval}ms)`);
         }
@@ -211,7 +252,7 @@ export class BalConBuildersApp {
               logger.warn('[tokens] cleanup failed', { error: e.message });
             }
           }, interval);
-          h.unref();
+          try { h.unref(); } catch { /* older node versions */ }
           this.intervals.push(h);
           logger.info(`[tokens] Cleanup scheduler active every ${interval}ms (retention=${config.tokens.refreshRetentionDays}d)`);
         }
@@ -226,13 +267,17 @@ export class BalConBuildersApp {
     // Security middleware
     const cspDirectives: any = {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'"],
       scriptSrc: ["'self'"],
       connectSrc: ["'self'", 'ws:', 'wss:'],
       imgSrc: ["'self'", 'data:', 'https:'],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
     };
+    // Allow inline styles only in non-production for DX; can be explicitly allowed via CSP_ALLOW_INLINE
+    if (config.server.nodeEnv !== 'production' || (process.env.CSP_ALLOW_INLINE || '').toLowerCase() === 'true') {
+      cspDirectives.styleSrc.push("'unsafe-inline'");
+    }
     if (process.env.CSP_EXTRA_CONNECT) {
       cspDirectives.connectSrc.push(...process.env.CSP_EXTRA_CONNECT.split(',').map(s=>s.trim()).filter(Boolean));
     }
@@ -243,14 +288,14 @@ export class BalConBuildersApp {
     }));
     // Optional HSTS (only if behind HTTPS proxy)
     if (config.server.nodeEnv === 'production') {
-      this.app.use((req, res, next) => {
+      this.app.use((req: Request, res: Response, next: NextFunction) => {
         res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
         next();
       });
     }
     // Optional HTTPS redirect (respect proxy headers)
     if (process.env.ENFORCE_HTTPS === 'true') {
-      this.app.use((req, res, next) => {
+      this.app.use((req: Request, res: Response, next: NextFunction) => {
         const xfProto = (req.headers['x-forwarded-proto'] || '') as string;
         if (xfProto && xfProto !== 'https') {
           return res.redirect(301, 'https://' + req.headers.host + req.originalUrl);
@@ -271,7 +316,7 @@ export class BalConBuildersApp {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token'],
     }));
 
     if (config.server.nodeEnv === 'test') {
@@ -332,9 +377,18 @@ export class BalConBuildersApp {
   // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    // Cookie parsing for httpOnly token cookies
+    this.app.use(cookieParser());
+
+    // CSRF protection: explicit token issue route and global enforcement for unsafe methods
+    this.app.get('/api/auth/csrf', csrfIssueHandler);
+    this.app.use(csrfProtect);
+
+  // Idempotency keys for high-value mutations (Phase 11)
+  this.app.use(idempotencyMiddleware);
 
     // Compression
-    this.app.use(compression());
+  this.app.use(compression() as any);
 
   // Structured request logging with request IDs
   this.app.use(requestLoggingMiddleware);
@@ -350,6 +404,21 @@ export class BalConBuildersApp {
     
   // Advanced timing/size metrics (after logging, before routes)
   this.app.use(advancedHttpMetricsMiddleware);
+
+  // Phase 18: track cardinality of HTTP status codes (bounded) and request paths (sampled)
+  this.app.use((req: any, res: any, next: any) => {
+    res.once('finish', () => {
+      try {
+        trackDimension('http_status_code', String(res.statusCode));
+        // Sample path to avoid unbounded growth (10%)
+        if (Math.random() < 0.1) {
+          const pathKey = req.route?.path || req.path || 'unknown';
+          trackDimension('http_route_path', String(pathKey).slice(0, 120));
+        }
+      } catch { /* ignore */ }
+    });
+    next();
+  });
 
   // Static file serving
     this.app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
@@ -402,6 +471,7 @@ export class BalConBuildersApp {
     this.app.use('/api/projects', projectRoutes);
     this.app.use('/api/quotes', quoteRoutes);
     this.app.use('/api/orders', orderRoutes);
+  this.app.use('/api/change-orders', changeOrderRoutes);
     this.app.use('/api/users', userRoutes);
     this.app.use('/api/materials', materialsRoutes);
     this.app.use('/api/files', fileRoutes);
@@ -411,8 +481,16 @@ export class BalConBuildersApp {
     this.app.use('/api/work-orders', workOrderRoutes);
   this.app.use('/api/inventory/transactions', inventoryTransactionRoutes);
   this.app.use('/api/analytics', analyticsRoutes);
+  this.app.use('/api/attention', require('./routes/attention').default);
   this.app.use('/api/exports', exportRoutes);
+  this.app.use('/api/webhooks', webhookRoutes);
+  this.app.use('/api/integrations', integrationsRoutes);
+  this.app.use('/api/ops', opsRoutes);
   this.app.use('/api/security', securityRoutes);
+  this.app.use('/api', require('./routes/approvals').default);
+  this.app.use('/api/invoices', invoiceRoutes);
+  this.app.use('/api/audit', auditRoutes);
+  this.app.use('/api/purchase-orders', purchaseOrderRoutes);
     if (process.env.ENABLE_DELAYED_JOBS === 'true') {
       this.app.use('/api/jobs', jobsRoutes);
     }
@@ -520,6 +598,8 @@ export class BalConBuildersApp {
       this.initializeWebSocket();
 
       // Start listening
+        // Phase 19: Start advisory monitor if enabled
+        try { startAdvisoryMonitor(); } catch (e) { logger.warn('[advisory] monitor init failed', e); }
       this.server.listen(this.port, () => {
         logger.info(`🚀 Bal-Con Builders Enhanced API Server started successfully!`);
         logger.info(`📍 Server running on port ${this.port}`);

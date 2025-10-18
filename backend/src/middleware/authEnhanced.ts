@@ -31,7 +31,11 @@ export interface JWTPayload {
 // Enhanced JWT authentication middleware
 export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  // Fallback: support httpOnly cookie 'accessToken'
+  if (!token && (req as any).cookies && (req as any).cookies.accessToken) {
+    token = (req as any).cookies.accessToken;
+  }
 
   if (!token) {
     logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'missing' } });
@@ -44,7 +48,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    const jwtSecret = process.env.JWT_SECRET;
+  const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
       logger.error('JWT_SECRET not configured');
       logSecurityEvent(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'misconfiguration' } });

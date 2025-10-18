@@ -13,6 +13,7 @@ export class InMemoryJobQueue extends EventEmitter {
   private handlers: Map<string, JobHandler> = new Map();
   private concurrency: number;
   private nextTimer: NodeJS.Timeout | null = null;
+  private paused = false;
 
   constructor(opts: QueueOptions = {}) {
     super();
@@ -62,6 +63,21 @@ export class InMemoryJobQueue extends EventEmitter {
     this.handlers.set(type, handler);
   }
 
+  pause() {
+    this.paused = true;
+    this.emit('paused');
+  }
+
+  resume() {
+    this.paused = false;
+    this.emit('resumed');
+    this.drain();
+  }
+
+  getStats() {
+    return { queued: this.queue.length, running: this.running, handlers: Array.from(this.handlers.keys()), concurrency: this.concurrency, paused: this.paused };
+  }
+
   async recoverPersisted() {
     if (process.env.PERSIST_JOBS !== 'true') return;
     try {
@@ -93,6 +109,7 @@ export class InMemoryJobQueue extends EventEmitter {
   }
 
   private drain() {
+    if (this.paused) return;
     // Sort queue so earliest scheduled time first
     this.queue.sort((a,b) => (a.scheduledFor || a.enqueuedAt) - (b.scheduledFor || b.enqueuedAt));
     while (this.running < this.concurrency && this.queue.length) {

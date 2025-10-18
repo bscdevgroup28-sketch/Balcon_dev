@@ -87,7 +87,7 @@ class BalConBuildersApp {
         // Body parsing middleware
         this.app.use(express_1.default.json({ limit: '10mb' }));
         this.app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
-        // Compression
+        // Compression (cast to any to avoid TS overload mismatch)
         this.app.use((0, compression_1.default)());
         // Structured request logging
         this.app.use(logger_1.requestLoggingMiddleware);

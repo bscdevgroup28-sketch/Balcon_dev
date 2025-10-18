@@ -92,6 +92,19 @@ export const updateOrderSchema = createOrderSchema.partial().extend({
   actualDelivery: z.string().datetime().optional(),
 });
 
+// Change Order schemas
+export const createChangeOrderSchema = z.object({
+  projectId: z.number().positive(),
+  quoteId: z.number().positive().optional(),
+  title: z.string().min(3).max(200),
+  description: z.string().optional(),
+  amount: z.number().min(0),
+});
+
+export const updateChangeOrderSchema = createChangeOrderSchema.partial().extend({
+  status: z.enum(['draft','sent','approved','rejected']).optional(),
+});
+
 // Material schemas
 export const createMaterialSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(200),
@@ -145,6 +158,40 @@ export const orderQuerySchema = paginationSchema.extend({
   search: z.string().optional(),
 });
 
+export const changeOrderQuerySchema = paginationSchema.extend({
+  status: z.enum(['draft','sent','approved','rejected']).optional(),
+  projectId: z.string().transform(v=>parseInt(v,10)).refine(v=>v>0).optional(),
+  search: z.string().optional(),
+});
+
+// Invoice schemas
+export const invoiceLineItemSchema = z.object({
+  description: z.string().min(1),
+  quantity: z.number().positive(),
+  unitPrice: z.number().min(0),
+  unit: z.string().optional(),
+});
+
+export const createInvoiceSchema = z.object({
+  projectId: z.number().positive(),
+  date: z.string().datetime(),
+  dueDate: z.string().datetime(),
+  lineItems: z.array(invoiceLineItemSchema).min(1),
+  taxRate: z.number().min(0).max(1).default(0.0825),
+  notes: z.string().optional(),
+});
+
+export const updateInvoiceSchema = createInvoiceSchema.partial().extend({
+  status: z.enum(['draft','sent','paid','overdue']).optional(),
+  paidAt: z.string().datetime().optional(),
+  sentAt: z.string().datetime().optional(),
+});
+
+export const invoiceQuerySchema = paginationSchema.extend({
+  status: z.enum(['draft','sent','paid','overdue']).optional(),
+  projectId: z.string().transform(v=>parseInt(v,10)).refine(v=>v>0).optional(),
+});
+
 export const materialQuerySchema = paginationSchema.extend({
   category: z.string().optional(),
   status: z.enum(['active', 'inactive', 'discontinued']).optional(),
@@ -174,6 +221,14 @@ export type QuoteQueryInput = z.infer<typeof quoteQuerySchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
 export type OrderQueryInput = z.infer<typeof orderQuerySchema>;
+
+export type CreateChangeOrderInput = z.infer<typeof createChangeOrderSchema>;
+export type UpdateChangeOrderInput = z.infer<typeof updateChangeOrderSchema>;
+export type ChangeOrderQueryInput = z.infer<typeof changeOrderQuerySchema>;
+
+export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
+export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;
+export type InvoiceQueryInput = z.infer<typeof invoiceQuerySchema>;
 
 export type CreateMaterialInput = z.infer<typeof createMaterialSchema>;
 export type UpdateMaterialInput = z.infer<typeof updateMaterialSchema>;

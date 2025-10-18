@@ -95,13 +95,14 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Compression with threshold & brotli hint support
-app.use(compression({
+const compressionMiddleware = compression({
   threshold: 1024,
   filter: (req, res) => {
-    if (req.headers['x-no-compress']) return false;
+    if ((req as any).headers['x-no-compress']) return false;
     return compression.filter(req, res);
   }
-}));
+}) as any;
+app.use(compressionMiddleware);
 
 // Static / API caching strategy (lightweight)
 app.use((req, res, next) => {

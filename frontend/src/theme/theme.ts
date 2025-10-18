@@ -12,26 +12,32 @@ export const theme = createTheme({
   },
   palette: {
     primary: {
-      main: '#1976d2', // Blue
-      light: '#42a5f5',
-      dark: '#1565c0',
+      main: '#0D47A1',
+      light: '#5472D3',
+      dark: '#002171',
     },
     secondary: {
-      main: '#dc004e', // Red accent
-      light: '#ff5983',
-      dark: '#9a0036',
+      main: '#FF6F00',
+      light: '#FFA040',
+      dark: '#C43E00',
+    },
+    success: {
+      main: '#2E7D32',
+      light: '#60AD5E',
+      dark: '#005005',
     },
     background: {
-      default: '#f5f5f5',
-      paper: '#ffffff',
+      default: '#F8F9FA',
+      paper: '#FFFFFF',
     },
     text: {
       primary: '#212121',
-      secondary: '#757575',
+      secondary: '#616161',
     },
+    divider: '#E0E0E0',
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+  fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontSize: '2.5rem',
       fontWeight: 600,

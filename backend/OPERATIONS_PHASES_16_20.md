@@ -15,16 +15,26 @@ Deferred (optional follow-up):
 - Auto-comment on PR summarizing guard results.
 - Adaptive threshold auto-tuner (dynamic multiplier) – placeholder for Phase 18 refinement.
 
-## Phase 17: Latency Attribution Mini-Spans (Planned)
-Planned Approach:
-- Lightweight timing inside request lifecycle (middleware start, controller execution, DB query aggregate) stored in in-memory rolling stats.
-- New gauges (planned): `latency.attr.http.controller_pct`, `latency.attr.db.query_pct`, `latency.attr.other_pct`.
-Status: Not yet implemented (guard rails prioritized first). Can be merged after confirming CI stability.
+## Phase 17: Latency Attribution Mini-Spans (Implemented)
+Approach:
+- Lightweight timing inside request lifecycle (middleware start, controller execution, DB query aggregate) stored in in-process rolling stats.
+- Gauges: `latency.attr.sample_count`, `latency.attr.avg_total_ms`, `latency.attr.db_pct`, `latency.attr.handlers_pct`, `latency.attr.other_pct`, and per-bucket averages: `latency.attr.total.ms.avg`, `latency.attr.db.ms.avg`, `latency.attr.handlers.ms.avg`, `latency.attr.other.ms.avg`, `latency.attr.count`.
+Implementation:
+- Middleware `middleware/latencyAttribution.ts` records per-request buckets.
+- Sequelize patch `instrumentation/queryMonitor.ts` attributes DB time per request and logs slow patterns.
+- `appEnhanced.ts` wraps route handlers to measure controller time excluding DB.
+Usage:
+- Scrape `/api/metrics/prometheus` and plot the attribution gauges to identify DB-bound vs handler-bound latency shifts.
+- Use slow query diagnostics endpoints (if enabled) to correlate DB-bound spikes with query patterns.
+Status: Complete.
 
-## Phase 18: Cardinality Governance & Dimension Budgets (Planned)
-- Track unique counts of dynamic label sets (e.g., distinct status codes, dynamic event types) and expose `cardinality.dimension.<name>` gauges.
-- Threshold env vars: `CARDINALITY_MAX_<DIM>` (alert when exceeded).
-Status: Pending; design in progress.
+## Phase 18: Cardinality Governance & Dimension Budgets (Implemented)
+- Track unique counts of dynamic label sets (e.g., HTTP status codes, route paths [sampled], webhook event types, slow DB query pattern hashes) and expose `cardinality.dimension.<name>` gauges for unique, budget, and remaining.
+- Violation counters: `cardinality.budget_violation` and per-dimension `cardinality.budget_violation.<dim>`.
+- Threshold env vars: `CARDINALITY_MAX_<DIM>` for each dimension (defaults to 1000 if unset). See DEPLOYMENT_SETUP.md for recommended values.
+Usage:
+- Scrape Prometheus metrics and alert on `cardinality.budget_violation` or set dashboards on `cardinality.dimension.<dim>.budget_utilization_pct`.
+Status: Complete.
 
 ## Phase 19: Self-Healing Advisory Hooks (Planned)
 - Emit structured advisory events when `scaling.advice.code` >= 3 for sustained windows.

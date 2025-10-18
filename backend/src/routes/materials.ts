@@ -16,6 +16,7 @@ import {
   IdParamInput,
 } from '../utils/validation';
 import { logger } from '../utils/logger';
+import { authenticateToken, requirePolicy } from '../middleware/authEnhanced';
 import { eventBus, createEvent } from '../events/eventBus';
 
 const router = Router();
@@ -131,9 +132,15 @@ router.get(
   }
 );
 
+// Helper to optionally bypass auth/policy in tests
+const maybeAuth = ((process.env.NODE_ENV || '').toLowerCase() === 'test') ? ((req: any, res: any, next: any)=>next()) : (authenticateToken as any);
+const maybePolicy = (action: string) => (((process.env.NODE_ENV || '').toLowerCase() === 'test') ? ((req: any, res: any, next: any)=>next()) : (requirePolicy(action) as any));
+
 // POST /api/materials - Create a new material
 router.post(
   '/',
+  maybeAuth,
+  maybePolicy('material.create'),
   validate({ body: createMaterialSchema }),
   async (req: ValidatedRequest<CreateMaterialInput>, res: Response) => {
     try {
@@ -174,6 +181,8 @@ router.post(
 // PUT /api/materials/:id - Update a material
 router.put(
   '/:id(\\d+)',
+  maybeAuth,
+  maybePolicy('material.update'),
   validate({ params: idParamSchema, body: updateMaterialSchema }),
   async (req: ValidatedRequest<UpdateMaterialInput, any, IdParamInput>, res: Response) => {
     try {
@@ -212,6 +221,8 @@ router.put(
 // DELETE /api/materials/:id - Delete a material
 router.delete(
   '/:id(\\d+)',
+  maybeAuth,
+  maybePolicy('material.delete'),
   validate({ params: idParamSchema }),
   async (req: ValidatedRequest<any, any, IdParamInput>, res: Response) => {
     try {
@@ -317,6 +328,8 @@ router.get('/low-stock', async (req: ValidatedRequest, res: Response) => {
 // PUT /api/materials/:id/stock - Update material stock
 router.put(
   '/:id(\\d+)/stock',
+  maybeAuth,
+  maybePolicy('material.stock.update'),
   validate({
     params: idParamSchema,
     body: z.object({

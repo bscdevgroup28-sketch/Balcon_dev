@@ -77,6 +77,8 @@ const envSchema = zod_1.z.object({
     GOOGLE_CLOUD_STORAGE_BUCKET: zod_1.z.string().optional(),
     CORS_ORIGIN: zod_1.z.string().default('*'),
     LOG_LEVEL: zod_1.z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+    // Health behavior: allow degraded 200 responses when DB is down (to avoid platform restarts)
+    HEALTH_DEGRADED_OK: zod_1.z.string().optional(),
     // Observability toggles
     ADV_METRICS_ENABLED: zod_1.z.string().optional(),
     PROM_DEFAULT_METRICS: zod_1.z.string().optional(),
@@ -110,9 +112,10 @@ const parseEnv = () => {
     }
 };
 const env = parseEnv();
-// Production safety guard: disallow SQLite fallback in production to prevent ephemeral data loss
-if (env.NODE_ENV === 'production' && env.DATABASE_URL && env.DATABASE_URL.startsWith('sqlite')) {
-    console.error('❌ Refusing to start: DATABASE_URL is using sqlite in production. Set a Postgres DATABASE_URL.');
+// Production safety guard: disallow SQLite in production unless explicitly overridden for demos
+const allowSqliteInProd = (process.env.ALLOW_SQLITE_IN_PROD || '').toLowerCase() === '1' || (process.env.ALLOW_SQLITE_IN_PROD || '').toLowerCase() === 'true';
+if (env.NODE_ENV === 'production' && env.DATABASE_URL && env.DATABASE_URL.startsWith('sqlite') && !allowSqliteInProd) {
+    console.error('❌ Refusing to start: DATABASE_URL is using sqlite in production. Set a Postgres DATABASE_URL or set ALLOW_SQLITE_IN_PROD=1 for demo.');
     process.exit(1);
 }
 // Derive frontend origins list (comma separated) prioritizing FRONTEND_ORIGINS > FRONTEND_URL > defaults

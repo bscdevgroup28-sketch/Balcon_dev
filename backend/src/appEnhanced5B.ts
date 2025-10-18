@@ -77,8 +77,8 @@ export class BalConBuildersApp5B {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-    // Compression middleware
-    this.app.use(compression());
+  // Compression middleware (cast to any to satisfy TS in legacy variant)
+  this.app.use(compression() as any);
 
     // Rate limiting
     const limiter = rateLimit({

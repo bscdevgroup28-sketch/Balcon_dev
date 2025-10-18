@@ -12,6 +12,7 @@ import {
   Avatar,
   Paper,
   IconButton,
+  Skeleton,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -37,6 +38,7 @@ interface BusinessMetricsCardProps {
     label: string;
     onClick: () => void;
   };
+  loading?: boolean;
 }
 
 const BusinessMetricsCard: React.FC<BusinessMetricsCardProps> = ({
@@ -47,6 +49,7 @@ const BusinessMetricsCard: React.FC<BusinessMetricsCardProps> = ({
   color = 'primary',
   trend,
   actionButton,
+  loading = false,
 }) => {
   return (
     <Card sx={{ height: '100%' }}>
@@ -59,18 +62,21 @@ const BusinessMetricsCard: React.FC<BusinessMetricsCardProps> = ({
             {title}
           </Typography>
         </Box>
+        {loading ? (
+          <Skeleton variant="text" width={120} height={48} sx={{ mb: 1 }} />
+        ) : (
+          <Typography variant="h3" component="div" color={`${color}.main`} sx={{ mb: 1 }}>
+            {value}
+          </Typography>
+        )}
         
-        <Typography variant="h3" component="div" color={`${color}.main`} sx={{ mb: 1 }}>
-          {value}
-        </Typography>
-        
-        {subtitle && (
+        {subtitle && !loading && (
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             {subtitle}
           </Typography>
         )}
         
-        {trend && (
+        {trend && !loading && (
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <TrendingUp 
               sx={{ 

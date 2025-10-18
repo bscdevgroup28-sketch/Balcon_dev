@@ -64,7 +64,11 @@ ANOMALY_ALPHA=0.2
 ANOMALY_LOG_THRESHOLD=3
 ANOMALY_LOG_SUPPRESS_MS=60000
 # Tracing (optional Phase 14)
+# Lightweight route-span tracing is off by default; enable via either flag below
 TRACING_ENABLED=false
+# or TRACE_ENABLED=false
+# Optional sampling rate (0..1). Default 1.0 when enabled.
+TRACE_SAMPLE_RATE=1
 OTEL_SERVICE_NAME=balcon-backend
 OTEL_EXPORTER_OTLP_ENDPOINT=https://your-otel-collector.example.com
 # Predictive scaling / residual analytics (scripts populate gauges; no direct env needed unless tuning later)
@@ -72,6 +76,14 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://your-otel-collector.example.com
 # Capacity & residual adaptive pipeline tuning (optional)
 RESIDUAL_HISTORY_LIMIT=500
 RESIDUAL_THRESHOLD_STD_MULTIPLIER=3
+
+# Cardinality Governance (Phase 18)
+# Budgets for tracked dimensions (set based on your traffic & endpoint surface)
+# Defaults if unset: 1000 for each dimension
+CARDINALITY_MAX_HTTP_STATUS_CODE=128
+CARDINALITY_MAX_HTTP_ROUTE_PATH=400
+CARDINALITY_MAX_WEBHOOK_EVENT_TYPE=64
+CARDINALITY_MAX_DB_SLOW_QUERY_PATTERN=300
 ```
 
 #### Frontend Environment Variables

@@ -12,11 +12,14 @@ function schedule(jobType, intervalMs) {
     const run = () => {
         if (!task.active)
             return;
-        try {
-            jobQueue_1.jobQueue.enqueue(task.jobType, {});
-            metrics_1.metrics.increment('scheduler.triggered');
+        // During tests, avoid enqueuing jobs to keep runs deterministic
+        if (process.env.NODE_ENV !== 'test') {
+            try {
+                jobQueue_1.jobQueue.enqueue(task.jobType, {});
+                metrics_1.metrics.increment('scheduler.triggered');
+            }
+            catch { /* ignore */ }
         }
-        catch { /* ignore */ }
         if (!task.active)
             return; // re-check before scheduling next
         task.nextRun = Date.now() + task.intervalMs;
@@ -25,6 +28,8 @@ function schedule(jobType, intervalMs) {
     };
     // initial delay equal to interval (no immediate fire)
     task.handle = setTimeout(run, task.intervalMs);
+    if (typeof task.handle.unref === 'function')
+        task.handle.unref();
     tasks.set(id, task);
     metrics_1.metrics.increment('scheduler.scheduled');
     return task;

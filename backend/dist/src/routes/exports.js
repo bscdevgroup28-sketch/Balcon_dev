@@ -29,7 +29,7 @@ router.get('/', authEnhanced_1.authenticateToken, async (req, res) => {
 router.post('/', authEnhanced_1.authenticateToken, async (req, res) => {
     try {
         const { type, params } = req.body || {};
-        if (!['materials_csv', 'orders_csv', 'projects_csv'].includes(type)) {
+        if (!['materials_csv', 'orders_csv', 'projects_csv', 'invoices_csv', 'payments_csv'].includes(type)) {
             return res.status(400).json({ error: 'BadRequest', message: 'Unsupported export type' });
         }
         // Extended parameters: format (csv|jsonl) and compression (none|gzip)

@@ -9,7 +9,9 @@
     "dev": "ts-node-dev --respawn --transpile-only src/indexEnhanced.ts",
     "build": "tsc",
     "test": "jest --config jest.config.cjs",
-  "pretest": "npm run migrations:verify",
+    "test:fast": "set SKIP_VERIFY=1&& set NODE_ENV=test&& set DISABLE_BACKGROUND_JOBS=true&& set ADV_METRICS_ENABLED=false&& jest --config jest.config.cjs --runTestsByPath tests/integration/latency_attribution.test.ts --watchAll=false --runInBand",
+    "test:ci": "set NODE_ENV=test&& set DISABLE_BACKGROUND_JOBS=true&& set ADV_METRICS_ENABLED=false&& jest --config jest.config.cjs --runInBand --watchAll=false",
+    "pretest": "ts-node src/scripts/pretestGuard.ts",
     "test:unit": "jest --config jest.config.cjs --runTestsByPath tests/unit/services/salesAssignment.test.ts",
     "test:integration": "jest --config jest.config.cjs --runTestsByPath tests/integration/sprint4.test.ts",
     "test:watch": "jest --config jest.config.cjs --watch",
@@ -47,28 +49,28 @@
     "migrations:verify": "ts-node src/scripts/generateMigrationManifest.ts --verify",
     "perf:smoke": "node dist/src/scripts/perf/authBaseline.js",
     "perf:auth": "node dist/src/scripts/perf/authBaseline.js",
-    "perf:projects": "node dist/src/scripts/perf/projectsBaseline.js"
-    ,"perf:auth:save": "node dist/src/scripts/perf/authBaseline.js > auth_tmp.json && node dist/src/scripts/perf/persistBaseline.js auth_tmp.json && del auth_tmp.json"
-    ,"perf:projects:save": "node dist/src/scripts/perf/projectsBaseline.js > projects_tmp.json && node dist/src/scripts/perf/persistBaseline.js projects_tmp.json && del projects_tmp.json"
-  ,"perf:compare": "node dist/src/scripts/perf/compareLatest.js"
-    ,"perf:health:save": "node dist/src/scripts/perf/healthBaseline.js > health_tmp.json && node dist/src/scripts/perf/persistBaseline.js health_tmp.json && del health_tmp.json"
-    ,"perf:guard": "node dist/src/scripts/perf/regressionGuard.js"
-    ,"ops:support-bundle": "ts-node src/scripts/supportBundle.ts"
-    ,"ops:bundle:validate": "ts-node src/scripts/validateSupportBundle.ts"
-    ,"metrics:schema": "ts-node src/scripts/metrics/exportSchema.ts"
-    ,"metrics:schema:drift": "ts-node src/scripts/metrics/schemaDriftCheck.ts"
-    ,"analytics:forecast": "ts-node -e \"import('./src/routes/analytics').then(()=>console.log('Invoke via HTTP /api/analytics/forecast'))\""
-    ,"synthetic:probe": "node dist/src/scripts/syntheticProbe.js"
-    ,"analytics:residuals": "node dist/src/scripts/computeForecastResiduals.js"
-    ,"analytics:residuals:update": "node dist/src/scripts/updateResidualGauges.js"
-    ,"analytics:residuals:anom": "node dist/src/scripts/computeResidualAnomalies.js"
-    ,"analytics:residuals:anom:update": "node dist/src/scripts/updateResidualAnomGauges.js"
-    ,"capacity:derive": "node dist/src/scripts/capacityFromStepLoad.js"
-    ,"capacity:update": "node dist/src/scripts/updateCapacityGauges.js"
-    ,"analytics:residuals:history": "node dist/src/scripts/recordResidualHistory.js"
-    ,"analytics:residuals:adaptive": "node dist/src/scripts/adaptiveResidualThresholds.js"
-    ,"analytics:residuals:adaptive:update": "node dist/src/scripts/updateAdaptiveResidualThresholds.js"
-    ,"scaling:advice": "node dist/src/scripts/computeScalingAdvice.js"
+    "perf:projects": "node dist/src/scripts/perf/projectsBaseline.js",
+    "perf:auth:save": "node dist/src/scripts/perf/authBaseline.js > auth_tmp.json && node dist/src/scripts/perf/persistBaseline.js auth_tmp.json && del auth_tmp.json",
+    "perf:projects:save": "node dist/src/scripts/perf/projectsBaseline.js > projects_tmp.json && node dist/src/scripts/perf/persistBaseline.js projects_tmp.json && del projects_tmp.json",
+    "perf:compare": "node dist/src/scripts/perf/compareLatest.js",
+    "perf:health:save": "node dist/src/scripts/perf/healthBaseline.js > health_tmp.json && node dist/src/scripts/perf/persistBaseline.js health_tmp.json && del health_tmp.json",
+    "perf:guard": "node dist/src/scripts/perf/regressionGuard.js",
+    "ops:support-bundle": "ts-node src/scripts/supportBundle.ts",
+    "ops:bundle:validate": "ts-node src/scripts/validateSupportBundle.ts",
+    "metrics:schema": "ts-node src/scripts/metrics/exportSchema.ts",
+    "metrics:schema:drift": "ts-node src/scripts/metrics/schemaDriftCheck.ts",
+    "analytics:forecast": "ts-node -e \"import('./src/routes/analytics').then(()=>console.log('Invoke via HTTP /api/analytics/forecast'))\"",
+    "synthetic:probe": "node dist/src/scripts/syntheticProbe.js",
+    "analytics:residuals": "node dist/src/scripts/computeForecastResiduals.js",
+    "analytics:residuals:update": "node dist/src/scripts/updateResidualGauges.js",
+    "analytics:residuals:anom": "node dist/src/scripts/computeResidualAnomalies.js",
+    "analytics:residuals:anom:update": "node dist/src/scripts/updateResidualAnomGauges.js",
+    "capacity:derive": "node dist/src/scripts/capacityFromStepLoad.js",
+    "capacity:update": "node dist/src/scripts/updateCapacityGauges.js",
+    "analytics:residuals:history": "node dist/src/scripts/recordResidualHistory.js",
+    "analytics:residuals:adaptive": "node dist/src/scripts/adaptiveResidualThresholds.js",
+    "analytics:residuals:adaptive:update": "node dist/src/scripts/updateAdaptiveResidualThresholds.js",
+    "scaling:advice": "node dist/src/scripts/computeScalingAdvice.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.896.0",
@@ -111,14 +113,14 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/archiver": "^6.0.3",
     "@types/bcryptjs": "^2.4.2",
-    "@types/compression": "^1.7.2",
+    "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.13",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.3",
     "@types/jsonwebtoken": "^9.0.2",
     "@types/morgan": "^1.9.4",
     "@types/multer": "^1.4.7",
-    "@types/node": "^20.19.10",
+    "@types/node": "^20.19.22",
     "@types/nodemailer": "^6.4.9",
     "@types/supertest": "^2.0.12",
     "@types/uuid": "^9.0.2",

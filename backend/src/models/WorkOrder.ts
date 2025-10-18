@@ -11,6 +11,7 @@ export interface WorkOrderAttributes {
   assignedUserId?: number | null;
   estimatedHours?: number | null;
   actualHours?: number | null;
+  team?: string | null;
   startDate?: Date | null;
   dueDate?: Date | null;
   completedAt?: Date | null;
@@ -30,6 +31,7 @@ export class WorkOrder extends Model<WorkOrderAttributes, WorkOrderCreation> imp
   public assignedUserId?: number | null;
   public estimatedHours?: number | null;
   public actualHours?: number | null;
+  public team?: string | null;
   public startDate?: Date | null;
   public dueDate?: Date | null;
   public completedAt?: Date | null;
@@ -47,6 +49,7 @@ WorkOrder.init({
   assignedUserId: { type: DataTypes.INTEGER, allowNull: true },
   estimatedHours: { type: DataTypes.FLOAT, allowNull: true },
   actualHours: { type: DataTypes.FLOAT, allowNull: true },
+  team: { type: DataTypes.STRING(100), allowNull: true },
   startDate: { type: DataTypes.DATE, allowNull: true },
   dueDate: { type: DataTypes.DATE, allowNull: true },
   completedAt: { type: DataTypes.DATE, allowNull: true }

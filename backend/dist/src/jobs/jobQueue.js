@@ -11,6 +11,7 @@ class InMemoryJobQueue extends events_1.EventEmitter {
         this.running = 0;
         this.handlers = new Map();
         this.nextTimer = null;
+        this.paused = false;
         this.concurrency = opts.concurrency || 2;
         metrics_1.metrics.registerGauge('jobs.queue.length', () => this.queue.length);
         metrics_1.metrics.registerGauge('jobs.queue.running', () => this.running);
@@ -59,6 +60,18 @@ class InMemoryJobQueue extends events_1.EventEmitter {
     register(type, handler) {
         this.handlers.set(type, handler);
     }
+    pause() {
+        this.paused = true;
+        this.emit('paused');
+    }
+    resume() {
+        this.paused = false;
+        this.emit('resumed');
+        this.drain();
+    }
+    getStats() {
+        return { queued: this.queue.length, running: this.running, handlers: Array.from(this.handlers.keys()), concurrency: this.concurrency, paused: this.paused };
+    }
     async recoverPersisted() {
         if (process.env.PERSIST_JOBS !== 'true')
             return;
@@ -90,6 +103,8 @@ class InMemoryJobQueue extends events_1.EventEmitter {
         return job;
     }
     drain() {
+        if (this.paused)
+            return;
         // Sort queue so earliest scheduled time first
         this.queue.sort((a, b) => (a.scheduledFor || a.enqueuedAt) - (b.scheduledFor || b.enqueuedAt));
         while (this.running < this.concurrency && this.queue.length) {

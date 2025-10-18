@@ -16,6 +16,10 @@ import { DownloadToken } from './DownloadToken';
 import { WebhookSubscription } from './WebhookSubscription';
 import { WebhookDelivery } from './WebhookDelivery';
 import { JobRecord } from './JobRecord';
+import { CustomerApprovalToken } from './CustomerApprovalToken';
+import { ChangeOrder } from './ChangeOrder';
+import { Invoice } from './Invoice';
+import { PurchaseOrder } from './PurchaseOrder';
 
 // Define associations
 UserEnhanced.hasMany(Project, { foreignKey: 'userId', as: 'projects' });
@@ -40,6 +44,17 @@ Order.belongsTo(Project, { foreignKey: 'projectId', as: 'project' });
 Quote.hasMany(Order, { foreignKey: 'quoteId', as: 'orders' });
 Order.belongsTo(Quote, { foreignKey: 'quoteId', as: 'quote' });
 
+// ChangeOrder associations
+Project.hasMany(ChangeOrder, { foreignKey: 'projectId', as: 'changeOrders' });
+ChangeOrder.belongsTo(Project, { foreignKey: 'projectId', as: 'project' });
+ChangeOrder.belongsTo(UserEnhanced, { foreignKey: 'createdByUserId', as: 'createdBy' });
+ChangeOrder.belongsTo(UserEnhanced, { foreignKey: 'approvedByUserId', as: 'approvedBy' });
+ChangeOrder.belongsTo(Quote, { foreignKey: 'quoteId', as: 'quote' });
+
+// Invoice associations
+Project.hasMany(Invoice, { foreignKey: 'projectId', as: 'invoices' });
+Invoice.belongsTo(Project, { foreignKey: 'projectId', as: 'project' });
+
 // ProjectFile associations
 Project.hasMany(ProjectFile, { foreignKey: 'projectId', as: 'files' });
 defineProjectFileAssociations();
@@ -60,6 +75,10 @@ export {
   WebhookSubscription,
   WebhookDelivery,
   JobRecord,
+  CustomerApprovalToken,
+  ChangeOrder,
+  Invoice,
+  PurchaseOrder,
 };
 
 export default {
@@ -77,4 +96,8 @@ export default {
   WebhookSubscription,
   WebhookDelivery,
   JobRecord,
+  CustomerApprovalToken,
+  ChangeOrder,
+  Invoice,
+  PurchaseOrder,
 };

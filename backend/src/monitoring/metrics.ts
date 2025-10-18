@@ -160,6 +160,24 @@ metrics.registerGauge('latency.attr.db_pct', () => __latencyAttribution.total ? 
 metrics.registerGauge('latency.attr.handlers_pct', () => __latencyAttribution.total ? Math.min(100, (__latencyAttribution.handlers / __latencyAttribution.total) * 100) : 0);
 metrics.registerGauge('latency.attr.other_pct', () => __latencyAttribution.total ? Math.min(100, (__latencyAttribution.other / __latencyAttribution.total) * 100) : 0);
 
+// Phase 17: register latency attribution gauges
+try {
+  metrics.registerGauge('latency.attr.total.ms.avg', () => {
+    const b = (global as any).__latencyAttribution as LatencyBucket; return b.count ? b.total / b.count : 0;
+  });
+  metrics.registerGauge('latency.attr.db.ms.avg', () => {
+    const b = (global as any).__latencyAttribution as LatencyBucket; return b.count ? b.db / b.count : 0;
+  });
+  metrics.registerGauge('latency.attr.handlers.ms.avg', () => {
+    const b = (global as any).__latencyAttribution as LatencyBucket; return b.count ? b.handlers / b.count : 0;
+  });
+  metrics.registerGauge('latency.attr.other.ms.avg', () => {
+    const b = (global as any).__latencyAttribution as LatencyBucket; return b.count ? b.other / b.count : 0;
+  });
+  metrics.registerGauge('latency.attr.count', () => {
+    const b = (global as any).__latencyAttribution as LatencyBucket; return b.count;
+  });
+} catch { /* gauges may already exist */ }
 // Dynamic token gauges (lazy imports to avoid circulars)
 metrics.registerGauge('tokens.refresh.total', () => {
   try {
@@ -235,16 +253,25 @@ metrics.registerGauge('auth.failures.rate_5m_per_min', () => metrics.getRollingR
 // Phase 8: SLO Support - track request volume for availability calculation
 metrics.trackRolling('http.requests.total');
 metrics.registerGauge('http.requests.rate_5m_per_min', () => metrics.getRollingRatePerMinute('http.requests.total'));
-metrics.registerGauge('http.availability.5m_est', () => {
+// Helper compute functions to avoid recursive snapshot() usage inside gauges
+function computeAvailability5m() {
   const reqRate = metrics.getRollingRatePerMinute('http.requests.total');
   if (reqRate === 0) return 1; // assume full availability when no traffic
   const err5xx = metrics.getRollingRatePerMinute('http.errors.5xx');
   const avail = 1 - (err5xx / reqRate);
   return Math.max(0, Math.min(1, avail));
-});
+}
+function computeAvailability30m() {
+  const reqRate = metrics.getRollingRatePerMinute30m('http.requests.total');
+  if (reqRate === 0) return 1;
+  const err5xx = metrics.getRollingRatePerMinute30m('http.errors.5xx');
+  const avail = 1 - (err5xx / reqRate);
+  return Math.max(0, Math.min(1, avail));
+}
+metrics.registerGauge('http.availability.5m_est', () => computeAvailability5m());
 metrics.registerGauge('http.error_budget.remaining_pct', () => {
   const target = parseFloat(process.env.SLO_AVAILABILITY_TARGET || '0.995'); // 99.5% default
-  const availability = (metrics as any).snapshot().gauges['http.availability.5m_est'] || 1;
+  const availability = computeAvailability5m();
   const budget = 1 - target;
   if (budget <= 0) return 0;
   const consumed = 1 - availability;
@@ -257,15 +284,10 @@ metrics.trackRolling30m('http.requests.total');
 metrics.trackRolling30m('http.errors.5xx');
 metrics.registerGauge('http.requests.rate_30m_per_min', () => metrics.getRollingRatePerMinute30m('http.requests.total'));
 metrics.registerGauge('http.errors.5xx.rate_30m_per_min', () => metrics.getRollingRatePerMinute30m('http.errors.5xx'));
-metrics.registerGauge('http.availability.30m_est', () => {
-  const reqRate = metrics.getRollingRatePerMinute30m('http.requests.total');
-  if (reqRate === 0) return 1;
-  const err5xx = metrics.getRollingRatePerMinute30m('http.errors.5xx');
-  return Math.max(0, Math.min(1, 1 - (err5xx / reqRate)));
-});
+metrics.registerGauge('http.availability.30m_est', () => computeAvailability30m());
 metrics.registerGauge('http.slo.burn_rate_5m_30m', () => {
-  const a5 = (metrics as any).snapshot().gauges['http.availability.5m_est'] || 1;
-  const a30 = (metrics as any).snapshot().gauges['http.availability.30m_est'] || 1;
+  const a5 = computeAvailability5m();
+  const a30 = computeAvailability30m();
   const err5 = 1 - a5;
   const err30 = 1 - a30;
   if (err30 <= 0) return 0;
@@ -273,7 +295,7 @@ metrics.registerGauge('http.slo.burn_rate_5m_30m', () => {
 });
 metrics.registerGauge('http.slo.burn_rate_budget', () => {
   const target = parseFloat(process.env.SLO_AVAILABILITY_TARGET || '0.995');
-  const a5 = (metrics as any).snapshot().gauges['http.availability.5m_est'] || 1;
+  const a5 = computeAvailability5m();
   const budget = 1 - target;
   if (budget <= 0) return 0;
   return (1 - a5) / budget;
@@ -437,9 +459,8 @@ metrics.registerGauge('scaling.headroom.rps_pct', () => {
   try {
     const cap = (global as any).__capacityCache?.maxRps;
     if (!cap || cap <= 0) return 0;
-    // current request rate per second derived from 5m per-minute gauge
-    const snap = (metrics as any).snapshot();
-    const perMin = snap.gauges['http.requests.rate_5m_per_min'] || 0;
+    // current request rate per second derived from 5m per-minute direct rate
+    const perMin = metrics.getRollingRatePerMinute('http.requests.total');
     const currentRps = perMin / 60;
     const remaining = Math.max(0, cap - currentRps);
     return Math.max(0, Math.min(100, (remaining / cap) * 100));
@@ -454,10 +475,29 @@ metrics.registerGauge('scaling.scale_trigger_threshold_rps', () => {
 });
 metrics.registerGauge('scaling.advice.code', () => {
   try {
-    const snap = (metrics as any).snapshot();
-    const headroom = snap.gauges['scaling.headroom.rps_pct'] || 0;
-    const burnBudget = snap.gauges['http.slo.burn_rate_budget'] || 0;
-    const burnRatio = snap.gauges['http.slo.burn_rate_5m_30m'] || 0;
+    const headroom = ((): number => {
+      const cap = (global as any).__capacityCache?.maxRps;
+      if (!cap || cap <= 0) return 0;
+      const perMin = metrics.getRollingRatePerMinute('http.requests.total');
+      const currentRps = perMin / 60;
+      const remaining = Math.max(0, cap - currentRps);
+      return Math.max(0, Math.min(100, (remaining / cap) * 100));
+    })();
+    const burnBudget = ((): number => {
+      const target = parseFloat(process.env.SLO_AVAILABILITY_TARGET || '0.995');
+      const a5 = computeAvailability5m();
+      const budget = 1 - target;
+      if (budget <= 0) return 0;
+      return (1 - a5) / budget;
+    })();
+    const burnRatio = ((): number => {
+      const a5 = computeAvailability5m();
+      const a30 = computeAvailability30m();
+      const err5 = 1 - a5;
+      const err30 = 1 - a30;
+      if (err30 <= 0) return 0;
+      return err5 / err30;
+    })();
     let code = 0; // 0=no action,1=monitor,2=scale soon,3=scale now
     if (headroom < 5 || burnBudget > 1.2) code = 3;
     else if (headroom < 15 || burnRatio > 2) code = 2;
@@ -467,10 +507,29 @@ metrics.registerGauge('scaling.advice.code', () => {
 });
 metrics.registerGauge('scaling.advice.reason_code', () => {
   try {
-    const snap = (metrics as any).snapshot();
-    const headroom = snap.gauges['scaling.headroom.rps_pct'] || 0;
-    const burnBudget = snap.gauges['http.slo.burn_rate_budget'] || 0;
-    const burnRatio = snap.gauges['http.slo.burn_rate_5m_30m'] || 0;
+    const headroom = ((): number => {
+      const cap = (global as any).__capacityCache?.maxRps;
+      if (!cap || cap <= 0) return 0;
+      const perMin = metrics.getRollingRatePerMinute('http.requests.total');
+      const currentRps = perMin / 60;
+      const remaining = Math.max(0, cap - currentRps);
+      return Math.max(0, Math.min(100, (remaining / cap) * 100));
+    })();
+    const burnBudget = ((): number => {
+      const target = parseFloat(process.env.SLO_AVAILABILITY_TARGET || '0.995');
+      const a5 = computeAvailability5m();
+      const budget = 1 - target;
+      if (budget <= 0) return 0;
+      return (1 - a5) / budget;
+    })();
+    const burnRatio = ((): number => {
+      const a5 = computeAvailability5m();
+      const a30 = computeAvailability30m();
+      const err5 = 1 - a5;
+      const err30 = 1 - a30;
+      if (err30 <= 0) return 0;
+      return err5 / err30;
+    })();
     // 0=none,1=headroom_low,2=burn_budget_exceeded,3=burn_ratio_high,4=headroom_and_burn,5=headroom_and_budget
     if (headroom < 5 && burnBudget > 1.2) return 5;
     if (headroom < 5 && burnRatio > 2) return 4;

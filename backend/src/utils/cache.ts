@@ -145,7 +145,8 @@ export const cacheKeys = {
 
 export const cacheTags = {
   materials: 'materials',
-  analytics: 'analytics'
+  analytics: 'analytics',
+  attention: 'attention'
 };
 
 // Gauges for observability
@@ -154,9 +155,12 @@ try {
   metrics.registerGauge('cache.tags', () => tagIndex.size);
   metrics.registerGauge('cache.inflight', () => inFlight.size);
   metrics.registerGauge('cache.hit_ratio', () => {
-    const hits = (metrics as any).snapshot().counters['cache.hit'] || 0;
-    const misses = (metrics as any).snapshot().counters['cache.miss'] || 0;
-    const denom = hits + misses;
-    return denom === 0 ? 0 : hits / denom;
+    try {
+      const counters = (metrics as any).counters || {};
+      const hits = counters['cache.hit'] || 0;
+      const misses = counters['cache.miss'] || 0;
+      const denom = hits + misses;
+      return denom === 0 ? 0 : hits / denom;
+    } catch { return 0; }
   });
 } catch { /* ignore */ }

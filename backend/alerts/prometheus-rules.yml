@@ -1,0 +1,43 @@
+groups:
+  - name: balcon-core
+    interval: 30s
+    rules:
+      - alert: High5xxErrorRate
+        expr: rate(http_errors_5xx[5m]) > 5
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: High 5xx error volume
+          runbook: https://internal/runbooks/balcon#5xx
+
+      - alert: SlowQuerySurge
+        expr: increase(db_slow_query_total[10m]) > 10
+        for: 10m
+        labels: { severity: high }
+        annotations:
+          summary: Slow DB queries increasing
+          runbook: https://internal/runbooks/balcon#db-slow
+
+      - alert: AuthFailureSpike
+        expr: (increase(auth_failures[5m]) > 50) and (increase(auth_failures[5m]) / (increase(auth_success[5m]) + 1) > 0.3)
+        for: 5m
+        labels: { severity: high }
+        annotations:
+          summary: Authentication failures spiking
+          runbook: https://internal/runbooks/balcon#auth-failures
+
+      - alert: CardinalityBudgetViolated
+        expr: increase(cardinality_budget_violation[10m]) > 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: Cardinality budget violation detected
+          runbook: https://internal/runbooks/balcon#cardinality
+
+      - alert: AdvisoryScaleNow
+        expr: scaling_advice_code == 3
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: Scaling advisory indicates scale-now condition
+          runbook: https://internal/runbooks/balcon#scaling

@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { metrics } from '../monitoring/metrics';
 // Lazy import inside function for latency attribution helpers to avoid circulars if any
 import crypto from 'crypto';
+import { trackDimension } from '../monitoring/cardinality';
 
 // Configuration via env
 const SLOW_QUERY_THRESHOLD_MS = parseInt(process.env.DB_SLOW_QUERY_THRESHOLD_MS || '500', 10);
@@ -117,9 +118,10 @@ export function installQueryMonitor() {
         // Buffer
         slowQueryBuffer.push({ pattern, sql: truncated, durationMs: ms, time: new Date().toISOString(), type: options?.type, error: error?.message });
         if (slowQueryBuffer.length > SLOW_QUERY_BUFFER_MAX) slowQueryBuffer.shift();
-        // Hash pattern to keep label bounded
+        // Hash pattern to keep label bounded and track cardinality
         try {
           const hash = crypto.createHash('md5').update(pattern).digest('hex').slice(0, 8);
+          trackDimension('db_slow_query_pattern', hash);
           metrics.increment(`db.slow_query.pattern.${hash}`);
           metrics.increment('db.slow_query.total');
         } catch { /* ignore pattern metric errors */ }

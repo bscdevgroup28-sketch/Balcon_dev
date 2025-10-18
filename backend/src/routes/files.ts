@@ -193,10 +193,14 @@ router.get('/:fileName', requirePolicy('file.read'), async (req: Request, res: R
       });
     }
 
-    // Set appropriate headers
-    res.setHeader('Content-Type', projectFile.mimeType);
-    res.setHeader('Content-Length', projectFile.fileSize);
-    res.setHeader('Content-Disposition', `inline; filename="${projectFile.originalName}"`);
+  // Set appropriate headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Type', projectFile.mimeType);
+  res.setHeader('Content-Length', projectFile.fileSize);
+  const isImage = projectFile.mimeType.startsWith('image/');
+  // For non-images, prefer attachment to reduce inline script execution risk
+  const dispositionType = isImage ? 'inline' : 'attachment';
+  res.setHeader('Content-Disposition', `${dispositionType}; filename="${projectFile.originalName}"`);
 
     // Stream the file
     const fileStream = fs.createReadStream(filePath);

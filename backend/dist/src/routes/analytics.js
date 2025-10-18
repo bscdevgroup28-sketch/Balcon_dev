@@ -11,6 +11,7 @@ const crypto_1 = __importDefault(require("crypto"));
 const json2csv_1 = require("json2csv");
 const authEnhanced_1 = require("../middleware/authEnhanced");
 const metrics_1 = require("../monitoring/metrics");
+const tracing_1 = require("../monitoring/tracing");
 // New cache keys for Phase 7 endpoints
 const trendCacheKey = (range) => `analytics:trends:${range}`;
 const distributionCacheKey = (field) => `analytics:distribution:${field}`;
@@ -41,6 +42,7 @@ function csvRateLimit(req, res, next) {
 }
 // GET /api/analytics/summary - latest KPI snapshot (simple first version)
 router.get('/summary', authEnhanced_1.authenticateToken, async (req, res) => {
+    const span = (0, tracing_1.startSpan)('analytics.summary');
     try {
         const ttlMs = parseInt(process.env.CACHE_TTL_ANALYTICS_SUMMARY_MS || '60000');
         const payload = await (0, cache_1.withCache)(cache_1.cacheKeys.analyticsSummary, ttlMs, async () => {
@@ -59,9 +61,13 @@ router.get('/summary', authEnhanced_1.authenticateToken, async (req, res) => {
         logger_1.logger.error('Failed to fetch KPI summary', err);
         res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load KPI summary' });
     }
+    finally {
+        (0, tracing_1.endSpan)(span, 'ok');
+    }
 });
 // GET /api/analytics/trends?range=30d|90d|365d (defaults 30d)
 router.get('/trends', authEnhanced_1.authenticateToken, async (req, res) => {
+    const span = (0, tracing_1.startSpan)('analytics.trends', { range: String(req.query.range || '30d') });
     try {
         const range = req.query.range || '30d';
         const days = range === '90d' ? 90 : range === '365d' ? 365 : 30;
@@ -122,9 +128,13 @@ router.get('/trends', authEnhanced_1.authenticateToken, async (req, res) => {
         logger_1.logger.error('Failed to fetch analytics trends', err);
         res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load trends' });
     }
+    finally {
+        (0, tracing_1.endSpan)(span, 'ok');
+    }
 });
 // GET /api/analytics/distribution/materials?field=category|status (default category)
 router.get('/distribution/materials', authEnhanced_1.authenticateToken, async (req, res) => {
+    const span = (0, tracing_1.startSpan)('analytics.distribution', { field: String(req.query.field || 'category') });
     try {
         const field = req.query.field || 'category';
         if (!['category', 'status'].includes(field)) {
@@ -152,9 +162,13 @@ router.get('/distribution/materials', authEnhanced_1.authenticateToken, async (r
         logger_1.logger.error('Failed to fetch materials distribution', err);
         res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load distribution' });
     }
+    finally {
+        (0, tracing_1.endSpan)(span, 'ok');
+    }
 });
 // CSV export for trends
 router.get('/trends.csv', authEnhanced_1.authenticateToken, csvRateLimit, async (req, res) => {
+    const span = (0, tracing_1.startSpan)('analytics.trends.csv', { range: String(req.query.range || '30d') });
     try {
         const range = req.query.range || '30d';
         const days = range === '90d' ? 90 : range === '365d' ? 365 : 30;
@@ -188,9 +202,13 @@ router.get('/trends.csv', authEnhanced_1.authenticateToken, csvRateLimit, async 
         logger_1.logger.error('Failed to export trends CSV', err);
         res.status(500).json({ error: 'Internal Server Error', message: 'Failed to export trends CSV' });
     }
+    finally {
+        (0, tracing_1.endSpan)(span, 'ok');
+    }
 });
 // CSV export for material distribution
 router.get('/distribution/materials.csv', authEnhanced_1.authenticateToken, csvRateLimit, async (req, res) => {
+    const span = (0, tracing_1.startSpan)('analytics.distribution.csv', { field: String(req.query.field || 'category') });
     try {
         const field = req.query.field || 'category';
         if (!['category', 'status'].includes(field)) {
@@ -217,12 +235,16 @@ router.get('/distribution/materials.csv', authEnhanced_1.authenticateToken, csvR
         logger_1.logger.error('Failed to export materials distribution CSV', err);
         res.status(500).json({ error: 'Internal Server Error', message: 'Failed to export distribution CSV' });
     }
+    finally {
+        (0, tracing_1.endSpan)(span, 'ok');
+    }
 });
 exports.default = router;
 // ------------------ Phase 8: Anomalies Endpoint ------------------
 // GET /api/analytics/anomalies?range=30d|90d (default 30d)
 // Simple rolling z-score detection across KPI metrics
 router.get('/anomalies', authEnhanced_1.authenticateToken, async (req, res) => {
+    const span = (0, tracing_1.startSpan)('analytics.anomalies', { range: String(req.query.range || '30d') });
     try {
         const range = req.query.range || '30d';
         const days = range === '90d' ? 90 : 30;
@@ -293,11 +315,15 @@ router.get('/anomalies', authEnhanced_1.authenticateToken, async (req, res) => {
         logger_1.logger.error('Failed to compute anomalies', err);
         res.status(500).json({ error: 'Internal Server Error', message: 'Failed to load anomalies' });
     }
+    finally {
+        (0, tracing_1.endSpan)(span, 'ok');
+    }
 });
 // ------------------ Phase 7: Simple Forecast Endpoint ------------------
 // GET /api/analytics/forecast?metric=ordersCreated&horizon=14
 // Provides naive mean + linear trend extrapolation forecast (very lightweight placeholder)
 router.get('/forecast', authEnhanced_1.authenticateToken, async (req, res) => {
+    const span = (0, tracing_1.startSpan)('analytics.forecast', { metric: String(req.query.metric || 'ordersCreated'), horizon: Number(req.query.horizon || 14) });
     try {
         const metric = req.query.metric || 'ordersCreated';
         const horizon = Math.min(parseInt(req.query.horizon || '14', 10), 60);
@@ -350,5 +376,8 @@ router.get('/forecast', authEnhanced_1.authenticateToken, async (req, res) => {
         metrics_1.metrics.increment('analytics.forecast.error');
         logger_1.logger.error('Failed to compute forecast', err);
         res.status(500).json({ error: 'Internal Server Error', message: 'Failed to compute forecast' });
+    }
+    finally {
+        (0, tracing_1.endSpan)(span, 'ok');
     }
 });

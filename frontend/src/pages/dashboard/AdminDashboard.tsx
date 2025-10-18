@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -44,9 +44,53 @@ import { useNavigate } from 'react-router-dom';
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { fetchAnalyticsSummary, fetchAnalyticsTrends, fetchAnalyticsAnomalies, fetchAnalyticsForecast } from '../../store/slices/analyticsSlice';
+import Sparkline from '../../components/charts/Sparkline';
+import AnomaliesPanel from '../../components/analytics/AnomaliesPanel';
+import ForecastCard from '../../components/analytics/ForecastCard';
+import CSVDownloadButton from '../../components/analytics/CSVDownloadButton';
+import api from '../../services/api';
+import { useNotification } from '../../components/feedback/NotificationProvider';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { trends, loadingTrends, anomalies, loadingAnomalies, forecast, loadingForecast } = useSelector((s: RootState) => s.analytics);
+  const { showSuccess, showError } = useNotification();
+
+  const downloadMaterialsCSV = async () => {
+    try {
+      const res = await api.get('/analytics/distribution/materials.csv', { params: { field: 'category' }, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'materials-distribution-category.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Materials CSV downloaded');
+    } catch (e: any) {
+      showError({ title: 'Download failed', message: e?.message || 'Could not download materials CSV' });
+    }
+  };
+
+  useEffect(() => {
+    dispatch(fetchAnalyticsSummary() as any);
+    dispatch(fetchAnalyticsTrends('30d') as any);
+    dispatch(fetchAnalyticsAnomalies({ range: '30d' }) as any);
+    dispatch(fetchAnalyticsForecast({ metric: 'ordersDelivered', horizon: 14 }) as any);
+  }, [dispatch]);
+
+  const trendSeries = useMemo(() => {
+    const pts = trends?.points || [];
+    return {
+      ordersCreated: pts.map((p: any) => Number(p.ordersCreated) || 0),
+      quotesSent: pts.map((p: any) => Number(p.quotesSent) || 0),
+    };
+  }, [trends]);
 
   // Mock data for demonstration
   const adminStats = {
@@ -105,6 +149,15 @@ const AdminDashboard: React.FC = () => {
               <Typography variant="h6">Total Users</Typography>
             </Box>
             <Typography variant="h3" color="primary">{adminStats.totalUsers}</Typography>
+            <Box sx={{ mt: 1 }}>
+              {loadingTrends ? (
+                <Typography component="div" variant="body2" sx={{ width: 160 }}>
+                  <Box sx={{ width: 160, height: 36, bgcolor: 'action.hover', borderRadius: 1 }} />
+                </Typography>
+              ) : (
+                <Sparkline data={trendSeries.ordersCreated} height={36} width={160} stroke="#0D47A1" fill="rgba(13,71,161,0.12)" />
+              )}
+            </Box>
             <Button variant="outlined" size="small" sx={{ mt: 2 }} onClick={() => navigate('/admin/users')}>
               Manage Users
             </Button>
@@ -117,6 +170,15 @@ const AdminDashboard: React.FC = () => {
               <Typography variant="h6">Active Projects</Typography>
             </Box>
             <Typography variant="h3" color="secondary">{adminStats.activeProjects}</Typography>
+            <Box sx={{ mt: 1 }}>
+              {loadingTrends ? (
+                <Typography component="div" variant="body2" sx={{ width: 160 }}>
+                  <Box sx={{ width: 160, height: 36, bgcolor: 'action.hover', borderRadius: 1 }} />
+                </Typography>
+              ) : (
+                <Sparkline data={trendSeries.quotesSent} height={36} width={160} stroke="#2E7D32" fill="rgba(46,125,50,0.12)" />
+              )}
+            </Box>
             <Button variant="outlined" size="small" sx={{ mt: 2 }} onClick={() => navigate('/admin/projects')}>
               View Projects
             </Button>
@@ -129,9 +191,10 @@ const AdminDashboard: React.FC = () => {
               <Typography variant="h6">Pending Quotes</Typography>
             </Box>
             <Typography variant="h3" color="warning.main">{adminStats.pendingQuotes}</Typography>
-            <Button variant="outlined" size="small" sx={{ mt: 2 }} onClick={() => navigate('/admin/quotes')}>
+            <Button variant="outlined" size="small" sx={{ mt: 2, mr: 1 }} onClick={() => navigate('/admin/quotes')}>
               Review Quotes
             </Button>
+            <CSVDownloadButton onClick={downloadMaterialsCSV} label="Materials CSV" />
           </CardContent>
         </Card>
         <Card>
@@ -222,6 +285,15 @@ const AdminDashboard: React.FC = () => {
             </TableContainer>
           </Paper>
         </Grid>
+
+        {/* Anomalies */}
+        <Box sx={{ mt: 3 }}>
+          <AnomaliesPanel data={anomalies} loading={loadingAnomalies} />
+        </Box>
+
+        <Box sx={{ mt: 3 }}>
+          <ForecastCard data={forecast} loading={loadingForecast} title="Orders Delivered – 14d Forecast" />
+        </Box>
 
         {/* Urgent Tasks */}
   <Grid item xs={12} md={6} lg={5}>

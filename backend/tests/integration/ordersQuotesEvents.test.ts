@@ -20,7 +20,7 @@ describe('Quote & Order Lifecycle Events', () => {
     } as any);
     authHeader = `Bearer ${tokenFor(admin)}`;
     await Project.create({
-      title: 'Event Project', description: 'Test', projectType: 'residential', priority: 'medium', inquiryNumber: 'INQ-0001', status: 'inquiry', userId: 1
+      title: 'Event Project', description: 'Test', projectType: 'residential', priority: 'medium', inquiryNumber: 'INQ-0001', status: 'inquiry', userId: admin.id
     } as any);
   });
 

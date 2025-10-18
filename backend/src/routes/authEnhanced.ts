@@ -1,4 +1,6 @@
 import express, { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { AuthService } from '../services/authService';
 import { authenticateToken, requirePermission } from '../middleware/authEnhanced';
 import { User } from '../models/UserEnhanced';
@@ -32,6 +34,15 @@ const changePasswordSchema = z.object({
   currentPassword: z.string().optional()
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Valid email is required')
+});
+
+const forgotPasswordConfirmSchema = z.object({
+  token: z.string().min(10),
+  newPassword: z.string().min(8, 'New password must be at least 8 characters')
+});
+
 // POST /api/auth/login
 router.post('/login', bruteForceProtector, validate({ body: loginSchema }), async (req: any, res: Response) => {
   try {
@@ -61,6 +72,18 @@ router.post('/login', bruteForceProtector, validate({ body: loginSchema }), asyn
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
+
+    // Also set access token as httpOnly cookie (short-lived)
+    try {
+      const decoded: any = jwt.decode(accessToken);
+      const ttlMs = decoded?.exp ? Math.max(0, decoded.exp * 1000 - Date.now()) : 60 * 60 * 1000; // default 1h
+      res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: ttlMs
+      });
+    } catch { /* ignore cookie set failure */ }
 
   try { (req as any).clearAuthFailures?.(); } catch { /* ignore */ }
     logSecurityEvent(req, {
@@ -202,6 +225,18 @@ router.post('/refresh', async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
+    // Set updated access token cookie
+    try {
+      const decoded: any = jwt.decode(result.accessToken);
+      const ttlMs = decoded?.exp ? Math.max(0, decoded.exp * 1000 - Date.now()) : 60 * 60 * 1000;
+      res.cookie('accessToken', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: ttlMs
+      });
+    } catch { /* ignore */ }
+
     res.json({
       success: true,
       message: 'Token refreshed successfully',
@@ -219,11 +254,76 @@ router.post('/refresh', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/auth/forgot-password
+router.post('/forgot-password', validate({ body: forgotPasswordSchema }), async (req: any, res: Response) => {
+  try {
+    const { email } = req.validatedBody as { email: string };
+    const normalized = email.toLowerCase();
+    const user = await User.findByEmail(normalized);
+
+    // Always return success to avoid user enumeration
+    const genericResponse = {
+      success: true,
+      message: 'If an account exists for this email, a password reset link has been sent.'
+    };
+
+    if (!user || !user.isActive) {
+      logSecurityEvent(req, { action: 'auth.forgot.request', outcome: 'success', meta: { email: normalized, existed: false } });
+      return res.json(genericResponse);
+    }
+
+    // Generate secure token and expiry (~1 hour)
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    (user as any).passwordResetToken = token;
+    (user as any).passwordResetExpiresAt = expiresAt;
+    await user.save();
+
+    // In a real deployment, send email via provider (e.g., SendGrid). Here we just log.
+    logger.info(`Password reset requested for ${user.email}. Token expires at ${expiresAt.toISOString()}`);
+    logSecurityEvent(req, { action: 'auth.forgot.request', outcome: 'success', targetUserId: user.id });
+    return res.json(genericResponse);
+  } catch (error) {
+    logger.error('Forgot password request error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// POST /api/auth/forgot-password/confirm
+router.post('/forgot-password/confirm', validate({ body: forgotPasswordConfirmSchema }), async (req: any, res: Response) => {
+  try {
+    const { token, newPassword } = req.validatedBody as { token: string; newPassword: string };
+    const user = await User.findOne({ where: { passwordResetToken: token } as any });
+    if (!user || !(user as any).passwordResetExpiresAt || (user as any).passwordResetExpiresAt < new Date()) {
+      logSecurityEvent(req, { action: 'auth.forgot.confirm', outcome: 'failure', meta: { reason: 'invalid_or_expired_token' } });
+      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    const pwEval = evaluatePassword(newPassword);
+    if (!pwEval.valid) {
+      return res.status(400).json({ success: false, message: 'Password does not meet policy', errors: pwEval.errors });
+    }
+
+    await user.updatePassword(newPassword);
+    (user as any).passwordResetToken = null;
+    (user as any).passwordResetExpiresAt = null;
+    (user as any).mustChangePassword = false; // user-initiated reset
+    await user.save();
+
+    logSecurityEvent(req, { action: 'auth.forgot.confirm', outcome: 'success', targetUserId: user.id });
+    return res.json({ success: true, message: 'Password has been reset successfully' });
+  } catch (error) {
+    logger.error('Forgot password confirm error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 // POST /api/auth/logout
 router.post('/logout', async (req: Request, res: Response) => {
   try {
     // Clear refresh token cookie
     res.clearCookie('refreshToken');
+    res.clearCookie('accessToken');
     logSecurityEvent(req, {
       action: 'auth.logout',
       outcome: 'success'

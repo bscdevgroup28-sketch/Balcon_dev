@@ -78,5 +78,33 @@
   {
     "name": "20250928-1100-add-active-refresh-token-index.ts",
     "sha256": "6510579b39690b625eb3fa88dbdf98257f80e99adbf4374a7304ff0f07cf1eb1"
+  },
+  {
+    "name": "20250929-1200-create-export-jobs.ts",
+    "sha256": "480cec9b65b2e76e2b740b42b26b4d05cefd86ad8ba3cf4c91f8424f26092e8e"
+  },
+  {
+    "name": "20251018-0001-create-customer-approval-tokens.ts",
+    "sha256": "f3f033b09c0308134685daf3675d383116569fa1833b8dc818154ce6f6f13442"
+  },
+  {
+    "name": "20251018-0002-create-change-orders.ts",
+    "sha256": "7c678ccc805cf4252ae95c9d7d09010f9c355725905b72f900727781c4764e25"
+  },
+  {
+    "name": "20251018-0003-create-invoices.ts",
+    "sha256": "f992c76d53daa08a40ad1ff1bceb5b03696769f41d9acef4f320a57e2918d5f1"
+  },
+  {
+    "name": "20251018-0004-add-workorder-team-and-indexes.ts",
+    "sha256": "996fa4cae63ad44f533b7d68069e429d5ab2a1de15472fb286a12fdef0233e89"
+  },
+  {
+    "name": "20251018-0005-create-purchase-orders.ts",
+    "sha256": "36738f35aeab372c48b98c507aeff7929c604a9727bd649570db114e9a374fc1"
+  },
+  {
+    "name": "20251018-0006-create-idempotency-records.ts",
+    "sha256": "1bc82e329852f029a860107203e63e528455e70aa1cf71cdea81ccb79e6f90ee"
   }
 ]

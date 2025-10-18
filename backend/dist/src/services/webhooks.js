@@ -12,6 +12,7 @@ const models_1 = require("../models");
 const circuitBreaker_1 = require("../utils/circuitBreaker");
 const jobQueue_1 = require("../jobs/jobQueue");
 const metrics_1 = require("../monitoring/metrics");
+const cardinality_1 = require("../monitoring/cardinality");
 // Configuration constants (could be externalized)
 const MAX_PAYLOAD_BYTES = 50000; // store at most 50KB in delivery record
 const SIGNATURE_SCHEME = 'sha256';
@@ -28,6 +29,10 @@ function signPayload(secret, body) {
     return `${SIGNATURE_SCHEME}=${sig}`;
 }
 async function publishEvent(event, data) {
+    try {
+        (0, cardinality_1.trackDimension)('webhook_event_type', event);
+    }
+    catch { /* ignore */ }
     const subs = await models_1.WebhookSubscription.findAll({ where: { eventType: event, isActive: true } });
     if (!subs.length)
         return;

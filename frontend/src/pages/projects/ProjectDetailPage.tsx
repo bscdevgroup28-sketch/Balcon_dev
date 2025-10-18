@@ -299,7 +299,7 @@ const ProjectDetailPage: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <IconButton onClick={() => navigate('/projects')} sx={{ mr: 2 }}>
+          <IconButton aria-label="Back to projects" onClick={() => navigate('/projects')} sx={{ mr: 2 }}>
             <ArrowBack />
           </IconButton>
           <Box>
@@ -402,6 +402,7 @@ const ProjectDetailPage: React.FC = () => {
                   Progress: {project.progress}%
                 </Typography>
                 <LinearProgress
+                  aria-label="Project progress"
                   variant="determinate"
                   value={project.progress}
                   sx={{ mt: 0.5, height: 6, borderRadius: 3 }}
@@ -598,7 +599,7 @@ const ProjectDetailPage: React.FC = () => {
                       secondary={`${formatFileSize(file.size)} • Uploaded ${new Date(file.uploadedAt).toLocaleDateString()} by ${file.uploadedBy}`}
                     />
                     <Tooltip title="Download">
-                      <IconButton edge="end">
+                      <IconButton aria-label={`Download ${file.name}`} edge="end">
                         <Download />
                       </IconButton>
                     </Tooltip>

@@ -16,6 +16,7 @@ WorkOrder.init({
     assignedUserId: { type: sequelize_1.DataTypes.INTEGER, allowNull: true },
     estimatedHours: { type: sequelize_1.DataTypes.FLOAT, allowNull: true },
     actualHours: { type: sequelize_1.DataTypes.FLOAT, allowNull: true },
+    team: { type: sequelize_1.DataTypes.STRING(100), allowNull: true },
     startDate: { type: sequelize_1.DataTypes.DATE, allowNull: true },
     dueDate: { type: sequelize_1.DataTypes.DATE, allowNull: true },
     completedAt: { type: sequelize_1.DataTypes.DATE, allowNull: true }

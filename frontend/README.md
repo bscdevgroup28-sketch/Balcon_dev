@@ -27,6 +27,12 @@ npm install
 npm start
 ```
 
+The app uses MUI with a professional palette and Inter font:
+- Primary: #0D47A1 (deep blue)
+- Secondary: #FF6F00 (construction orange)
+- Success: #2E7D32 (green)
+Inter is loaded via Google Fonts in `public/index.html`.
+
 ## Production Build
 ```
 npm run build

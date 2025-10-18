@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Grid,
   Card,
@@ -32,16 +32,80 @@ import { BaseDashboard } from '../../components/dashboard/BaseDashboard';
 import DashboardSection from '../../components/dashboard/DashboardSection';
 import { BusinessMetricsCard } from '../../components/dashboard/BusinessDashboardComponents';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
-import HealthScoreRing, { HealthMetric } from '../../components/dashboard/HealthScoreRing';
+import HealthScoreRing from '../../components/dashboard/HealthScoreRing';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { fetchAnalyticsSummary, fetchAnalyticsTrends, fetchAnalyticsAnomalies, fetchAnalyticsForecast } from '../../store/slices/analyticsSlice';
+import api from '../../services/api';
+import { useNotification } from '../../components/feedback/NotificationProvider';
+import AnomaliesPanel from '../../components/analytics/AnomaliesPanel';
+import ForecastCard from '../../components/analytics/ForecastCard';
+import Sparkline from '../../components/charts/Sparkline';
+import AttentionList from '../../components/common/AttentionList';
 
 const OwnerDashboard: React.FC = () => {
-  // Mock data for demonstration - will be replaced with API calls
+  const dispatch = useDispatch();
+  const { summary, trends, loadingSummary, loadingTrends, anomalies, loadingAnomalies, forecast, loadingForecast } = useSelector((s: RootState) => s.analytics);
+  const { showSuccess, showError } = useNotification();
+
+  useEffect(() => {
+    dispatch(fetchAnalyticsSummary() as any);
+    dispatch(fetchAnalyticsTrends('30d') as any);
+    dispatch(fetchAnalyticsAnomalies({ range: '30d' }) as any);
+    dispatch(fetchAnalyticsForecast({ metric: 'ordersCreated', horizon: 14 }) as any);
+  }, [dispatch]);
+
+  const trendSeries = useMemo(() => {
+    const pts = trends?.points || [];
+    return {
+      ordersCreated: pts.map((p: any) => Number(p.ordersCreated) || 0),
+      ordersDelivered: pts.map((p: any) => Number(p.ordersDelivered) || 0),
+      quotesSent: pts.map((p: any) => Number(p.quotesSent) || 0),
+      quotesAccepted: pts.map((p: any) => Number(p.quotesAccepted) || 0),
+    };
+  }, [trends]);
+
+  const handleDownloadCsv = async () => {
+    try {
+      const res = await api.get('/analytics/trends.csv', { params: { range: '30d' }, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'analytics-trends-30d.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Trends CSV downloaded');
+    } catch (e: any) {
+      showError({ title: 'Download failed', message: e?.message || 'Could not download CSV', reportable: true });
+    }
+  };
+
+  const handleDownloadMaterialsCsv = async () => {
+    try {
+      const res = await api.get('/analytics/distribution/materials.csv', { params: { field: 'category' }, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'materials-distribution-category.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Materials distribution CSV downloaded');
+    } catch (e: any) {
+      showError({ title: 'Download failed', message: e?.message || 'Could not download materials CSV', reportable: true });
+    }
+  };
+
+  // Fallback mock data while loading or if API empty
   const executiveKPIs = {
-    totalRevenue: 2450000,
-    monthlyRevenue: 245000,
-    quarterlyGrowth: 18.5,
-    yearlyGrowth: 32.1,
-    profitMargin: 24.8,
+    totalRevenue: summary?.data?.totalRevenue ?? 2450000,
+    monthlyRevenue: summary?.data?.monthlyRevenue ?? 245000,
+    quarterlyGrowth: summary?.data?.quarterlyGrowth ?? 18.5,
+    yearlyGrowth: summary?.data?.yearlyGrowth ?? 32.1,
+    profitMargin: summary?.data?.profitMargin ?? 24.8,
     customerAcquisition: 12,
     pipelineValue: 1850000,
     activeProjects: 24,
@@ -141,6 +205,16 @@ const OwnerDashboard: React.FC = () => {
     }
   };
 
+  // Render attention list near top
+  const attentionSection = (
+    <Card sx={{ mb: 3 }} aria-label="attention-section">
+      <CardContent>
+        <Typography variant="h6" gutterBottom>Needs Your Attention</Typography>
+        <AttentionList limit={8} />
+      </CardContent>
+    </Card>
+  );
+
   return (
     <BaseDashboard 
       title="Executive Dashboard" 
@@ -157,6 +231,7 @@ const OwnerDashboard: React.FC = () => {
         </Box>
       }
     >
+      {attentionSection}
   <Grid container spacing={3} columns={{ xs: 12, sm: 12, md: 12 }}>
         {/* Business Health Score - Featured at Top */}
         <Grid item xs={12} lg={6}>
@@ -272,6 +347,7 @@ const OwnerDashboard: React.FC = () => {
             <BusinessMetricsCard
               title="Total Revenue"
               value={`$${(executiveKPIs.totalRevenue / 1000000).toFixed(1)}M`}
+              loading={loadingSummary}
               subtitle="Year to date"
               icon={<AttachMoney />}
               color="success"
@@ -280,6 +356,7 @@ const OwnerDashboard: React.FC = () => {
             <BusinessMetricsCard
               title="Monthly Revenue"
               value={`$${(executiveKPIs.monthlyRevenue / 1000).toFixed(0)}K`}
+              loading={loadingSummary}
               subtitle="Current month"
               icon={<TrendingUp />}
               color="primary"
@@ -288,6 +365,7 @@ const OwnerDashboard: React.FC = () => {
             <BusinessMetricsCard
               title="Profit Margin"
               value={`${executiveKPIs.profitMargin}%`}
+              loading={loadingSummary}
               subtitle="Company average"
               icon={<Business />}
               color="info"
@@ -305,13 +383,19 @@ const OwnerDashboard: React.FC = () => {
           </DashboardSection>
         </Grid>
 
-        {/* Recent Performance Metrics */}
+        {/* Recent Performance Metrics with Trends */}
         <Grid item xs={12} lg={8}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Recent Performance Metrics
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="h6" gutterBottom>
+                  Recent Performance Metrics
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button onClick={handleDownloadCsv} size="small" variant="outlined">Trends CSV</Button>
+                  <Button onClick={handleDownloadMaterialsCsv} size="small" variant="outlined">Materials CSV</Button>
+                </Box>
+              </Box>
               <Grid container spacing={2}>
                 {recentMetrics.map((metric, index) => (
                   <Grid item xs={12} sm={6} key={index}>
@@ -334,7 +418,7 @@ const OwnerDashboard: React.FC = () => {
                           {metric.period}
                         </Typography>
                       </Box>
-                      <Box sx={{ textAlign: 'right' }}>
+                      <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
                         <Chip
                           icon={metric.trend === 'up' ? <ArrowUpward /> : <ArrowDownward />}
                           label={metric.change}
@@ -342,6 +426,20 @@ const OwnerDashboard: React.FC = () => {
                           size="small"
                           variant="outlined"
                         />
+                        <Box sx={{ opacity: loadingTrends ? 0.5 : 1 }}>
+                          <Sparkline
+                            data={
+                              index === 0 ? trendSeries.ordersCreated :
+                              index === 1 ? trendSeries.ordersDelivered :
+                              index === 2 ? trendSeries.quotesSent :
+                              trendSeries.quotesAccepted
+                            }
+                            width={140}
+                            height={36}
+                            stroke="#2E7D32"
+                            fill="rgba(46,125,50,0.15)"
+                          />
+                        </Box>
                       </Box>
                     </Box>
                   </Grid>
@@ -384,7 +482,11 @@ const OwnerDashboard: React.FC = () => {
                         secondary={alert.timestamp}
                       />
                     </ListItem>
-                    {index < strategicAlerts.length - 1 && <Divider />}
+                    {index < strategicAlerts.length - 1 && (
+                      <ListItem component="li" sx={{ p: 0 }} disableGutters>
+                        <Divider flexItem aria-hidden="true" />
+                      </ListItem>
+                    )}
                   </React.Fragment>
                 ))}
               </List>
@@ -437,6 +539,7 @@ const OwnerDashboard: React.FC = () => {
                           variant="determinate" 
                           value={project.completion}
                           sx={{ height: 8, borderRadius: 4 }}
+                          aria-label={`Progress for ${project.name}`}
                         />
                       </Box>
                     </Box>
@@ -463,6 +566,7 @@ const OwnerDashboard: React.FC = () => {
                     variant="determinate"
                     value={78}
                     sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
+                    aria-label="Q4 Growth Target progress"
                   />
                   <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                     78%
@@ -483,6 +587,7 @@ const OwnerDashboard: React.FC = () => {
                     value={65}
                     sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
                     color="secondary"
+                    aria-label="Market Expansion progress"
                   />
                   <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                     65%
@@ -503,6 +608,7 @@ const OwnerDashboard: React.FC = () => {
                     value={42}
                     sx={{ flexGrow: 1, height: 8, borderRadius: 4 }}
                     color="info"
+                    aria-label="Digital Transformation progress"
                   />
                   <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                     42%
@@ -665,6 +771,16 @@ const OwnerDashboard: React.FC = () => {
               </Grid>
             </CardContent>
           </Card>
+        </Grid>
+
+        {/* Anomalies Panel */}
+        <Grid item xs={12}>
+          <AnomaliesPanel data={anomalies} loading={loadingAnomalies} />
+        </Grid>
+
+        {/* Simple Forecast */}
+        <Grid item xs={12} lg={6}>
+          <ForecastCard data={forecast} loading={loadingForecast} title="Orders Created – 14d Forecast" />
         </Grid>
       </Grid>
     </BaseDashboard>

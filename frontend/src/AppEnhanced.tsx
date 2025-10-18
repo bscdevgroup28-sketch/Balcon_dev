@@ -43,6 +43,7 @@ const OrdersPage = lazy(() => import('./pages/orders/OrdersPage'));
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
 const MaterialsPage = lazy(() => import('./pages/materials/MaterialsPage'));
 const UsersPage = lazy(() => import('./pages/admin/UsersPage'));
+const AdminOpsConsole = lazy(() => import('./pages/admin/AdminOpsConsole'));
 
 // Phase 5C Enhanced Components
 const AnalyticsDashboard = lazy(() => import('./components/analytics/AnalyticsDashboard'));
@@ -51,6 +52,7 @@ const RealTimeNotifications = lazy(() => import('./components/notifications/Real
 const EnhancedProjectManagement = lazy(() => import('./components/projects/EnhancedProjectManagement'));
 const MobileDashboard = lazy(() => import('./components/mobile/MobileDashboard'));
 const Phase5CTestSuite = lazy(() => import('./components/testing/Phase5CTestSuite'));
+const ApprovalPage = lazy(() => import('./pages/portal/ApprovalPage'));
 
 // Feature discovery lazy component (non-critical, gated by flag)
 const FeatureDiscoveryLazy = React.lazy(() => import('./components/help/FeatureDiscovery'));
@@ -82,6 +84,7 @@ const EnhancedAppRouter: React.FC = () => {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginEnhanced />} />
       <Route path="/register" element={<Register />} />
+  <Route path="/portal/approval/:token" element={<ApprovalPage />} />
       
       {/* Protected Routes */}
       <Route
@@ -236,6 +239,7 @@ const EnhancedAppRouter: React.FC = () => {
                         <Route path="/" element={<AdminDashboard />} />
                         <Route path="/users" element={<UsersPage />} />
                         <Route path="/settings" element={<div>System Settings</div>} />
+                        <Route path="/ops" element={<AdminOpsConsole />} />
                         <Route path="/analytics" element={<AnalyticsDashboard />} />
                         <Route path="/projects" element={<EnhancedProjectManagement />} />
                       </Routes>
@@ -255,7 +259,7 @@ const EnhancedAppRouter: React.FC = () => {
                 onClose={() => {}} 
                 userType={user?.role === 'admin' ? 'admin' : 'customer'} 
               />
-              { /* Feature Discovery gated by flag */ }
+              {/* Feature Discovery gated by flag */}
               <FlaggedFeatureDiscovery />
               <PWAInstallBanner />
             </Layout>

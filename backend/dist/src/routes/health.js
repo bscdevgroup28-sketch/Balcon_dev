@@ -61,6 +61,20 @@ router.get('/', async (req, res) => {
         logger_1.logger.error('[health] FAILED', { message: err.message, name: err.name, durationMs: duration });
         // eslint-disable-next-line no-console
         console.error('[health] database check failed', { message: err.message, name: err.name, durationMs: duration });
+        // If explicitly allowed, report degraded health with HTTP 200 to avoid platform restarts during DB outages
+        const allowDegraded = (process.env.HEALTH_DEGRADED_OK || '').toLowerCase() === '1' || (process.env.HEALTH_DEGRADED_OK || '').toLowerCase() === 'true';
+        if (allowDegraded) {
+            return res.status(200).json({
+                status: 'degraded',
+                timestamp: new Date().toISOString(),
+                uptime: process.uptime(),
+                responseTime: duration,
+                version: process.env.npm_package_version || 'unknown',
+                environment: process.env.NODE_ENV || 'unknown',
+                error: err.message,
+                checks: { database: 'unhealthy' }
+            });
+        }
         return res.status(503).json(buildErrorEnvelope('HEALTH_CHECK_FAILED', err.message, 503, {
             component: 'database',
             durationMs: duration,

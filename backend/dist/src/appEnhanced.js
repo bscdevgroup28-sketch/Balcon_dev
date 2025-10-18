@@ -41,6 +41,9 @@ const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
+// cookie-parser is optional; import with fallback typing to avoid TS issues if types are missing
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cookieParser = require('cookie-parser');
 const compression_1 = __importDefault(require("compression"));
 // Removed morgan in favor of custom requestLoggingMiddleware
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -77,20 +80,36 @@ const workOrders_1 = __importDefault(require("./routes/workOrders"));
 const inventoryTransactions_1 = __importDefault(require("./routes/inventoryTransactions"));
 const analytics_1 = __importDefault(require("./routes/analytics"));
 const exports_1 = __importDefault(require("./routes/exports"));
+const webhooks_1 = __importDefault(require("./routes/webhooks"));
 const security_1 = __importDefault(require("./routes/security"));
 const jobs_1 = __importDefault(require("./routes/jobs"));
+const changeOrders_1 = __importDefault(require("./routes/changeOrders"));
+const invoices_1 = __importDefault(require("./routes/invoices"));
+const audit_1 = __importDefault(require("./routes/audit"));
+const purchaseOrders_1 = __importDefault(require("./routes/purchaseOrders"));
+const integrations_1 = __importDefault(require("./routes/integrations"));
+const ops_1 = __importDefault(require("./routes/ops"));
 const metrics_2 = require("./monitoring/metrics");
 const securityMetrics_1 = require("./utils/securityMetrics");
 const advancedMetrics_2 = require("./monitoring/advancedMetrics");
 const jobQueue_1 = require("./jobs/jobQueue");
 const kpiSnapshotJob_1 = require("./jobs/handlers/kpiSnapshotJob");
+const retentionJob_1 = __importDefault(require("./jobs/handlers/retentionJob"));
 const scheduler_1 = require("./jobs/scheduler");
 const cache_1 = require("./utils/cache");
 const models_1 = require("./models");
-const webhooks_1 = require("./services/webhooks");
+const webhooks_2 = require("./services/webhooks");
+// Side-effect import: register analytics cache invalidation listeners
+require("./events/listeners/analyticsCacheInvalidation");
+// Side-effect import: Slack notifications on domain events
+require("./events/listeners/slackNotifications");
 const storage_1 = require("./services/storage");
 const fs_1 = __importDefault(require("fs"));
 const os_1 = __importDefault(require("os"));
+const cardinality_1 = require("./monitoring/cardinality");
+const advisoryService_1 = require("./services/advisoryService");
+const csrf_1 = require("./middleware/csrf");
+const idempotency_1 = require("./middleware/idempotency");
 // path & metrics already imported above
 // Enhanced Express Application with WebSocket support
 class BalConBuildersApp {
@@ -102,7 +121,14 @@ class BalConBuildersApp {
         this.initializeMiddleware();
         this.initializeRoutes();
         this.initializeErrorHandling();
-        this.initializeJobs();
+        // Avoid background jobs during tests or when explicitly disabled
+        const disableJobs = (process.env.DISABLE_BACKGROUND_JOBS || '').toLowerCase() === 'true';
+        if (process.env.NODE_ENV !== 'test' && !disableJobs) {
+            this.initializeJobs();
+        }
+        else {
+            logger_1.logger.info('🧪 Background jobs disabled for test or by flag DISABLE_BACKGROUND_JOBS=true');
+        }
         // Startup diagnostics
         const maskedDb = (environment_1.config.database.url || '').replace(/:[^:@/]+@/, ':****@');
         logger_1.logger.info(`[startup] NODE_ENV=${environment_1.config.server.nodeEnv} PORT=${this.port}`);
@@ -114,6 +140,10 @@ class BalConBuildersApp {
         try {
             jobQueue_1.jobQueue.recoverPersisted?.();
             jobQueue_1.jobQueue.register('kpi.snapshot', kpiSnapshotJob_1.kpiSnapshotHandler);
+            // Phase 14: data retention cleanup job
+            jobQueue_1.jobQueue.register('retention.cleanup', async () => {
+                await (0, retentionJob_1.default)();
+            });
             // Export job processor: generate CSV (in-memory for now) and store data URL placeholder
             jobQueue_1.jobQueue.register('export.generate', async (job) => {
                 const start = Date.now();
@@ -133,6 +163,13 @@ class BalConBuildersApp {
                     else if (ej.type === 'projects_csv') {
                         rows = await models_1.Project.findAll({ limit: 5000 });
                     }
+                    else if (ej.type === 'invoices_csv') {
+                        rows = await models_1.Invoice.findAll({ limit: 5000 });
+                    }
+                    else if (ej.type === 'payments_csv') {
+                        // For payments, export paid invoices as payment records
+                        rows = await models_1.Invoice.findAll({ where: { status: 'paid' }, limit: 5000 });
+                    }
                     const plain = rows.map(r => r.get({ plain: true }));
                     const fields = Object.keys(plain[0] || { id: 1 });
                     const tmp = path_1.default.join(os_1.default.tmpdir(), `export-${ej.id}.csv`);
@@ -146,19 +183,19 @@ class BalConBuildersApp {
                     await storage.putObject(key, tmp, 'text/csv');
                     const downloadUrl = await storage.getDownloadUrl(key);
                     await ej.update({ status: 'completed', resultUrl: downloadUrl, fileKey: key, completedAt: new Date() });
-                    (0, webhooks_1.publishEvent)('export.completed', { id: ej.id, type: ej.type, fileKey: key, url: downloadUrl });
+                    (0, webhooks_2.publishEvent)('export.completed', { id: ej.id, type: ej.type, fileKey: key, url: downloadUrl });
                     metrics_2.metrics.increment('exports.completed');
                     metrics_2.metrics.observe('export.duration.ms', Date.now() - start);
                 }
                 catch (err) {
                     metrics_2.metrics.increment('exports.failed');
                     await ej.update({ status: 'failed', errorMessage: err.message, completedAt: new Date() });
-                    (0, webhooks_1.publishEvent)('export.failed', { id: ej.id, type: ej.type, error: err.message });
+                    (0, webhooks_2.publishEvent)('export.failed', { id: ej.id, type: ej.type, error: err.message });
                     metrics_2.metrics.observe('export.duration.ms', Date.now() - start);
                     throw err;
                 }
             });
-            (0, webhooks_1.registerWebhookJob)();
+            (0, webhooks_2.registerWebhookJob)();
             // Optionally enqueue daily job on startup if flag set
             if (process.env.ENQUEUE_KPI_ON_START === 'true') {
                 jobQueue_1.jobQueue.enqueue('kpi.snapshot', {});
@@ -167,6 +204,13 @@ class BalConBuildersApp {
             const snapInterval = process.env.KPI_SNAPSHOT_INTERVAL_MS && parseInt(process.env.KPI_SNAPSHOT_INTERVAL_MS);
             if (snapInterval && snapInterval > 0) {
                 scheduler_1.scheduler.schedule('kpi.snapshot', snapInterval);
+            }
+            // Schedule retention cleanup (default daily) if not disabled
+            const retentionInterval = process.env.RETENTION_CLEANUP_INTERVAL_MS && parseInt(process.env.RETENTION_CLEANUP_INTERVAL_MS);
+            const defaultDaily = 24 * 60 * 60 * 1000;
+            const intervalForRetention = (retentionInterval && retentionInterval > 0) ? retentionInterval : defaultDaily;
+            if (intervalForRetention > 0) {
+                scheduler_1.scheduler.schedule('retention.cleanup', intervalForRetention);
             }
             // Cache warming for analytics summary (Phase 7 prep) if enabled
             const warmInterval = process.env.ANALYTICS_SUMMARY_WARM_INTERVAL_MS && parseInt(process.env.ANALYTICS_SUMMARY_WARM_INTERVAL_MS);
@@ -201,7 +245,10 @@ class BalConBuildersApp {
                             logger_1.logger.warn('[tokens] metrics refresh failed', { error: e.message });
                         }
                     }, interval);
-                    h.unref();
+                    try {
+                        h.unref();
+                    }
+                    catch { /* older node versions */ }
                     this.intervals.push(h);
                     logger_1.logger.info(`[tokens] Metrics refresh interval active (${interval}ms)`);
                 }
@@ -254,7 +301,10 @@ class BalConBuildersApp {
                             logger_1.logger.warn('[tokens] cleanup failed', { error: e.message });
                         }
                     }, interval);
-                    h.unref();
+                    try {
+                        h.unref();
+                    }
+                    catch { /* older node versions */ }
                     this.intervals.push(h);
                     logger_1.logger.info(`[tokens] Cleanup scheduler active every ${interval}ms (retention=${environment_1.config.tokens.refreshRetentionDays}d)`);
                 }
@@ -272,13 +322,17 @@ class BalConBuildersApp {
         // Security middleware
         const cspDirectives = {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'"],
             scriptSrc: ["'self'"],
             connectSrc: ["'self'", 'ws:', 'wss:'],
             imgSrc: ["'self'", 'data:', 'https:'],
             objectSrc: ["'none'"],
             frameAncestors: ["'none'"],
         };
+        // Allow inline styles only in non-production for DX; can be explicitly allowed via CSP_ALLOW_INLINE
+        if (environment_1.config.server.nodeEnv !== 'production' || (process.env.CSP_ALLOW_INLINE || '').toLowerCase() === 'true') {
+            cspDirectives.styleSrc.push("'unsafe-inline'");
+        }
         if (process.env.CSP_EXTRA_CONNECT) {
             cspDirectives.connectSrc.push(...process.env.CSP_EXTRA_CONNECT.split(',').map(s => s.trim()).filter(Boolean));
         }
@@ -319,7 +373,7 @@ class BalConBuildersApp {
             },
             credentials: true,
             methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token'],
         }));
         if (environment_1.config.server.nodeEnv === 'test') {
             // Lightweight test rate limiter to avoid hanging Jest due to background interval in express-rate-limit MemoryStore.
@@ -381,6 +435,13 @@ class BalConBuildersApp {
         // Body parsing middleware
         this.app.use(express_1.default.json({ limit: '10mb' }));
         this.app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
+        // Cookie parsing for httpOnly token cookies
+        this.app.use(cookieParser());
+        // CSRF protection: explicit token issue route and global enforcement for unsafe methods
+        this.app.get('/api/auth/csrf', csrf_1.csrfIssueHandler);
+        this.app.use(csrf_1.csrfProtect);
+        // Idempotency keys for high-value mutations (Phase 11)
+        this.app.use(idempotency_1.idempotencyMiddleware);
         // Compression
         this.app.use((0, compression_1.default)());
         // Structured request logging with request IDs
@@ -397,6 +458,21 @@ class BalConBuildersApp {
         }
         // Advanced timing/size metrics (after logging, before routes)
         this.app.use(advancedMetrics_1.advancedHttpMetricsMiddleware);
+        // Phase 18: track cardinality of HTTP status codes (bounded) and request paths (sampled)
+        this.app.use((req, res, next) => {
+            res.once('finish', () => {
+                try {
+                    (0, cardinality_1.trackDimension)('http_status_code', String(res.statusCode));
+                    // Sample path to avoid unbounded growth (10%)
+                    if (Math.random() < 0.1) {
+                        const pathKey = req.route?.path || req.path || 'unknown';
+                        (0, cardinality_1.trackDimension)('http_route_path', String(pathKey).slice(0, 120));
+                    }
+                }
+                catch { /* ignore */ }
+            });
+            next();
+        });
         // Static file serving
         this.app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '..', 'uploads')));
         // Trust proxy for accurate IP addresses (important for rate limiting)
@@ -440,12 +516,14 @@ class BalConBuildersApp {
             res.json({ status: 'ok', time: new Date().toISOString() });
         });
         this.app.use('/api/metrics', require('./routes/metrics').default);
+        // Health route: returns 200 "degraded" if HEALTH_DEGRADED_OK is set and DB is down
         this.app.use('/api/health', health_1.default);
         this.app.use('/api/ready', readiness_1.default);
         this.app.use('/api/auth', authEnhanced_1.default);
         this.app.use('/api/projects', projects_1.default);
         this.app.use('/api/quotes', quotes_1.default);
         this.app.use('/api/orders', orders_1.default);
+        this.app.use('/api/change-orders', changeOrders_1.default);
         this.app.use('/api/users', users_1.default);
         this.app.use('/api/materials', materials_1.default);
         this.app.use('/api/files', files_1.default);
@@ -455,8 +533,16 @@ class BalConBuildersApp {
         this.app.use('/api/work-orders', workOrders_1.default);
         this.app.use('/api/inventory/transactions', inventoryTransactions_1.default);
         this.app.use('/api/analytics', analytics_1.default);
+        this.app.use('/api/attention', require('./routes/attention').default);
         this.app.use('/api/exports', exports_1.default);
+        this.app.use('/api/webhooks', webhooks_1.default);
+        this.app.use('/api/integrations', integrations_1.default);
+        this.app.use('/api/ops', ops_1.default);
         this.app.use('/api/security', security_1.default);
+        this.app.use('/api', require('./routes/approvals').default);
+        this.app.use('/api/invoices', invoices_1.default);
+        this.app.use('/api/audit', audit_1.default);
+        this.app.use('/api/purchase-orders', purchaseOrders_1.default);
         if (process.env.ENABLE_DELAYED_JOBS === 'true') {
             this.app.use('/api/jobs', jobs_1.default);
         }
@@ -553,6 +639,13 @@ class BalConBuildersApp {
             // Initialize WebSocket
             this.initializeWebSocket();
             // Start listening
+            // Phase 19: Start advisory monitor if enabled
+            try {
+                (0, advisoryService_1.startAdvisoryMonitor)();
+            }
+            catch (e) {
+                logger_1.logger.warn('[advisory] monitor init failed', e);
+            }
             this.server.listen(this.port, () => {
                 logger_1.logger.info(`🚀 Bal-Con Builders Enhanced API Server started successfully!`);
                 logger_1.logger.info(`📍 Server running on port ${this.port}`);

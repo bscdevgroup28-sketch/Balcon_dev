@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Grid,
   Card,
@@ -36,8 +36,25 @@ import {
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { fetchAnalyticsSummary, fetchAnalyticsTrends } from '../../store/slices/analyticsSlice';
+import Sparkline from '../../components/charts/Sparkline';
 
 const ShopManagerDashboard: React.FC = () => {
+  const dispatch = useDispatch();
+  const { trends, loadingTrends } = useSelector((s: RootState) => s.analytics);
+  useEffect(() => {
+    dispatch(fetchAnalyticsSummary() as any);
+    dispatch(fetchAnalyticsTrends('30d') as any);
+  }, [dispatch]);
+  const trendSeries = useMemo(() => {
+    const pts = trends?.points || [];
+    return {
+      ordersCreated: pts.map((p: any) => Number(p.ordersCreated) || 0),
+      inventoryNetChange: pts.map((p: any) => Number(p.inventoryNetChange) || 0),
+    };
+  }, [trends]);
   // Mock data for Shop Manager specific metrics
   const shopMetrics = {
     activeJobs: 6,
@@ -124,6 +141,9 @@ const ShopManagerDashboard: React.FC = () => {
               </Box>
               <Construction sx={{ fontSize: 40, color: '#e65100' }} />
             </Box>
+            <Box sx={{ mt: 1, opacity: loadingTrends ? 0.5 : 1 }}>
+              <Sparkline data={trendSeries.ordersCreated} height={36} width={180} stroke="#e65100" fill="rgba(230,81,0,0.12)" />
+            </Box>
           </CardContent>
         </Card>
 
@@ -139,6 +159,9 @@ const ShopManagerDashboard: React.FC = () => {
                 </Typography>
               </Box>
               <Engineering sx={{ fontSize: 40, color: '#2e7d32' }} />
+            </Box>
+            <Box sx={{ mt: 1, opacity: loadingTrends ? 0.5 : 1 }}>
+              <Sparkline data={trendSeries.inventoryNetChange} height={36} width={180} stroke="#2e7d32" fill="rgba(46,125,50,0.12)" />
             </Box>
           </CardContent>
         </Card>

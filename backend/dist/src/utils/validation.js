@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.idParamSchema = exports.materialQuerySchema = exports.orderQuerySchema = exports.quoteQuerySchema = exports.projectQuerySchema = exports.paginationSchema = exports.updateMaterialSchema = exports.createMaterialSchema = exports.updateOrderSchema = exports.createOrderSchema = exports.updateQuoteSchema = exports.createQuoteSchema = exports.quoteItemSchema = exports.updateProjectSchema = exports.createProjectSchema = exports.userLoginSchema = exports.updateUserSchema = exports.createUserSchema = void 0;
+exports.idParamSchema = exports.materialQuerySchema = exports.invoiceQuerySchema = exports.updateInvoiceSchema = exports.createInvoiceSchema = exports.invoiceLineItemSchema = exports.changeOrderQuerySchema = exports.orderQuerySchema = exports.quoteQuerySchema = exports.projectQuerySchema = exports.paginationSchema = exports.updateMaterialSchema = exports.createMaterialSchema = exports.updateChangeOrderSchema = exports.createChangeOrderSchema = exports.updateOrderSchema = exports.createOrderSchema = exports.updateQuoteSchema = exports.createQuoteSchema = exports.quoteItemSchema = exports.updateProjectSchema = exports.createProjectSchema = exports.userLoginSchema = exports.updateUserSchema = exports.createUserSchema = void 0;
 const zod_1 = require("zod");
 // User schemas
 exports.createUserSchema = zod_1.z.object({
@@ -84,6 +84,17 @@ exports.updateOrderSchema = exports.createOrderSchema.partial().extend({
     amountPaid: zod_1.z.number().min(0).optional(),
     actualDelivery: zod_1.z.string().datetime().optional(),
 });
+// Change Order schemas
+exports.createChangeOrderSchema = zod_1.z.object({
+    projectId: zod_1.z.number().positive(),
+    quoteId: zod_1.z.number().positive().optional(),
+    title: zod_1.z.string().min(3).max(200),
+    description: zod_1.z.string().optional(),
+    amount: zod_1.z.number().min(0),
+});
+exports.updateChangeOrderSchema = exports.createChangeOrderSchema.partial().extend({
+    status: zod_1.z.enum(['draft', 'sent', 'approved', 'rejected']).optional(),
+});
 // Material schemas
 exports.createMaterialSchema = zod_1.z.object({
     name: zod_1.z.string().min(2, 'Name must be at least 2 characters').max(200),
@@ -130,6 +141,35 @@ exports.orderQuerySchema = exports.paginationSchema.extend({
     projectId: zod_1.z.string().transform(val => parseInt(val, 10)).refine(val => val > 0).optional(),
     userId: zod_1.z.string().transform(val => parseInt(val, 10)).refine(val => val > 0).optional(),
     search: zod_1.z.string().optional(),
+});
+exports.changeOrderQuerySchema = exports.paginationSchema.extend({
+    status: zod_1.z.enum(['draft', 'sent', 'approved', 'rejected']).optional(),
+    projectId: zod_1.z.string().transform(v => parseInt(v, 10)).refine(v => v > 0).optional(),
+    search: zod_1.z.string().optional(),
+});
+// Invoice schemas
+exports.invoiceLineItemSchema = zod_1.z.object({
+    description: zod_1.z.string().min(1),
+    quantity: zod_1.z.number().positive(),
+    unitPrice: zod_1.z.number().min(0),
+    unit: zod_1.z.string().optional(),
+});
+exports.createInvoiceSchema = zod_1.z.object({
+    projectId: zod_1.z.number().positive(),
+    date: zod_1.z.string().datetime(),
+    dueDate: zod_1.z.string().datetime(),
+    lineItems: zod_1.z.array(exports.invoiceLineItemSchema).min(1),
+    taxRate: zod_1.z.number().min(0).max(1).default(0.0825),
+    notes: zod_1.z.string().optional(),
+});
+exports.updateInvoiceSchema = exports.createInvoiceSchema.partial().extend({
+    status: zod_1.z.enum(['draft', 'sent', 'paid', 'overdue']).optional(),
+    paidAt: zod_1.z.string().datetime().optional(),
+    sentAt: zod_1.z.string().datetime().optional(),
+});
+exports.invoiceQuerySchema = exports.paginationSchema.extend({
+    status: zod_1.z.enum(['draft', 'sent', 'paid', 'overdue']).optional(),
+    projectId: zod_1.z.string().transform(v => parseInt(v, 10)).refine(v => v > 0).optional(),
 });
 exports.materialQuerySchema = exports.paginationSchema.extend({
     category: zod_1.z.string().optional(),

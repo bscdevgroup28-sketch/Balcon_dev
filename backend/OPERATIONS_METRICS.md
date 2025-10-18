@@ -104,6 +104,33 @@ Observability Note: A sudden spike in `auth.failures` without corresponding `aut
 | event_loop.delay.mean_ms | gauge | Mean event loop delay (since start) |
 | event_loop.delay.p95_ms | gauge | 95th percentile event loop delay | Indicates saturation / blocking |
 
+### Cardinality Governance (Phase 18)
+| Metric | Type | Meaning |
+|--------|------|---------|
+| cardinality.dimension.<dim>.unique | gauge | Count of unique values seen for a tracked dimension |
+| cardinality.dimension.<dim>.budget | gauge | Configured max allowed unique values for that dimension |
+| cardinality.dimension.<dim>.remaining | gauge | Remaining capacity before budget is exceeded |
+| cardinality.budget_violation | counter | Total times any dimension exceeded its budget |
+| cardinality.budget_violation.<dim> | counter | Violations for a specific dimension |
+
+Tracked dimensions (defaults; configurable):
+- http_status_code – unique response codes observed
+- http_route_path – sampled normalized route path keys (capped length)
+- webhook_event_type – outbound webhook event types
+- db_slow_query_pattern – hashed slow query patterns (md5 first 8)
+
+Environment budgets:
+- CARDINALITY_MAX_HTTP_STATUS_CODE (default 1000)
+- CARDINALITY_MAX_HTTP_ROUTE_PATH (default 1000)
+- CARDINALITY_MAX_WEBHOOK_EVENT_TYPE (default 1000)
+- CARDINALITY_MAX_DB_SLOW_QUERY_PATTERN (default 1000)
+
+Guidance:
+- Prefer status class aggregation for dashboards; keep per-status code long-retention scrapes limited.
+- Route path tracking is sampled and truncated; tune the budget to your endpoint surface.
+- Slow query pattern hash is bounded; still treat as ephemeral and avoid long retention unless whitelisted.
+- Set budgets conservatively and alert on violations to prevent unbounded label growth.
+
 ### Security (Prometheus export)
 Additional metrics from `securityMetricsToPrometheus()` appear only on `/prometheus` and cover auth attempts, lockouts, etc. (See security metrics utility for details.)
 
@@ -173,7 +200,7 @@ Operational Guidance:
 - For high-volume noisy errors, add server-side filtering or grouping rules in Sentry.
 
 ## Starter Prometheus Alert Rules (Inline Reference)
-See `ALERTS_EXAMPLES.md` for rationale. A deployable rule group example (convert metric names if dots are replaced with underscores):
+See `ALERTS_EXAMPLES.md` for rationale. A deployable rule group example (convert metric names if dots are replaced with underscores). A full bundle is provided at `backend/alerts/prometheus-rules.yml` ready to be loaded by Prometheus:
 
 ```
 groups:
@@ -215,6 +242,26 @@ groups:
 ```
 
 For production commit these rules into infrastructure-as-code (Terraform / Helm) rather than relying on this inline snippet.
+
+### Advisory Hooks (Phase 19)
+Self-healing advisory monitor can emit a webhook when scaling conditions are sustained.
+
+Environment variables:
+- `OPS_ADVISORY_ENABLED=true` – enable advisory sending
+- `OPS_ADVISORY_WEBHOOK=https://ops.example.com/hook` – target webhook URL
+- `OPS_ADVISORY_SIGNING_SECRET=...` – optional HMAC SHA256 signature in `x-advisory-signature`
+- `OPS_ADVISORY_LEVEL=3` – minimum `scaling.advice.code` to trigger (default 3)
+- `OPS_ADVISORY_MIN_SUSTAIN_MS=120000` – time the condition must persist
+- `OPS_ADVISORY_COOLDOWN_MS=900000` – minimum time between sends
+- `OPS_ADVISORY_POLL_MS=5000` – polling interval
+- `OPS_ADVISORY_TIMEOUT_MS=5000` – webhook request timeout
+- Circuit breaker:
+  - `OPS_ADVISORY_CIRCUIT_THRESHOLD=5` – consecutive failures to open circuit
+  - `OPS_ADVISORY_CIRCUIT_COOLDOWN_MS=300000` – time the circuit remains open
+
+Metrics:
+- `advisory.sent`, `advisory.errors`, `advisory.skipped.sustain`, `advisory.skipped.cooldown`
+- `circuit.advisory.state_code`, `circuit.advisory.failures_consecutive`
 
 ## Security Scanning & Static Analysis Triage
 Automated workflows (CodeQL, secret scanning via Gitleaks) run in CI. Expectations:

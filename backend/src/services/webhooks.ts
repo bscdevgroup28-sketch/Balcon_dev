@@ -3,6 +3,7 @@ import { WebhookSubscription, WebhookDelivery } from '../models';
 import { createCircuit } from '../utils/circuitBreaker';
 import { jobQueue } from '../jobs/jobQueue';
 import { metrics } from '../monitoring/metrics';
+import { trackDimension } from '../monitoring/cardinality';
 
 // Configuration constants (could be externalized)
 const MAX_PAYLOAD_BYTES = 50_000; // store at most 50KB in delivery record
@@ -29,6 +30,7 @@ export function signPayload(secret: string, body: string) {
 }
 
 export async function publishEvent(event: string, data: any) {
+  try { trackDimension('webhook_event_type', event); } catch { /* ignore */ }
   const subs = await WebhookSubscription.findAll({ where: { eventType: event, isActive: true } });
   if (!subs.length) return;
   const payload: WebhookEventPayload = { event, data, timestamp: new Date().toISOString(), idempotencyKey: crypto.randomUUID() };

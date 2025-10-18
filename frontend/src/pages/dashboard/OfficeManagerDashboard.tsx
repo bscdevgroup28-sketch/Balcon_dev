@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Grid,
   Card,
@@ -31,8 +31,26 @@ import {
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import DashboardSection from '../../components/dashboard/DashboardSection';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../store/store';
+import { fetchAnalyticsSummary, fetchAnalyticsTrends } from '../../store/slices/analyticsSlice';
+import Sparkline from '../../components/charts/Sparkline';
 
 const OfficeManagerDashboard: React.FC = () => {
+  const dispatch = useDispatch();
+  const { trends, loadingTrends } = useSelector((s: RootState) => s.analytics);
+  useEffect(() => {
+    dispatch(fetchAnalyticsSummary() as any);
+    dispatch(fetchAnalyticsTrends('30d') as any);
+  }, [dispatch]);
+  const trendSeries = useMemo(() => {
+    const pts = trends?.points || [];
+    return {
+      quotesSent: pts.map((p: any) => Number(p.quotesSent) || 0),
+      ordersCreated: pts.map((p: any) => Number(p.ordersCreated) || 0),
+      ordersDelivered: pts.map((p: any) => Number(p.ordersDelivered) || 0),
+    };
+  }, [trends]);
   // Mock data for Office Manager specific metrics
   const adminMetrics = {
     pendingQuotes: 12,
@@ -111,6 +129,13 @@ const OfficeManagerDashboard: React.FC = () => {
               </Box>
               <Assignment sx={{ fontSize: 40, color: '#7b1fa2' }} />
             </Box>
+            <Box sx={{ mt: 1 }}>
+              {loadingTrends ? (
+                <Box sx={{ width: 180, height: 36, bgcolor: 'action.hover', borderRadius: 1 }} />
+              ) : (
+                <Sparkline data={trendSeries.quotesSent} height={36} width={180} stroke="#7b1fa2" fill="rgba(123,31,162,0.12)" />
+              )}
+            </Box>
           </CardContent>
         </Card>
 
@@ -126,6 +151,13 @@ const OfficeManagerDashboard: React.FC = () => {
                 </Typography>
               </Box>
               <EventNote sx={{ fontSize: 40, color: '#388e3c' }} />
+            </Box>
+            <Box sx={{ mt: 1 }}>
+              {loadingTrends ? (
+                <Box sx={{ width: 180, height: 36, bgcolor: 'action.hover', borderRadius: 1 }} />
+              ) : (
+                <Sparkline data={trendSeries.ordersCreated} height={36} width={180} stroke="#388e3c" fill="rgba(56,142,60,0.12)" />
+              )}
             </Box>
           </CardContent>
         </Card>
@@ -158,6 +190,13 @@ const OfficeManagerDashboard: React.FC = () => {
                 </Typography>
               </Box>
               <TrendingUp sx={{ fontSize: 40, color: '#1976d2' }} />
+            </Box>
+            <Box sx={{ mt: 1 }}>
+              {loadingTrends ? (
+                <Box sx={{ width: 180, height: 36, bgcolor: 'action.hover', borderRadius: 1 }} />
+              ) : (
+                <Sparkline data={trendSeries.ordersDelivered} height={36} width={180} stroke="#1976d2" fill="rgba(25,118,210,0.12)" />
+              )}
             </Box>
           </CardContent>
         </Card>

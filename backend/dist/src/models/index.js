@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.JobRecord = exports.WebhookDelivery = exports.WebhookSubscription = exports.DownloadToken = exports.ExportJob = exports.KpiDailySnapshot = exports.InventoryTransaction = exports.EventLog = exports.WorkOrder = exports.ProjectFile = exports.Material = exports.Order = exports.Quote = exports.Project = exports.User = void 0;
+exports.PurchaseOrder = exports.Invoice = exports.ChangeOrder = exports.CustomerApprovalToken = exports.JobRecord = exports.WebhookDelivery = exports.WebhookSubscription = exports.DownloadToken = exports.ExportJob = exports.KpiDailySnapshot = exports.InventoryTransaction = exports.EventLog = exports.WorkOrder = exports.ProjectFile = exports.Material = exports.Order = exports.Quote = exports.Project = exports.User = void 0;
 // Export enhanced user model as canonical User for unified feature set
 const UserEnhanced_1 = require("./UserEnhanced");
 Object.defineProperty(exports, "User", { enumerable: true, get: function () { return UserEnhanced_1.User; } });
@@ -34,6 +34,14 @@ const WebhookDelivery_1 = require("./WebhookDelivery");
 Object.defineProperty(exports, "WebhookDelivery", { enumerable: true, get: function () { return WebhookDelivery_1.WebhookDelivery; } });
 const JobRecord_1 = require("./JobRecord");
 Object.defineProperty(exports, "JobRecord", { enumerable: true, get: function () { return JobRecord_1.JobRecord; } });
+const CustomerApprovalToken_1 = require("./CustomerApprovalToken");
+Object.defineProperty(exports, "CustomerApprovalToken", { enumerable: true, get: function () { return CustomerApprovalToken_1.CustomerApprovalToken; } });
+const ChangeOrder_1 = require("./ChangeOrder");
+Object.defineProperty(exports, "ChangeOrder", { enumerable: true, get: function () { return ChangeOrder_1.ChangeOrder; } });
+const Invoice_1 = require("./Invoice");
+Object.defineProperty(exports, "Invoice", { enumerable: true, get: function () { return Invoice_1.Invoice; } });
+const PurchaseOrder_1 = require("./PurchaseOrder");
+Object.defineProperty(exports, "PurchaseOrder", { enumerable: true, get: function () { return PurchaseOrder_1.PurchaseOrder; } });
 // Define associations
 UserEnhanced_1.User.hasMany(Project_1.Project, { foreignKey: 'userId', as: 'projects' });
 Project_1.Project.belongsTo(UserEnhanced_1.User, { foreignKey: 'userId', as: 'user' });
@@ -50,6 +58,15 @@ Project_1.Project.hasMany(Order_1.Order, { foreignKey: 'projectId', as: 'orders'
 Order_1.Order.belongsTo(Project_1.Project, { foreignKey: 'projectId', as: 'project' });
 Quote_1.Quote.hasMany(Order_1.Order, { foreignKey: 'quoteId', as: 'orders' });
 Order_1.Order.belongsTo(Quote_1.Quote, { foreignKey: 'quoteId', as: 'quote' });
+// ChangeOrder associations
+Project_1.Project.hasMany(ChangeOrder_1.ChangeOrder, { foreignKey: 'projectId', as: 'changeOrders' });
+ChangeOrder_1.ChangeOrder.belongsTo(Project_1.Project, { foreignKey: 'projectId', as: 'project' });
+ChangeOrder_1.ChangeOrder.belongsTo(UserEnhanced_1.User, { foreignKey: 'createdByUserId', as: 'createdBy' });
+ChangeOrder_1.ChangeOrder.belongsTo(UserEnhanced_1.User, { foreignKey: 'approvedByUserId', as: 'approvedBy' });
+ChangeOrder_1.ChangeOrder.belongsTo(Quote_1.Quote, { foreignKey: 'quoteId', as: 'quote' });
+// Invoice associations
+Project_1.Project.hasMany(Invoice_1.Invoice, { foreignKey: 'projectId', as: 'invoices' });
+Invoice_1.Invoice.belongsTo(Project_1.Project, { foreignKey: 'projectId', as: 'project' });
 // ProjectFile associations
 Project_1.Project.hasMany(ProjectFile_1.ProjectFile, { foreignKey: 'projectId', as: 'files' });
 (0, ProjectFile_1.defineProjectFileAssociations)();
@@ -68,4 +85,8 @@ exports.default = {
     WebhookSubscription: WebhookSubscription_1.WebhookSubscription,
     WebhookDelivery: WebhookDelivery_1.WebhookDelivery,
     JobRecord: JobRecord_1.JobRecord,
+    CustomerApprovalToken: CustomerApprovalToken_1.CustomerApprovalToken,
+    ChangeOrder: ChangeOrder_1.ChangeOrder,
+    Invoice: Invoice_1.Invoice,
+    PurchaseOrder: PurchaseOrder_1.PurchaseOrder,
 };

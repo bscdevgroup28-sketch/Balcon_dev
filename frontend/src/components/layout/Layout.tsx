@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
+import OfflineIndicator from '../offline/OfflineIndicator';
 import { RootState } from '../../store/store';
 import { logout } from '../../store/slices/authSlice';
 import { toggleSidebar } from '../../store/slices/uiSlice';
@@ -70,13 +71,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+  <OfflineIndicator />
       {/* App Bar */}
       <AppBar
         position="fixed"
-        sx={{
-          width: '100%',
-          transition: 'margin 0.3s',
-        }}
+        sx={{ width: '100%', transition: 'margin 0.3s' }}
         role="banner"
         aria-label="Application top bar"
       >
@@ -86,11 +85,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             aria-label={sidebarOpen ? 'Collapse navigation menu' : 'Expand navigation menu'}
             edge="start"
             onClick={() => dispatch(toggleSidebar())}
-            sx={{ 
-              mr: 2,
-              minWidth: { xs: 48, sm: 40 },
-              minHeight: { xs: 48, sm: 40 },
-            }}
+            sx={{ mr: 2, minWidth: { xs: 48, sm: 40 }, minHeight: { xs: 48, sm: 40 } }}
           >
             {sidebarOpen ? <ChevronLeft /> : <MenuIcon />}
           </IconButton>
@@ -99,14 +94,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             Bal-Con Builders
           </Typography>
 
-          {/* Mobile: Show role in smaller text */}
           <Typography
             variant="body2"
-            sx={{
-              mr: 2,
-              opacity: 0.8,
-              display: { xs: 'none', sm: 'block' }
-            }}
+            sx={{ mr: 2, opacity: 0.8, display: { xs: 'none', sm: 'block' } }}
           >
             {user ? getRoleDisplayName(user.role) : 'Guest'}
           </Typography>
@@ -219,15 +209,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Profile Menu */}
       <Menu
         anchorEl={anchorEl}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
         keepMounted
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
@@ -244,36 +228,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           Logout
         </MenuItem>
       </Menu>
-
-      {/* Main Content */}
-      <Box
-        component="main"
-        id="main-content"
-        sx={{
-          flexGrow: 1,
-          width: '100%',
-    // removed legacy drawer margin; inline nav now handled in flex layout
-          transition: 'margin 0.3s',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <Toolbar />
-        {/* Centering container to create balanced left/right gutters independent of drawer width */}
-        <Box sx={{
-          width: '100%',
-          maxWidth: 1600,
-          mx: 'auto',
-          px: { xs: 1, sm: 3 },
-          pb: { xs: 2, sm: 4 },
-          boxSizing: 'border-box'
-        }}>
-          {/* Content wrapper ensures overflowing dashboards can scroll horizontally without affecting outer centering */}
-          <Box sx={{ width: '100%', overflowX: 'auto' }}>
-            {children}
-          </Box>
-        </Box>
-      </Box>
     </Box>
   );
 };

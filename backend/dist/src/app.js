@@ -91,14 +91,15 @@ app.use(metrics_1.metricsMiddleware);
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 // Compression with threshold & brotli hint support
-app.use((0, compression_1.default)({
+const compressionMiddleware = (0, compression_1.default)({
     threshold: 1024,
     filter: (req, res) => {
         if (req.headers['x-no-compress'])
             return false;
         return compression_1.default.filter(req, res);
     }
-}));
+});
+app.use(compressionMiddleware);
 // Static / API caching strategy (lightweight)
 app.use((req, res, next) => {
     // Cache static asset requests (heuristic: /static/ or file extension)

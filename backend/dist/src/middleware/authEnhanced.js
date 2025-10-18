@@ -12,7 +12,11 @@ const metrics_1 = require("../monitoring/metrics");
 // Enhanced JWT authentication middleware
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    let token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    // Fallback: support httpOnly cookie 'accessToken'
+    if (!token && req.cookies && req.cookies.accessToken) {
+        token = req.cookies.accessToken;
+    }
     if (!token) {
         (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.token.validate', outcome: 'failure', meta: { reason: 'missing' } });
         metrics_1.metrics.increment('auth.failures');

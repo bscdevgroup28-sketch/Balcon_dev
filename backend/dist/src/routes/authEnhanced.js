@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const crypto_1 = __importDefault(require("crypto"));
 const authService_1 = require("../services/authService");
 const authEnhanced_1 = require("../middleware/authEnhanced");
 const UserEnhanced_1 = require("../models/UserEnhanced");
@@ -31,6 +33,13 @@ const registerSchema = zod_1.z.object({
 const changePasswordSchema = zod_1.z.object({
     newPassword: zod_1.z.string().min(8, 'New password must be at least 8 characters'),
     currentPassword: zod_1.z.string().optional()
+});
+const forgotPasswordSchema = zod_1.z.object({
+    email: zod_1.z.string().email('Valid email is required')
+});
+const forgotPasswordConfirmSchema = zod_1.z.object({
+    token: zod_1.z.string().min(10),
+    newPassword: zod_1.z.string().min(8, 'New password must be at least 8 characters')
 });
 // POST /api/auth/login
 router.post('/login', bruteForceProtector_1.bruteForceProtector, (0, validation_1.validate)({ body: loginSchema }), async (req, res) => {
@@ -60,6 +69,18 @@ router.post('/login', bruteForceProtector_1.bruteForceProtector, (0, validation_
             sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
+        // Also set access token as httpOnly cookie (short-lived)
+        try {
+            const decoded = jsonwebtoken_1.default.decode(accessToken);
+            const ttlMs = decoded?.exp ? Math.max(0, decoded.exp * 1000 - Date.now()) : 60 * 60 * 1000; // default 1h
+            res.cookie('accessToken', accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: ttlMs
+            });
+        }
+        catch { /* ignore cookie set failure */ }
         try {
             req.clearAuthFailures?.();
         }
@@ -192,6 +213,18 @@ router.post('/refresh', async (req, res) => {
             sameSite: 'strict',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
+        // Set updated access token cookie
+        try {
+            const decoded = jsonwebtoken_1.default.decode(result.accessToken);
+            const ttlMs = decoded?.exp ? Math.max(0, decoded.exp * 1000 - Date.now()) : 60 * 60 * 1000;
+            res.cookie('accessToken', result.accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: ttlMs
+            });
+        }
+        catch { /* ignore */ }
         res.json({
             success: true,
             message: 'Token refreshed successfully',
@@ -208,11 +241,69 @@ router.post('/refresh', async (req, res) => {
         });
     }
 });
+// POST /api/auth/forgot-password
+router.post('/forgot-password', (0, validation_1.validate)({ body: forgotPasswordSchema }), async (req, res) => {
+    try {
+        const { email } = req.validatedBody;
+        const normalized = email.toLowerCase();
+        const user = await UserEnhanced_1.User.findByEmail(normalized);
+        // Always return success to avoid user enumeration
+        const genericResponse = {
+            success: true,
+            message: 'If an account exists for this email, a password reset link has been sent.'
+        };
+        if (!user || !user.isActive) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.forgot.request', outcome: 'success', meta: { email: normalized, existed: false } });
+            return res.json(genericResponse);
+        }
+        // Generate secure token and expiry (~1 hour)
+        const token = crypto_1.default.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+        user.passwordResetToken = token;
+        user.passwordResetExpiresAt = expiresAt;
+        await user.save();
+        // In a real deployment, send email via provider (e.g., SendGrid). Here we just log.
+        logger_1.logger.info(`Password reset requested for ${user.email}. Token expires at ${expiresAt.toISOString()}`);
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.forgot.request', outcome: 'success', targetUserId: user.id });
+        return res.json(genericResponse);
+    }
+    catch (error) {
+        logger_1.logger.error('Forgot password request error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+// POST /api/auth/forgot-password/confirm
+router.post('/forgot-password/confirm', (0, validation_1.validate)({ body: forgotPasswordConfirmSchema }), async (req, res) => {
+    try {
+        const { token, newPassword } = req.validatedBody;
+        const user = await UserEnhanced_1.User.findOne({ where: { passwordResetToken: token } });
+        if (!user || !user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date()) {
+            (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.forgot.confirm', outcome: 'failure', meta: { reason: 'invalid_or_expired_token' } });
+            return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+        }
+        const pwEval = (0, passwordPolicy_1.evaluatePassword)(newPassword);
+        if (!pwEval.valid) {
+            return res.status(400).json({ success: false, message: 'Password does not meet policy', errors: pwEval.errors });
+        }
+        await user.updatePassword(newPassword);
+        user.passwordResetToken = null;
+        user.passwordResetExpiresAt = null;
+        user.mustChangePassword = false; // user-initiated reset
+        await user.save();
+        (0, securityAudit_1.logSecurityEvent)(req, { action: 'auth.forgot.confirm', outcome: 'success', targetUserId: user.id });
+        return res.json({ success: true, message: 'Password has been reset successfully' });
+    }
+    catch (error) {
+        logger_1.logger.error('Forgot password confirm error:', error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
 // POST /api/auth/logout
 router.post('/logout', async (req, res) => {
     try {
         // Clear refresh token cookie
         res.clearCookie('refreshToken');
+        res.clearCookie('accessToken');
         (0, securityAudit_1.logSecurityEvent)(req, {
             action: 'auth.logout',
             outcome: 'success'

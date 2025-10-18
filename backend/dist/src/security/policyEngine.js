@@ -133,6 +133,69 @@ const rules = [
         priority: 425,
         match: (ctx) => ctx.action === actions_1.Actions.WORK_ORDER_UPDATE && ['project_manager', 'office_manager', 'owner', 'admin'].includes(ctx.user?.role || '')
     },
+    // Change order policies
+    {
+        id: 'change-order-create-manager+',
+        effect: 'allow',
+        priority: 426,
+        match: (ctx) => ctx.action === actions_1.Actions.CHANGE_ORDER_CREATE && ['project_manager', 'office_manager', 'owner', 'admin'].includes((ctx.user?.role) || '')
+    },
+    {
+        id: 'change-order-update-manager+',
+        effect: 'allow',
+        priority: 426,
+        match: (ctx) => ctx.action === actions_1.Actions.CHANGE_ORDER_UPDATE && ['project_manager', 'office_manager', 'owner', 'admin'].includes((ctx.user?.role) || '')
+    },
+    {
+        id: 'change-order-delete-owner-admin',
+        effect: 'allow',
+        priority: 426,
+        match: (ctx) => ctx.action === actions_1.Actions.CHANGE_ORDER_DELETE && ['owner', 'admin'].includes((ctx.user?.role) || '')
+    },
+    {
+        id: 'change-order-approve-office-manager+',
+        effect: 'allow',
+        priority: 426,
+        match: (ctx) => ctx.action === actions_1.Actions.CHANGE_ORDER_APPROVE && ['office_manager', 'owner', 'admin'].includes((ctx.user?.role) || '')
+    },
+    // Invoice policies: create/update/send by office_manager and above; mark-paid office_manager and above
+    {
+        id: 'invoice-create-office-manager+',
+        effect: 'allow',
+        priority: 424,
+        match: (ctx) => ctx.action === actions_1.Actions.INVOICE_CREATE && ['office_manager', 'owner', 'admin'].includes(ctx.user?.role || '')
+    },
+    {
+        id: 'invoice-update-office-manager+',
+        effect: 'allow',
+        priority: 424,
+        match: (ctx) => ctx.action === actions_1.Actions.INVOICE_UPDATE && ['office_manager', 'owner', 'admin'].includes(ctx.user?.role || '')
+    },
+    {
+        id: 'invoice-send-office-manager+',
+        effect: 'allow',
+        priority: 424,
+        match: (ctx) => ctx.action === actions_1.Actions.INVOICE_SEND && ['office_manager', 'owner', 'admin'].includes(ctx.user?.role || '')
+    },
+    {
+        id: 'invoice-mark-paid-office-manager+',
+        effect: 'allow',
+        priority: 424,
+        match: (ctx) => ctx.action === actions_1.Actions.INVOICE_MARK_PAID && ['office_manager', 'owner', 'admin'].includes(ctx.user?.role || '')
+    },
+    // Purchase order policies: create/receive by shop_manager and above
+    {
+        id: 'po-create-shop-manager+',
+        effect: 'allow',
+        priority: 423,
+        match: (ctx) => ctx.action === actions_1.Actions.PURCHASE_ORDER_CREATE && ['shop_manager', 'office_manager', 'owner', 'admin'].includes(ctx.user?.role || '')
+    },
+    {
+        id: 'po-receive-shop-manager+',
+        effect: 'allow',
+        priority: 423,
+        match: (ctx) => ctx.action === actions_1.Actions.PURCHASE_ORDER_RECEIVE && ['shop_manager', 'office_manager', 'owner', 'admin'].includes(ctx.user?.role || '')
+    },
     // Default deny (implicit if nothing matches)
 ];
 function evaluatePolicy(ctx) {

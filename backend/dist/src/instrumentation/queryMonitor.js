@@ -11,6 +11,7 @@ const logger_1 = require("../utils/logger");
 const metrics_1 = require("../monitoring/metrics");
 // Lazy import inside function for latency attribution helpers to avoid circulars if any
 const crypto_1 = __importDefault(require("crypto"));
+const cardinality_1 = require("../monitoring/cardinality");
 // Configuration via env
 const SLOW_QUERY_THRESHOLD_MS = parseInt(process.env.DB_SLOW_QUERY_THRESHOLD_MS || '500', 10);
 const ENABLE_QUERY_LOGGING = (process.env.DB_QUERY_LOGGING || '').toLowerCase() === 'true' || process.env.NODE_ENV === 'production';
@@ -159,9 +160,10 @@ function installQueryMonitor() {
                 slowQueryBuffer.push({ pattern, sql: truncated, durationMs: ms, time: new Date().toISOString(), type: options?.type, error: error?.message });
                 if (slowQueryBuffer.length > SLOW_QUERY_BUFFER_MAX)
                     slowQueryBuffer.shift();
-                // Hash pattern to keep label bounded
+                // Hash pattern to keep label bounded and track cardinality
                 try {
                     const hash = crypto_1.default.createHash('md5').update(pattern).digest('hex').slice(0, 8);
+                    (0, cardinality_1.trackDimension)('db_slow_query_pattern', hash);
                     metrics_1.metrics.increment(`db.slow_query.pattern.${hash}`);
                     metrics_1.metrics.increment('db.slow_query.total');
                 }
