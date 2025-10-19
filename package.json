@@ -10,24 +10,27 @@
   "scripts": {
     "start": "echo 'Please run from backend or frontend directory'",
     "dev": "start-dev.cmd",
-  "test:backend": "npm run test --workspace backend",
-  "test:backend:fast": "npm run test:fast --workspace backend",
-  "test:backend:ci": "npm run test:ci --workspace backend",
+    "test:backend": "npm run test --workspace backend",
+    "test:backend:fast": "npm run test:fast --workspace backend",
+    "test:backend:ci": "npm run test:ci --workspace backend",
     "test:frontend": "npm run test --workspace frontend --if-present -- --watchAll=false",
     "test": "npm run test:backend && npm run test:frontend",
-  "test:fast": "npm run test:backend:fast && npm run test:frontend --if-present -- --watchAll=false",
-  "test:ci": "npm run test:backend:ci && npm run test:frontend --if-present -- --watchAll=false",
-  "test:all": "npm run test:backend && npm run test:frontend",
-  "coverage": "npm run test --workspace backend -- --coverage && npm run test --workspace frontend --if-present -- --coverage --watchAll=false",
+    "test:fast": "npm run test:backend:fast && npm run test:frontend --if-present -- --watchAll=false",
+    "test:ci": "npm run test:backend:ci && npm run test:frontend --if-present -- --watchAll=false",
+    "test:all": "npm run test:backend && npm run test:frontend",
+    "coverage": "npm run test --workspace backend -- --coverage && npm run test --workspace frontend --if-present -- --coverage --watchAll=false",
     "lint:backend": "npm run lint --workspace backend",
     "lint:frontend": "npm run lint --workspace frontend",
-  "lint": "npm run lint:backend && npm run lint:frontend",
-  "typecheck:backend": "npm run build --workspace backend -- --noEmit",
-  "typecheck:frontend": "npm run build --workspace frontend --if-present -- --noEmit",
-  "typecheck": "npm run typecheck:backend && npm run typecheck:frontend",
-  "stop": "powershell -ExecutionPolicy Bypass -File stop-dev.ps1"
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "typecheck:backend": "npm run build --workspace backend -- --noEmit",
+    "typecheck:frontend": "npm run build --workspace frontend --if-present -- --noEmit",
+    "typecheck": "npm run typecheck:backend && npm run typecheck:frontend",
+    "stop": "powershell -ExecutionPolicy Bypass -File stop-dev.ps1"
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "ts-prune": "^0.10.3"
   }
 }

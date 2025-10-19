@@ -40,9 +40,9 @@ import Sparkline from '../../components/charts/Sparkline';
 
 const OfficeManagerDashboard: React.FC = () => {
   const dispatch = useDispatch();
-  const { trends, loadingTrends, summary, loadingSummary } = useSelector((s: RootState) => s.analytics);
-  const { projects, isLoading: projectsLoading } = useSelector((s: RootState) => s.projects);
-  const { users, isLoading: usersLoading } = useSelector((s: RootState) => s.users);
+  const { trends, loadingTrends, summary } = useSelector((s: RootState) => s.analytics);
+  const { projects } = useSelector((s: RootState) => s.projects);
+  const { users } = useSelector((s: RootState) => s.users);
   
   useEffect(() => {
     dispatch(fetchAnalyticsSummary() as any);

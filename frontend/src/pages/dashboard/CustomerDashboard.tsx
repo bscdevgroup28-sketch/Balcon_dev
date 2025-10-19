@@ -6,9 +6,7 @@ import {
   Button,
   Paper,
   List,
-  Alert,
   Fab,
-  CircularProgress,
 } from '@mui/material';
 import {
   Assignment,
@@ -35,15 +33,15 @@ import {
 } from '../../components/dashboard/BusinessDashboardComponents';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
-import ProjectTimeline, { TimelinePhase } from '../../components/projects/ProjectTimeline';
-import ProgressPhotosGallery, { ProgressPhoto } from '../../components/projects/ProgressPhotosGallery';
-import BudgetBreakdownCard, { BudgetCategory } from '../../components/dashboard/BudgetBreakdownCard';
+import ProjectTimeline from '../../components/projects/ProjectTimeline';
+import ProgressPhotosGallery from '../../components/projects/ProgressPhotosGallery';
+import BudgetBreakdownCard from '../../components/dashboard/BudgetBreakdownCard';
 
 const CustomerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { projects, isLoading: projectsLoading, error: projectsError } = useSelector((state: RootState) => state.projects);
+  const { projects } = useSelector((state: RootState) => state.projects);
   const [showOnboarding, setShowOnboarding] = useState(false);
   
   // Fetch projects on mount

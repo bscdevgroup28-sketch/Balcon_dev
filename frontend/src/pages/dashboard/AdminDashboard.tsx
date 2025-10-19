@@ -59,9 +59,9 @@ import { useNotification } from '../../components/feedback/NotificationProvider'
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { summary, trends, loadingTrends, loadingSummary, anomalies, loadingAnomalies, forecast, loadingForecast } = useSelector((s: RootState) => s.analytics);
-  const { projects, isLoading: projectsLoading } = useSelector((s: RootState) => s.projects);
-  const { users, isLoading: usersLoading } = useSelector((s: RootState) => s.users);
+  const { summary, trends, loadingTrends, anomalies, loadingAnomalies, forecast, loadingForecast } = useSelector((s: RootState) => s.analytics);
+  const { projects } = useSelector((s: RootState) => s.projects);
+  const { users } = useSelector((s: RootState) => s.users);
   const { showSuccess, showError } = useNotification();
 
   // Fetch real data on mount

@@ -44,8 +44,8 @@ import Sparkline from '../../components/charts/Sparkline';
 
 const ShopManagerDashboard: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { summary, trends, loadingTrends, loadingSummary } = useSelector((s: RootState) => s.analytics);
-  const { projects, isLoading: projectsLoading } = useSelector((s: RootState) => s.projects);
+  const { summary, trends, loadingTrends } = useSelector((s: RootState) => s.analytics);
+  const { projects } = useSelector((s: RootState) => s.projects);
   
   useEffect(() => {
     dispatch(fetchAnalyticsSummary());

@@ -1,7 +1,6 @@
 import { DataTypes, Model, Optional, Association } from 'sequelize';
 import { sequelize } from '../config/database';
 import { Project } from './Project';
-import { User } from './UserEnhanced';
 
 export interface InvoiceLineItem { description: string; quantity: number; unitPrice: number; unit?: string; }
 
