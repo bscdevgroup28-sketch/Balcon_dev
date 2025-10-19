@@ -5,38 +5,25 @@ import {
   Toolbar,
   Typography,
   IconButton,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
   Avatar,
   Menu,
   MenuItem,
   Badge,
-  FormControlLabel,
-  Switch,
-  Tooltip,
-  useMediaQuery,
-  Collapse,
+  ListItemIcon,
+  Divider,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
   Notifications,
   AccountCircle,
   Logout,
-  ChevronLeft,
   Settings,
 } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import OfflineIndicator from '../offline/OfflineIndicator';
+import MiniSidebar from '../navigation/MiniSidebar';
 import { RootState } from '../../store/store';
 import { logout } from '../../store/slices/authSlice';
-import { toggleSidebar } from '../../store/slices/uiSlice';
-import { getMenuItemsForRole, getRoleDisplayName } from '../../utils/roleUtils';
-import { useLayoutDensity } from '../../theme/LayoutDensityContext';
-import HealthStatus from '../system/HealthStatus';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -44,15 +31,9 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { sidebarOpen } = useSelector((state: RootState) => state.ui);
-  const isMobile = useMediaQuery('(max-width: 900px)');
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const { density, toggleDensity } = useLayoutDensity();
-
-  const navWidth = sidebarOpen ? 240 : 0; // Hide completely when collapsed per new requirement
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -68,61 +49,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     handleMenuClose();
   };
 
-  const menuItems = getMenuItemsForRole(user?.role || 'user');
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-  <OfflineIndicator />
-      {/* App Bar */}
+      <OfflineIndicator />
+      
+      {/* Simplified App Bar */}
       <AppBar
         position="fixed"
-        sx={{ width: '100%', transition: 'margin 0.3s' }}
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
         role="banner"
         aria-label="Application top bar"
       >
-        <Toolbar sx={{ minHeight: { xs: 64, sm: 64 } }}>
-          <IconButton
-            color="inherit"
-            aria-label={sidebarOpen ? 'Collapse navigation menu' : 'Expand navigation menu'}
-            edge="start"
-            onClick={() => dispatch(toggleSidebar())}
-            sx={{ mr: 2, minWidth: { xs: 48, sm: 40 }, minHeight: { xs: 48, sm: 40 } }}
-          >
-            {sidebarOpen ? <ChevronLeft /> : <MenuIcon />}
-          </IconButton>
-
+        <Toolbar>
+          {/* Logo */}
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Bal-Con Builders
           </Typography>
 
-          <Typography
-            variant="body2"
-            sx={{ mr: 2, opacity: 0.8, display: { xs: 'none', sm: 'block' } }}
+          {/* Notifications */}
+          <IconButton 
+            color="inherit" 
+            aria-label="View notifications"
+            sx={{ mr: 1 }}
           >
-            {user ? getRoleDisplayName(user.role) : 'Guest'}
-          </Typography>
-
-          <HealthStatus />
-          <FormControlLabel
-            sx={{ mr: 1, color: 'inherit' }}
-            control={<Switch size="small" checked={density === 'compact'} onChange={toggleDensity} color="default" />}
-            label={density === 'compact' ? 'Compact' : 'Comfortable'}
-          />
-
-          <IconButton color="inherit" sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 44, minHeight: 44 }} aria-label="View notifications">
             <Badge badgeContent={3} color="error">
               <Notifications />
             </Badge>
           </IconButton>
 
+          {/* Profile Menu */}
           <IconButton
             edge="end"
             aria-label="Account options"
-            aria-controls="primary-search-account-menu"
+            aria-controls="profile-menu"
             aria-haspopup="true"
             onClick={handleProfileMenuOpen}
             color="inherit"
-            sx={{ minWidth: 44, minHeight: 44 }}
           >
             <Avatar sx={{ width: 32, height: 32 }}>
               {user?.firstName?.charAt(0) || 'U'}
@@ -131,84 +93,31 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Main Region with Inline Nav */}
-      <Box sx={{ display: 'flex', flexGrow: 1, pt: 8, minHeight: 0 }}>
-        {/* Inline navigation occupying previously empty left space */}
-        <Collapse in={sidebarOpen || isMobile} orientation="horizontal" unmountOnExit={!isMobile} collapsedSize={0} timeout={300}>
-          <Box
-            component="nav"
-            aria-label="Primary navigation"
-            sx={{
-              width: navWidth,
-              transition: 'width .3s',
-              borderRight: 1,
-              borderColor: 'divider',
-              overflowY: 'auto',
-              height: 'calc(100vh - 64px)',
-              backgroundColor: 'background.paper',
-              display: sidebarOpen ? 'block' : (isMobile ? 'block' : 'none')
-            }}
-          >
-            <Box sx={{ px: 2, py: 2, display: sidebarOpen ? 'block' : 'none' }}>
-              <Typography variant="subtitle1" fontWeight={600}>BC Builders</Typography>
-            </Box>
-            <Divider sx={{ display: sidebarOpen ? 'block' : 'none' }} />
-            <List role="list" aria-label="Primary navigation menu" sx={{ py: 0 }}>
-              {menuItems.map(item => {
-                const IconComponent = item.icon;
-                const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-                const node = (
-                  <ListItem
-                    key={item.text}
-                    button
-                    onClick={() => navigate(item.path)}
-                    selected={active}
-                    aria-current={active ? 'page' : undefined}
-                    sx={{
-                      minHeight: 46,
-                      px: sidebarOpen ? 2 : 1.2,
-                      '&.Mui-selected': { backgroundColor: 'action.selected', fontWeight: 600 },
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: 36, color: 'text.secondary' }}>
-                      <IconComponent />
-                    </ListItemIcon>
-                    {sidebarOpen && <ListItemText primary={item.text} />}
-                  </ListItem>
-                );
-                if (!sidebarOpen) {
-                  return (
-                    <Tooltip key={item.text} title={item.text} placement="right" arrow>
-                      <Box>{node}</Box>
-                    </Tooltip>
-                  );
-                }
-                return node;
-              })}
-            </List>
-          </Box>
-        </Collapse>
+      {/* Main Content Area with MiniSidebar */}
+      <Box sx={{ display: 'flex', flexGrow: 1, pt: 8 }}>
+        {/* Mini Sidebar */}
+        <MiniSidebar />
 
-        {/* Content Area */}
+        {/* Content Area - Full Width */}
         <Box
           component="main"
           id="main-content"
+          role="main"
           sx={{
             flexGrow: 1,
-            minWidth: 0,
-            px: { xs: 1, sm: 3 },
-            pb: { xs: 2, sm: 4 },
-            transition: 'padding .3s',
+            p: 3,
             width: '100%',
-            overflowX: 'hidden'
+            minHeight: 'calc(100vh - 64px)',
+            overflowX: 'auto',
           }}
         >
-          <Box sx={{ width: '100%', overflowX: 'auto' }}>{children}</Box>
+          {children}
         </Box>
       </Box>
 
       {/* Profile Menu */}
       <Menu
+        id="profile-menu"
         anchorEl={anchorEl}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
         keepMounted
