@@ -66,7 +66,8 @@ api.interceptors.response.use(
       if (navigator.onLine) setTimeout(()=> flush(api).catch(()=>{}), 1000);
     }
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+      // Token is in httpOnly cookie - backend clears it on logout
+      // Just redirect to login page
       window.location.href = '/login';
     }
     return Promise.reject(error);

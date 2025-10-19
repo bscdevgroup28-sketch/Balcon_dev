@@ -15,8 +15,7 @@ class IntegratedAPIService {
   constructor() {
     this.baseURL = API_BASE_URL;
     
-    // Initialize WebSocket connection
-    this.initializeWebSocket();
+    // WebSocket initialized separately after authentication
   }
 
   // Authentication methods
@@ -67,13 +66,6 @@ class IntegratedAPIService {
     }
   }
 
-  // WebSocket initialization
-  private initializeWebSocket() {
-    if (this.authToken) {
-      webSocketService.connect(this.authToken);
-    }
-  }
-
   // Authentication API calls
   async login(email: string, password: string): Promise<APIResponse<{user: any, token: string}>> {
     const response = await this.apiCall<{user: any, token: string}>('/api/auth/login', {
@@ -81,10 +73,8 @@ class IntegratedAPIService {
       body: JSON.stringify({ email, password }),
     });
 
-    if (response.success && response.data?.token) {
-      this.setAuthToken(response.data.token);
-      this.initializeWebSocket();
-    }
+    // Token is in httpOnly cookie - no manual storage needed
+    // WebSocket will connect using cookie authentication
 
     return response;
   }
@@ -102,10 +92,8 @@ class IntegratedAPIService {
       body: JSON.stringify(userData),
     });
 
-    if (response.success && response.data?.token) {
-      this.setAuthToken(response.data.token);
-      this.initializeWebSocket();
-    }
+    // Token is in httpOnly cookie - no manual storage needed
+    // WebSocket will connect using cookie authentication
 
     return response;
   }
@@ -115,7 +103,7 @@ class IntegratedAPIService {
       method: 'POST',
     });
 
-    this.clearAuthToken();
+    // Backend clears httpOnly cookie
     webSocketService.disconnect();
 
     return response;
@@ -130,9 +118,7 @@ class IntegratedAPIService {
       method: 'POST',
     });
 
-    if (response.success && response.data?.token) {
-      this.setAuthToken(response.data.token);
-    }
+    // Token refreshed in httpOnly cookie automatically
 
     return response;
   }
@@ -420,9 +406,7 @@ class IntegratedAPIService {
     try {
       const response = await fetch(`${this.baseURL}/api/files/upload`, {
         method: 'POST',
-        headers: {
-          'Authorization': this.authToken ? `Bearer ${this.authToken}` : '',
-        },
+        credentials: 'include', // ✅ Enable cookies for auth
         body: formData,
       });
 
@@ -528,7 +512,7 @@ class IntegratedAPIService {
   // Error handling helper
   handleAPIError(error: any, defaultMessage: string = 'An error occurred') {
     if (error?.error === 'Unauthorized' || error?.error?.includes('401')) {
-      this.clearAuthToken();
+      // Backend clears httpOnly cookie on 401
       webSocketService.disconnect();
       // Redirect to login or show login modal
       window.location.href = '/login';
