@@ -11,7 +11,12 @@ export const SECURITY_CONFIG = {
 
   // CORS Configuration
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+    origin: process.env.CORS_ORIGIN?.split(',') || [
+      'http://localhost:3000',
+      // Add production URLs when deploying:
+      // 'https://your-frontend.railway.app',
+      // 'https://yourdomain.com'
+    ],
     credentials: true,
     optionsSuccessStatus: 200
   },
@@ -76,7 +81,14 @@ export const SECURITY_CONFIG = {
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
       scriptSrc: ["'self'"],
-      connectSrc: ["'self'", "http://localhost:8082"],
+      connectSrc: [
+        "'self'",
+        "http://localhost:8082",
+        "ws://localhost:8082",
+        // Add production URLs when deploying:
+        // "https://your-backend.railway.app",
+        // "wss://your-backend.railway.app"
+      ],
       frameSrc: ["'none'"],
       objectSrc: ["'none'"]
     }
@@ -86,9 +98,13 @@ export const SECURITY_CONFIG = {
   headers: {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
+    // X-XSS-Protection is deprecated - removed (modern browsers ignore it)
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+    'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+    // HSTS: Force HTTPS in production (31536000 seconds = 1 year)
+    ...(process.env.NODE_ENV === 'production' && {
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload'
+    })
   }
 };
 

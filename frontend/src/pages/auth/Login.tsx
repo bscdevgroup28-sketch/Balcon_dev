@@ -229,7 +229,7 @@ const Login: React.FC = () => {
         py: 4,
       }}
     >
-      <Container component="main" maxWidth="lg">
+      <Container maxWidth="lg">
         <Box
           sx={{
             display: 'flex',
