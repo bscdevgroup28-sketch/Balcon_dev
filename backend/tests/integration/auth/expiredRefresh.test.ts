@@ -32,7 +32,8 @@ describe('Expired Refresh Token', () => {
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET = 'testsecret';
     process.env.DATABASE_URL = 'sqlite::memory:';
-    await sequelize.sync({ force: true });
+    // Don't use sync({ force: true }) as it causes deprecation warnings with :memory:
+    // Just run migrations which will create all necessary tables
     await runAllMigrations();
   });
 

@@ -20,6 +20,10 @@
     "sha256": "eb39703b02b4dcd6c7fce892d81f9e0bbc10fb695b399c298e63222a2016c004"
   },
   {
+    "name": "005-add-password-hash-to-users.ts",
+    "sha256": "cc9c5f624040623993b9276ae77a4a9ff9447de0a1bb9167a91a022450823e1a"
+  },
+  {
     "name": "20250922-0000-create-enhanced-users-table.ts",
     "sha256": "cd9867072ee9a41a6e6696f7280d6169a7f0d25ef095d06bb813fd47cac540e2"
   },

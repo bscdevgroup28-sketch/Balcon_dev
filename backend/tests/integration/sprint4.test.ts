@@ -19,7 +19,11 @@ jest.mock('@/services/emailNotification', () => ({
 describe('Sprint 4: Project Inquiry System Backend', () => {
   beforeAll(async () => {
     // Initialize test database via migrations to align with production schema
-    await sequelize.drop();
+    try {
+      await sequelize.drop();
+    } catch (e) {
+      // Ignore errors if tables don't exist yet
+    }
     const { runAllMigrations } = await import('../../src/scripts/migrationLoader');
     await runAllMigrations();
     
@@ -28,7 +32,7 @@ describe('Sprint 4: Project Inquiry System Backend', () => {
       firstName: 'John',
       lastName: 'Customer',
       email: 'customer@test.com',
-      role: 'customer',
+      role: 'user', // Changed from 'customer' which is not in the enum
       isActive: true,
       passwordHash: 'temp'
     });
