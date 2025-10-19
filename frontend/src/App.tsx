@@ -24,6 +24,7 @@ import ProfilePage from './pages/profile/ProfilePage';
 import MaterialsPage from './pages/materials/MaterialsPage';
 import UsersPage from './pages/admin/UsersPage';
 import WebhooksAdmin from './pages/webhooks/WebhooksAdmin';
+import SystemHealthPage from './pages/system/SystemHealthPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotificationProvider from './components/feedback/NotificationProvider';
 import HelpCenter from './components/help/HelpCenter';
@@ -176,6 +177,16 @@ const App: React.FC = () => {
                           <Route path="/webhooks" element={<WebhooksAdmin />} />
                           <Route path="/settings" element={<div>System Settings</div>} />
                         </Routes>
+                      </ProtectedRoute>
+                    } 
+                  />
+                  
+                  {/* System Health Route (Admin/Owner only) */}
+                  <Route 
+                    path="/system/health" 
+                    element={
+                      <ProtectedRoute requiredRoles={['admin', 'owner']}>
+                        <SystemHealthPage />
                       </ProtectedRoute>
                     } 
                   />
