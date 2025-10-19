@@ -197,21 +197,20 @@ const Login: React.FC = () => {
         >
           {/* Company Header */}
           <Box textAlign="center" mb={4}>
-            <Typography 
-              variant="h2" 
-              component="h1" 
-              gutterBottom
-              sx={{
-                fontWeight: 700,
-                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                color: 'transparent',
-                mb: 1,
-              }}
-            >
-              🏗️ Bal-Con Builders
-            </Typography>
+            {/* Company Logo */}
+            <Box sx={{ mb: 3 }}>
+              <img 
+                src="/logo-full.png" 
+                alt="Bal-Con Builders" 
+                style={{ 
+                  maxWidth: '300px',
+                  width: '100%',
+                  height: 'auto',
+                  marginBottom: '16px'
+                }}
+              />
+            </Box>
+            
             <Typography variant="h5" color="text.secondary" gutterBottom>
               Professional Construction Management Platform
             </Typography>

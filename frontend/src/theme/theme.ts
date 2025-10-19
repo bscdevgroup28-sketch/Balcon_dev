@@ -12,14 +12,14 @@ export const theme = createTheme({
   },
   palette: {
     primary: {
-      main: '#0D47A1',
-      light: '#5472D3',
-      dark: '#002171',
+      main: '#004B87', // Bal-Con Blue
+      light: '#3574B3',
+      dark: '#003561',
     },
     secondary: {
-      main: '#FF6F00',
-      light: '#FFA040',
-      dark: '#C43E00',
+      main: '#E31E24', // Bal-Con Red
+      light: '#E94D52',
+      dark: '#B01519',
     },
     success: {
       main: '#2E7D32',

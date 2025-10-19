@@ -62,9 +62,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <Toolbar>
           {/* Logo */}
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Bal-Con Builders
-          </Typography>
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <img 
+              src="/logo-full.png" 
+              alt="Bal-Con Builders" 
+              style={{ 
+                height: '48px',
+                width: 'auto',
+                maxWidth: '220px',
+                objectFit: 'contain',
+                filter: 'brightness(0) invert(1)' // Convert logo to white for blue AppBar
+              }}
+              onError={(e) => {
+                // Fallback to text if image fails to load
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                const fallback = target.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'block';
+              }}
+            />
+            <Typography 
+              variant="h6" 
+              noWrap 
+              component="div"
+              sx={{ display: 'none' }} // Hidden unless image fails
+            >
+              Bal-Con Builders
+            </Typography>
+          </Box>
 
           {/* Notifications */}
           <IconButton 

@@ -31,6 +31,28 @@ Key operational resources now available:
 | Testing (frontend) | React Testing Library, Jest |
 | Tooling | TypeScript, npm workspaces |
 
+## Branding
+
+The application uses official **Bal-Con Builders** branding:
+
+- **Primary Color**: `#004B87` (Bal-Con Blue) - AppBar, buttons, headings
+- **Secondary Color**: `#E31E24` (Bal-Con Red) - Accent elements, CTAs
+- **Logo**: Located in `frontend/public/` and `frontend/src/assets/images/`
+
+### Logo Files
+
+- `logo-full.png` - Full color logo (login page, light backgrounds)
+- `logo192.png` - PWA icon (192x192)
+- `logo512.png` - PWA icon (512x512)
+- `favicon.ico` - Browser tab icon
+
+### Usage Guidelines
+
+✅ **Do**: Use logo with adequate spacing (20px minimum), maintain aspect ratio, use proper brand colors  
+❌ **Don't**: Modify, stretch, or alter the logo in any way
+
+For complete branding guidelines, see **[BRANDING_GUIDELINES.md](./BRANDING_GUIDELINES.md)**
+
 ## Local Development (Windows PowerShell)
 Prerequisites: Node.js >= 18.
 
