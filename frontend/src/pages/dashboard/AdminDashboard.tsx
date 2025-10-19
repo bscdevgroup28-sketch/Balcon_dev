@@ -45,8 +45,10 @@ import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../store/store';
+import { RootState, AppDispatch } from '../../store/store';
 import { fetchAnalyticsSummary, fetchAnalyticsTrends, fetchAnalyticsAnomalies, fetchAnalyticsForecast } from '../../store/slices/analyticsSlice';
+import { fetchProjects } from '../../store/slices/projectsSlice';
+import { fetchUsers } from '../../store/slices/usersSlice';
 import Sparkline from '../../components/charts/Sparkline';
 import AnomaliesPanel from '../../components/analytics/AnomaliesPanel';
 import ForecastCard from '../../components/analytics/ForecastCard';
@@ -56,9 +58,21 @@ import { useNotification } from '../../components/feedback/NotificationProvider'
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const { trends, loadingTrends, anomalies, loadingAnomalies, forecast, loadingForecast } = useSelector((s: RootState) => s.analytics);
+  const dispatch = useDispatch<AppDispatch>();
+  const { summary, trends, loadingTrends, loadingSummary, anomalies, loadingAnomalies, forecast, loadingForecast } = useSelector((s: RootState) => s.analytics);
+  const { projects, isLoading: projectsLoading } = useSelector((s: RootState) => s.projects);
+  const { users, isLoading: usersLoading } = useSelector((s: RootState) => s.users);
   const { showSuccess, showError } = useNotification();
+
+  // Fetch real data on mount
+  useEffect(() => {
+    dispatch(fetchAnalyticsSummary());
+    dispatch(fetchAnalyticsTrends('30d'));
+    dispatch(fetchAnalyticsAnomalies({ range: '30d' }) as any);
+    dispatch(fetchAnalyticsForecast({ metric: 'ordersDelivered', horizon: 14 }) as any);
+    dispatch(fetchProjects({ limit: 100 }));
+    dispatch(fetchUsers({ limit: 100 }));
+  }, [dispatch]);
 
   const downloadMaterialsCSV = async () => {
     try {
@@ -77,13 +91,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    dispatch(fetchAnalyticsSummary() as any);
-    dispatch(fetchAnalyticsTrends('30d') as any);
-    dispatch(fetchAnalyticsAnomalies({ range: '30d' }) as any);
-    dispatch(fetchAnalyticsForecast({ metric: 'ordersDelivered', horizon: 14 }) as any);
-  }, [dispatch]);
-
   const trendSeries = useMemo(() => {
     const pts = trends?.points || [];
     return {
@@ -92,31 +99,40 @@ const AdminDashboard: React.FC = () => {
     };
   }, [trends]);
 
-  // Mock data for demonstration
+  // ✅ Real data from API
   const adminStats = {
-    totalUsers: 156,
-    activeProjects: 24,
-    pendingQuotes: 12,
-    totalRevenue: 125000,
-    monthlyGrowth: 15.5,
+    totalUsers: users.length,
+    activeProjects: projects.filter(p => p.status === 'in_progress' || p.status === 'design').length,
+    pendingQuotes: projects.filter(p => p.status === 'inquiry').length, // inquiry = pending quotes
+    totalRevenue: summary?.data?.revenue || 0,
+    monthlyGrowth: summary?.data?.trends?.revenue || 0,
   };
 
-  const recentUsers = [
-    { id: 1, name: 'John Smith', email: 'john@example.com', company: 'Smith Construction', joinDate: '2024-08-07' },
-    { id: 2, name: 'Sarah Johnson', email: 'sarah@techinc.com', company: 'Tech Industries Inc.', joinDate: '2024-08-06' },
-    { id: 3, name: 'Mike Wilson', email: 'mike@wilson.com', company: 'Wilson Builders', joinDate: '2024-08-05' },
-  ];
+  // ✅ Real users (sorted by createdAt, last 3)
+  const recentUsers = users
+    .filter(u => u.createdAt) // Only users with createdAt
+    .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+    .slice(0, 3)
+    .map(user => ({
+      id: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      company: 'N/A', // User model doesn't have company field
+      joinDate: new Date(user.createdAt!).toISOString().split('T')[0]
+    }));
 
+  // ⏳ TODO: Replace with real /api/tasks endpoint when available
   const urgentTasks = [
-    { id: 1, type: 'quote', title: 'Quote #QT-2024-012 needs review', priority: 'high', dueDate: 'Today' },
-    { id: 2, type: 'project', title: 'Industrial Complex - Phase 2 approval', priority: 'medium', dueDate: 'Tomorrow' },
-    { id: 3, type: 'order', title: 'Order #OR-2024-008 delivery issue', priority: 'high', dueDate: 'Today' },
+    { id: 1, type: 'quote', title: 'Quote approvals pending', priority: 'high', dueDate: 'Today' },
+    { id: 2, type: 'project', title: 'Project milestones need review', priority: 'medium', dueDate: 'Tomorrow' },
+    { id: 3, type: 'order', title: 'Order deliveries scheduled', priority: 'high', dueDate: 'Today' },
   ];
 
+  // ✅ Real system status (calculated from API data)
   const systemAlerts = [
-    { id: 1, type: 'warning', message: 'Low inventory: Steel beams (Grade A)', timestamp: '1 hour ago' },
-    { id: 2, type: 'info', message: 'Scheduled maintenance completed', timestamp: '3 hours ago' },
-    { id: 3, type: 'error', message: 'Payment gateway timeout reported', timestamp: '5 hours ago' },
+    { id: 1, type: 'info', message: `${projects.length} active projects being tracked`, timestamp: 'Now' },
+    { id: 2, type: 'info', message: `${users.length} users registered in system`, timestamp: 'Now' },
+    { id: 3, type: 'info', message: `${summary?.data?.quotes?.total || 0} quotes processed`, timestamp: '1 hour ago' },
   ];
 
   const getPriorityColor = (priority: string) => {

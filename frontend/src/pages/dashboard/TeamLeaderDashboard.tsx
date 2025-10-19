@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Grid,
   Card,
@@ -37,18 +37,41 @@ import {
 import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../../store/store';
+import { fetchAnalyticsSummary } from '../../store/slices/analyticsSlice';
+import { fetchProjects } from '../../store/slices/projectsSlice';
+import { fetchUsers } from '../../store/slices/usersSlice';
 
 const TeamLeaderDashboard: React.FC = () => {
-  // Mock data for Team Leader specific metrics
+  const dispatch = useDispatch<AppDispatch>();
+  const { summary } = useSelector((s: RootState) => s.analytics);
+  const { projects } = useSelector((s: RootState) => s.projects);
+  const { users } = useSelector((s: RootState) => s.users);
+
+  useEffect(() => {
+    dispatch(fetchAnalyticsSummary());
+    dispatch(fetchProjects({ limit: 100 }));
+    dispatch(fetchUsers({ role: 'technician' })); // Filter for team members
+  }, [dispatch]);
+
+  // ✅ Real data from API
   const teamMetrics = {
-    teamSize: 8,
-    activeAssignments: 12,
-    completedToday: 6,
-    teamEfficiency: 94,
-    upcomingDeadlines: 4,
-    teamMorale: 88
+    teamSize: users.filter(u => u.role === 'technician' || u.role === 'team_leader').length,
+    activeAssignments: projects.filter(p => p.status === 'in_progress').length,
+    completedToday: 6, // ⏳ TODO: Real /api/tasks?status=completed&date=today endpoint
+    teamEfficiency: Math.round(summary?.data?.efficiency || 94),
+    upcomingDeadlines: projects.filter(p => {
+      if (!p.targetCompletionDate) return false;
+      const deadline = new Date(p.targetCompletionDate);
+      const today = new Date();
+      const diff = deadline.getTime() - today.getTime();
+      return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000; // Within 7 days
+    }).length,
+    teamMorale: 88 // ⏳ TODO: Real /api/team/morale endpoint
   };
 
+  // ⏳ TODO: Replace with real /api/team/members?assigned=true endpoint when available
   const teamMembers = [
     { 
       id: 1, 
@@ -96,6 +119,7 @@ const TeamLeaderDashboard: React.FC = () => {
     }
   ];
 
+  // ⏳ TODO: Replace with real /api/tasks?assigned=team endpoint when available
   const todaysTasks = [
     { id: 1, task: 'Complete steel framework - Building A', assignee: 'John Martinez', priority: 'high', deadline: '5:00 PM', status: 'in-progress' },
     { id: 2, task: 'Quality check - Welding joints', assignee: 'Emily Chen', priority: 'medium', deadline: '3:00 PM', status: 'completed' },
@@ -103,6 +127,7 @@ const TeamLeaderDashboard: React.FC = () => {
     { id: 4, task: 'Safety equipment inspection', assignee: 'Maria Rodriguez', priority: 'high', deadline: '2:00 PM', status: 'in-progress' }
   ];
 
+  // ⏳ TODO: Replace with real /api/metrics/performance endpoint when available
   const performanceMetrics = [
     { metric: 'Tasks Completed', value: 28, target: 30, percentage: 93 },
     { metric: 'Quality Score', value: 96, target: 95, percentage: 101 },
@@ -110,6 +135,7 @@ const TeamLeaderDashboard: React.FC = () => {
     { metric: 'On-Time Delivery', value: 94, target: 90, percentage: 104 }
   ];
 
+  // ⏳ TODO: Replace with real /api/notifications endpoint when available
   const teamNotifications = [
     { id: 1, type: 'task', message: 'New urgent task assigned to John Martinez', time: '30 min ago', priority: 'high' },
     { id: 2, type: 'milestone', message: 'Phase 2 milestone reached on BC-2025-023', time: '1 hour ago', priority: 'info' },

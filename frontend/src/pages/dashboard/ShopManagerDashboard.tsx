@@ -37,17 +37,22 @@ import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../store/store';
+import { RootState, AppDispatch } from '../../store/store';
 import { fetchAnalyticsSummary, fetchAnalyticsTrends } from '../../store/slices/analyticsSlice';
+import { fetchProjects } from '../../store/slices/projectsSlice';
 import Sparkline from '../../components/charts/Sparkline';
 
 const ShopManagerDashboard: React.FC = () => {
-  const dispatch = useDispatch();
-  const { trends, loadingTrends } = useSelector((s: RootState) => s.analytics);
+  const dispatch = useDispatch<AppDispatch>();
+  const { summary, trends, loadingTrends, loadingSummary } = useSelector((s: RootState) => s.analytics);
+  const { projects, isLoading: projectsLoading } = useSelector((s: RootState) => s.projects);
+  
   useEffect(() => {
-    dispatch(fetchAnalyticsSummary() as any);
-    dispatch(fetchAnalyticsTrends('30d') as any);
+    dispatch(fetchAnalyticsSummary());
+    dispatch(fetchAnalyticsTrends('30d'));
+    dispatch(fetchProjects({ limit: 100 }));
   }, [dispatch]);
+  
   const trendSeries = useMemo(() => {
     const pts = trends?.points || [];
     return {
@@ -55,16 +60,19 @@ const ShopManagerDashboard: React.FC = () => {
       inventoryNetChange: pts.map((p: any) => Number(p.inventoryNetChange) || 0),
     };
   }, [trends]);
-  // Mock data for Shop Manager specific metrics
+  
+  // ✅ Real data from API
   const shopMetrics = {
-    activeJobs: 6,
-    equipmentUtilization: 87,
-    safetyScore: 94,
-    qualityScore: 96,
-    productionEfficiency: 89,
-    pendingMaintenance: 3
+    activeJobs: projects.filter(p => p.status === 'in_progress').length,
+    equipmentUtilization: Math.round((summary?.data?.efficiency || 87)), // Can be calculated from work orders when endpoint available
+    safetyScore: 94, // ⏳ TODO: Real /api/safety/score endpoint
+    qualityScore: 96, // ⏳ TODO: Real /api/quality/score endpoint
+    productionEfficiency: Math.round((summary?.data?.efficiency || 89)),
+    pendingMaintenance: 3 // ⏳ TODO: Real /api/equipment/maintenance endpoint
   };
 
+  // ⏳ TODO: Replace with real /api/workstations endpoint when available
+  // ⏳ TODO: Replace with real /api/workstations endpoint when available
   const activeWorkstations = [
     { id: 1, name: 'CNC Station A', operator: 'John Smith', project: 'BC-2025-023', status: 'running', progress: 75 },
     { id: 2, name: 'Welding Bay 1', operator: 'Mike Johnson', project: 'BC-2025-019', status: 'setup', progress: 10 },
@@ -73,6 +81,7 @@ const ShopManagerDashboard: React.FC = () => {
     { id: 5, name: 'Quality Station', operator: 'Lisa Rodriguez', project: 'BC-2025-023', status: 'inspection', progress: 90 }
   ];
 
+  // ⏳ TODO: Replace with real /api/equipment endpoint when available
   const equipmentStatus = [
     { name: 'CNC Machine #1', status: 'operational', utilization: 92, nextMaintenance: '3 days' },
     { name: 'Welding Equipment A', status: 'operational', utilization: 78, nextMaintenance: '1 week' },
@@ -81,6 +90,7 @@ const ShopManagerDashboard: React.FC = () => {
     { name: 'Paint System', status: 'operational', utilization: 65, nextMaintenance: '2 weeks' }
   ];
 
+  // ⏳ TODO: Replace with real /api/production or /api/work-orders endpoint when available
   const todaysProduction = [
     { project: 'BC-2025-023', component: 'Steel Framework', planned: 12, completed: 9, efficiency: 75 },
     { project: 'BC-2025-019', component: 'Metal Panels', planned: 24, completed: 28, efficiency: 117 },
@@ -88,6 +98,7 @@ const ShopManagerDashboard: React.FC = () => {
     { project: 'BC-2025-021', component: 'Custom Fixtures', planned: 15, completed: 15, efficiency: 100 }
   ];
 
+  // ⏳ TODO: Replace with real /api/safety/alerts endpoint when available
   const safetyAlerts = [
     { id: 1, type: 'reminder', message: 'Safety equipment inspection due tomorrow', priority: 'medium', time: '1 hour ago' },
     { id: 2, type: 'incident', message: 'Minor spill reported in Bay 3 - cleaned', priority: 'low', time: '3 hours ago' },

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Grid,
   Card,
@@ -34,18 +34,29 @@ import BaseDashboard from '../../components/dashboard/BaseDashboard';
 import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import DashboardSection from '../../components/dashboard/DashboardSection';
 import WeatherWidget from '../../components/dashboard/WeatherWidget';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../../store/store';
+import { fetchProjects } from '../../store/slices/projectsSlice';
 
 const TechnicianDashboard: React.FC = () => {
-  // Mock data for Technician specific metrics
+  const dispatch = useDispatch<AppDispatch>();
+  const { projects } = useSelector((s: RootState) => s.projects);
+
+  useEffect(() => {
+    dispatch(fetchProjects({ limit: 50 }));
+  }, [dispatch]);
+
+  // ✅ Real data from API (limited - most technician data is task-specific)
   const technicianMetrics = {
-    assignedTasks: 5,
-    completedToday: 3,
-    hoursWorked: 6.5,
-    efficiency: 92,
-    currentProject: 'BC-2025-023',
-    nextDeadline: '2:30 PM'
+    assignedTasks: 5, // ⏳ TODO: Real /api/tasks?assigned=me endpoint
+    completedToday: 3, // ⏳ TODO: Real /api/tasks?status=completed&date=today endpoint
+    hoursWorked: 6.5, // ⏳ TODO: Real /api/time-tracking endpoint
+    efficiency: 92, // ⏳ TODO: Real /api/performance/efficiency endpoint
+    currentProject: projects.find(p => p.status === 'in_progress')?.title || 'No active project',
+    nextDeadline: '2:30 PM' // ⏳ TODO: Real /api/tasks?status=pending&sort=deadline endpoint
   };
 
+  // ⏳ TODO: Replace with real /api/tasks?assigned=me endpoint when available
   const currentTasks = [
     { 
       id: 1, 
@@ -85,12 +96,14 @@ const TechnicianDashboard: React.FC = () => {
     }
   ];
 
+  // ⏳ TODO: Replace with real /api/tasks?status=completed endpoint when available
   const completedTasks = [
     { task: 'Mount bracket assemblies', project: 'BC-2025-023', completedAt: '11:30 AM', timeSpent: '1.5h' },
     { task: 'Safety equipment check', project: 'General', completedAt: '9:15 AM', timeSpent: '0.5h' },
     { task: 'Tool inventory', project: 'General', completedAt: '8:30 AM', timeSpent: '0.5h' }
   ];
 
+  // ⏳ TODO: Replace with real /api/time-tracking/current endpoint when available
   const workTimeTracker = {
     clockedIn: '7:30 AM',
     currentTime: '2:15 PM',
@@ -100,6 +113,7 @@ const TechnicianDashboard: React.FC = () => {
     currentActivity: 'Welding support beams'
   };
 
+  // ⏳ TODO: Replace with real /api/announcements endpoint when available
   const announcements = [
     { id: 1, title: 'Weekly safety meeting', message: 'Tomorrow at 8:00 AM in conference room', priority: 'medium', time: '1 hour ago' },
     { id: 2, title: 'New tools available', message: 'Updated welding equipment in Bay 1', priority: 'info', time: '3 hours ago' },
@@ -113,6 +127,7 @@ const TechnicianDashboard: React.FC = () => {
     { name: 'Request Help', icon: Build, color: '#7b1fa2' }
   ];
 
+  // ⏳ TODO: Replace with real /api/equipment/assigned endpoint when available
   const equipmentStatus = [
     { id: 1, name: 'Welding Machine', status: 'Operational', lastServiced: '2023-10-01' },
     { id: 2, name: 'Air Compressor', status: 'Maintenance Required', lastServiced: '2023-09-15' },
