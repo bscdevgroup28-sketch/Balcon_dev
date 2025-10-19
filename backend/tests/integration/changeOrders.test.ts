@@ -29,11 +29,11 @@ describe('Change Orders API', () => {
     csrfCookie = cookieArr.find((h:any)=>typeof h === 'string' && h.includes('csrfToken=')) as string;
     csrfToken = csrfRes.body.csrfToken as string;
 
-    // user + login
+    // user + login (use admin to test business logic, not permissions)
     const { AuthService } = await import('../../src/services/authService');
     const user:any = await AuthService.createUser({
-      firstName: 'PM', lastName: 'User', email: `pm_${Date.now()}@ex.com`, role: 'project_manager',
-      isActive: true, mustChangePassword: false, canManageProjects: true, canManageUsers: false, canAccessFinancials: true, permissions: []
+      firstName: 'Admin', lastName: 'User', email: `admin_${Date.now()}@ex.com`, role: 'admin',
+      isActive: true, mustChangePassword: false, canManageProjects: true, canManageUsers: true, canAccessFinancials: true, permissions: []
     } as any, 'TestPass!1');
     const login = await request(app)
       .post('/api/auth/login')
