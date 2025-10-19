@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Box,
   Container,
@@ -42,6 +44,7 @@ import { loginUser, setUser } from '../../store/slices/authSlice';
 import { RootState } from '../../store/store';
 import { UserRole } from '../../types/auth';
 import { authAPI } from '../../services/api';
+import { loginSchema, LoginFormData } from '../../validation/loginSchema';
 
 interface DemoAccount {
   role: UserRole;
@@ -124,28 +127,31 @@ const Login: React.FC = () => {
   const dispatch = useDispatch();
   const { isLoading, error, user } = useSelector((state: RootState) => state.auth);
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+  // React Hook Form setup with Yup validation
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid, isDirty },
+    watch,
+  } = useForm<LoginFormData>({
+    resolver: yupResolver(loginSchema),
+    mode: 'onChange', // Validate on change for real-time feedback
+    defaultValues: {
+      email: '',
+      password: '',
+    },
   });
+
   const [showPassword, setShowPassword] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotStatus, setForgotStatus] = useState<'idle'|'loading'|'success'|'error'>('idle');
   const [forgotMessage, setForgotMessage] = useState<string>('');
 
-  // Real-time validation
-  const emailValid = /[^\s@]+@[^\s@]+\.[^\s@]+/.test(formData.email);
-  const passwordValid = formData.password.length >= 6;
-
   const from = location.state?.from?.pathname || '/dashboard';
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  // Watch email for forgot password functionality
+  const watchedEmail = watch('email');
 
   const performLogin = async (creds: { email: string; password: string }) => {
     try {
@@ -159,10 +165,8 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailValid || !passwordValid) return;
-    await performLogin(formData);
+  const onSubmit = async (data: LoginFormData) => {
+    await performLogin(data);
   };
 
   const handleDemoLogin = async (account: DemoAccount) => {
@@ -301,37 +305,33 @@ const Login: React.FC = () => {
                   </Alert>
                 )}
 
-                <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+                <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ width: '100%' }}>
                   <TextField
+                    {...register('email')}
                     margin="normal"
                     required
                     fullWidth
                     id="email"
                     label="Email Address"
-                    name="email"
                     autoComplete="email"
                     autoFocus
-                    value={formData.email}
-                    onChange={handleChange}
                     disabled={isLoading}
-                    error={formData.email.length > 0 && !emailValid}
-                    helperText={formData.email.length > 0 && !emailValid ? 'Enter a valid email' : ' '}
+                    error={!!errors.email}
+                    helperText={errors.email?.message || ' '}
                     sx={{ mb: 2 }}
                   />
                   <TextField
+                    {...register('password')}
                     margin="normal"
                     required
                     fullWidth
-                    name="password"
                     label="Password"
                     type={showPassword ? 'text' : 'password'}
                     id="password"
                     autoComplete="current-password"
-                    value={formData.password}
-                    onChange={handleChange}
                     disabled={isLoading}
-                    error={formData.password.length > 0 && !passwordValid}
-                    helperText={formData.password.length > 0 && !passwordValid ? 'At least 6 characters' : ' '}
+                    error={!!errors.password}
+                    helperText={errors.password?.message || 'Minimum 8 characters'}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
@@ -345,15 +345,27 @@ const Login: React.FC = () => {
                         </InputAdornment>
                       ),
                     }}
-                    sx={{ mb: 3 }}
+                    sx={{ mb: 1 }}
                   />
+
+                  {/* Password Requirements Info */}
+                  <Alert severity="info" sx={{ mb: 3, py: 0.5 }}>
+                    <Typography variant="caption" component="div">
+                      Password requirements:
+                      <Box component="ul" sx={{ margin: '4px 0', paddingLeft: '20px', fontSize: '0.75rem' }}>
+                        <li>At least 8 characters</li>
+                        <li>Include uppercase and lowercase letters (recommended)</li>
+                        <li>Include at least one number (recommended)</li>
+                      </Box>
+                    </Typography>
+                  </Alert>
 
                   <Button
                     type="submit"
                     fullWidth
                     variant="contained"
                     size="large"
-                    disabled={isLoading || !emailValid || !passwordValid}
+                    disabled={isLoading || !isValid || !isDirty}
                     sx={{ 
                       mb: 2,
                       py: 1.5,
@@ -367,7 +379,7 @@ const Login: React.FC = () => {
                     <Link component={RouterLink} to="/register" variant="body2" sx={{ mr: 2 }}>
                       Don't have an account? Sign Up
                     </Link>
-                    <Link component="button" type="button" variant="body2" onClick={() => { setForgotOpen(true); setForgotEmail(formData.email); }}>
+                    <Link component="button" type="button" variant="body2" onClick={() => { setForgotOpen(true); setForgotEmail(watchedEmail); }}>
                       Forgot Password?
                     </Link>
                   </Box>
