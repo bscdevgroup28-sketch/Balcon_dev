@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import NotificationProvider from './components/feedback/NotificationProvider';
 import OnboardingTour from './components/onboarding/OnboardingTour';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { useFeatureFlags } from './hooks/useFeatureFlags';
 import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
 import HelpCenter from './components/help/HelpCenter';
@@ -44,6 +45,7 @@ const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
 const MaterialsPage = lazy(() => import('./pages/materials/MaterialsPage'));
 const UsersPage = lazy(() => import('./pages/admin/UsersPage'));
 const AdminOpsConsole = lazy(() => import('./pages/admin/AdminOpsConsole'));
+const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 
 // Phase 5C Enhanced Components
 const AnalyticsDashboard = lazy(() => import('./components/analytics/AnalyticsDashboard'));
@@ -97,8 +99,22 @@ const EnhancedAppRouter: React.FC = () => {
                 <Route path="/home" element={<DashboardRedirect />} />
                 
                 {/* Phase 5C Enhanced Routes */}
-                <Route path="/analytics" element={<AnalyticsDashboard />} />
-                <Route path="/enhanced-projects" element={<EnhancedProjectManagement />} />
+                <Route 
+                  path="/analytics" 
+                  element={
+                    <ErrorBoundary>
+                      <AnalyticsDashboard />
+                    </ErrorBoundary>
+                  } 
+                />
+                <Route 
+                  path="/enhanced-projects" 
+                  element={
+                    <ErrorBoundary>
+                      <EnhancedProjectManagement />
+                    </ErrorBoundary>
+                  } 
+                />
                 <Route 
                   path="/mobile" 
                   element={
@@ -117,15 +133,17 @@ const EnhancedAppRouter: React.FC = () => {
                 <Route 
                   path="/owner/*" 
                   element={
-                    <ProtectedRoute requiredRoles={['owner']}>
-                      <Routes>
-                        <Route path="/" element={<OwnerDashboard />} />
-                        <Route path="/financial" element={<div>Financial Overview</div>} />
-                        <Route path="/strategy" element={<div>Strategic Metrics</div>} />
-                        <Route path="/reports" element={<div>Executive Reports</div>} />
-                        <Route path="/analytics" element={<AnalyticsDashboard />} />
-                      </Routes>
-                    </ProtectedRoute>
+                    <ErrorBoundary>
+                      <ProtectedRoute requiredRoles={['owner']}>
+                        <Routes>
+                          <Route path="/" element={<OwnerDashboard />} />
+                          <Route path="/financial" element={<div>Financial Overview</div>} />
+                          <Route path="/strategy" element={<div>Strategic Metrics</div>} />
+                          <Route path="/reports" element={<div>Executive Reports</div>} />
+                          <Route path="/analytics" element={<AnalyticsDashboard />} />
+                        </Routes>
+                      </ProtectedRoute>
+                    </ErrorBoundary>
                   } 
                 />
                 
@@ -230,20 +248,32 @@ const EnhancedAppRouter: React.FC = () => {
                 <Route path="/materials" element={<MaterialsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 
+                {/* Settings Route */}
+                <Route 
+                  path="/settings" 
+                  element={
+                    <ErrorBoundary>
+                      <SettingsPage />
+                    </ErrorBoundary>
+                  } 
+                />
+                
                 {/* Admin Routes */}
                 <Route 
                   path="/admin/*" 
                   element={
-                    <ProtectedRoute requiredRoles={['admin']}>
-                      <Routes>
-                        <Route path="/" element={<AdminDashboard />} />
-                        <Route path="/users" element={<UsersPage />} />
-                        <Route path="/settings" element={<div>System Settings</div>} />
-                        <Route path="/ops" element={<AdminOpsConsole />} />
-                        <Route path="/analytics" element={<AnalyticsDashboard />} />
-                        <Route path="/projects" element={<EnhancedProjectManagement />} />
-                      </Routes>
-                    </ProtectedRoute>
+                    <ErrorBoundary>
+                      <ProtectedRoute requiredRoles={['admin']}>
+                        <Routes>
+                          <Route path="/" element={<AdminDashboard />} />
+                          <Route path="/users" element={<UsersPage />} />
+                          <Route path="/settings" element={<div>System Settings</div>} />
+                          <Route path="/ops" element={<AdminOpsConsole />} />
+                          <Route path="/analytics" element={<AnalyticsDashboard />} />
+                          <Route path="/projects" element={<EnhancedProjectManagement />} />
+                        </Routes>
+                      </ProtectedRoute>
+                    </ErrorBoundary>
                   } 
                 />
                 

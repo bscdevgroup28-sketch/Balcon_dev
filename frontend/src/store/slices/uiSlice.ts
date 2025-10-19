@@ -3,6 +3,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 interface UIState {
   sidebarOpen: boolean;
   theme: 'light' | 'dark';
+  density: 'comfortable' | 'compact';
   notifications: Notification[];
   loading: {
     global: boolean;
@@ -22,6 +23,7 @@ interface Notification {
 const initialState: UIState = {
   sidebarOpen: true,
   theme: 'light',
+  density: 'comfortable',
   notifications: [],
   loading: {
     global: false,
@@ -40,6 +42,9 @@ const uiSlice = createSlice({
     },
     setTheme: (state, action: PayloadAction<'light' | 'dark'>) => {
       state.theme = action.payload;
+    },
+    setDensity: (state, action: PayloadAction<'comfortable' | 'compact'>) => {
+      state.density = action.payload;
     },
     addNotification: (state, action: PayloadAction<Omit<Notification, 'id' | 'timestamp' | 'read'>>) => {
       const notification: Notification = {
@@ -75,6 +80,7 @@ export const {
   toggleSidebar,
   setSidebarOpen,
   setTheme,
+  setDensity,
   addNotification,
   markNotificationRead,
   removeNotification,

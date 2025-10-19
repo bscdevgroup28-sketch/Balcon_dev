@@ -26,6 +26,7 @@ import {
   AccountCircle,
   Logout,
   ChevronLeft,
+  Settings,
 } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -221,6 +222,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </ListItemIcon>
           Profile
         </MenuItem>
+        <MenuItem onClick={() => { navigate('/settings'); handleMenuClose(); }}>
+          <ListItemIcon>
+            <Settings fontSize="small" />
+          </ListItemIcon>
+          Settings
+        </MenuItem>
+        <Divider />
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <Logout fontSize="small" />
