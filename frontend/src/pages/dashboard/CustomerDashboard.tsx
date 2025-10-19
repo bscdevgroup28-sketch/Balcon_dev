@@ -8,6 +8,7 @@ import {
   List,
   Alert,
   Fab,
+  CircularProgress,
 } from '@mui/material';
 import {
   Assignment,
@@ -19,9 +20,10 @@ import {
   Email,
   AttachMoney,
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { RootState } from '../../store/store';
+import { RootState, AppDispatch } from '../../store/store';
+import { fetchProjects } from '../../store/slices/projectsSlice';
 import OnboardingTour from '../../components/onboarding/OnboardingTour';
 import FeatureDiscovery, { dashboardTips } from '../../components/help/FeatureDiscovery';
 import ProjectStatusCard from '../../components/projects/ProjectStatusCard';
@@ -39,8 +41,15 @@ import BudgetBreakdownCard, { BudgetCategory } from '../../components/dashboard/
 
 const CustomerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { projects, isLoading: projectsLoading, error: projectsError } = useSelector((state: RootState) => state.projects);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  // Fetch projects on mount
+  useEffect(() => {
+    dispatch(fetchProjects({ limit: 20 }));
+  }, [dispatch]);
   
   // Check if user needs onboarding
   useEffect(() => {
@@ -50,96 +59,50 @@ const CustomerDashboard: React.FC = () => {
     }
   }, []);
 
-  // Mock data for demonstration (enhanced for business value)
+  // Calculate dashboard stats from real projects
   const dashboardStats = {
-    activeProjects: 3,
-    pendingQuotes: 2,
-    activeOrders: 1,
-    completedProjects: 8,
+    activeProjects: projects.filter(p => p.status === 'in_progress' || p.status === 'in_production').length,
+    pendingQuotes: projects.filter(p => p.status === 'inquiry' || p.status === 'design').length,
+    activeOrders: projects.filter(p => p.status === 'approved' || p.status === 'in_production').length,
+    completedProjects: projects.filter(p => p.status === 'completed').length,
   };
 
-  // Enhanced project data
-  const activeProjects = [
-    {
-      id: 1,
-      title: 'Metal Warehouse Structure',
-      type: 'Commercial',
-      status: 'In Progress',
-      progress: 75,
-      estimatedCompletion: 'March 15, 2025',
-      location: 'Houston, TX',
-      salesRep: {
-        name: 'John Smith',
-        avatar: ''
-      },
-      lastUpdate: '2 days ago'
-    },
-    {
-      id: 2,
-      title: 'Residential Garage',
-      type: 'Residential',
-      status: 'Quoted',
-      progress: 45,
-      estimatedCompletion: 'April 1, 2025',
-      location: 'Austin, TX',
-      salesRep: {
-        name: 'Sarah Johnson',
-        avatar: ''
-      },
-      lastUpdate: '1 week ago'
-    },
-    {
-      id: 3,
-      title: 'Industrial Storage Unit',
-      type: 'Industrial',
-      status: 'Inquiry',
-      progress: 20,
-      estimatedCompletion: 'TBD',
-      location: 'Dallas, TX',
-      salesRep: {
-        name: 'Mike Wilson',
-        avatar: ''
-      },
-      lastUpdate: '3 days ago'
-    }
-  ];
+  // Get active projects from Redux state
+  const activeProjects = projects
+    .filter(p => p.status !== 'completed' && p.status !== 'cancelled')
+    .slice(0, 3)
+    .map((project: any) => ({
+      id: project.id,
+      title: project.name || project.title || 'Untitled Project',
+      type: project.type || 'Commercial',
+      status: project.status || 'In Progress',
+      progress: project.progress || 0,
+      estimatedCompletion: project.estimatedCompletion || project.dueDate || 'TBD',
+      location: project.location || 'N/A',
+      salesRep: project.assignedSalesRep || { name: 'Unassigned', avatar: '' },
+      lastUpdate: project.updatedAt || 'Unknown'
+    }));
 
-  // Sample sales rep data
+  // Sample sales rep data (will be replaced with actual user data in future iteration)
   const assignedSalesRep = {
     id: '1',
-    name: 'John Smith',
-    email: 'john.smith@balconbuilders.com',
+    name: 'Sales Representative',
+    email: 'sales@balconbuilders.com',
     phone: '(979) 627-9310',
     avatar: '',
     specialties: ['Commercial', 'Industrial', 'Custom Designs'],
-    activeProjects: 12,
+    activeProjects: dashboardStats.activeProjects,
     responseTime: '< 2 hours'
   };
 
-  // Sample notifications
+  // Sample notifications (will be replaced with real notification system in future iteration)
   const [notifications, setNotifications] = useState([
     {
       id: '1',
       type: 'success' as const,
-      title: 'Quote Approved',
-      message: 'Your Metal Warehouse quote has been approved and moved to production.',
-      timestamp: '2 hours ago',
-      actionable: true
-    },
-    {
-      id: '2',
-      type: 'info' as const,
-      title: 'Project Update',
-      message: 'Construction milestone reached for Residential Garage project.',
-      timestamp: '1 day ago',
-      actionable: false
-    },
-    {
-      id: '3',
-      type: 'warning' as const,
-      title: 'Weather Alert',
-      message: 'Potential weather delays for outdoor construction activities.',
-      timestamp: '2 days ago',
+      title: 'Welcome!',
+      message: 'Your dashboard is now using real project data.',
+      timestamp: 'Just now',
       actionable: false
     }
   ]);
@@ -180,13 +143,6 @@ const CustomerDashboard: React.FC = () => {
         <Typography variant="body1" color="text.secondary">
           Track your projects, review quotes, and stay connected with our team
         </Typography>
-        
-        {/* Alert for important updates */}
-        {notifications.some(n => n.type === 'warning') && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            You have important project updates. Check your notifications below.
-          </Alert>
-        )}
       </Box>
 
       {/* Business Metrics */}

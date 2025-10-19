@@ -276,8 +276,8 @@ class WebSocketService {
         console.log('📱 Page hidden - Socket.IO activity reduced');
       } else {
         console.log('📱 Page visible - Socket.IO activity resumed');
-        if (!this.isConnected() && this.token) {
-          this.connect(this.token).catch(console.error);
+        if (!this.isConnected()) {
+          this.connect().catch(console.error);
         }
       }
     });
@@ -285,8 +285,8 @@ class WebSocketService {
     // Handle network changes
     window.addEventListener('online', () => {
       console.log('🌐 Network online - attempting Socket.IO reconnection');
-      if (!this.isConnected() && this.token) {
-        this.connect(this.token).catch(console.error);
+      if (!this.isConnected()) {
+        this.connect().catch(console.error);
       }
     });
 

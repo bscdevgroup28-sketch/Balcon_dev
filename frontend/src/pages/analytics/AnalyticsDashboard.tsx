@@ -55,8 +55,8 @@ interface ExportJob {
   compression?: 'none' | 'gzip';
 }
 
-const fetchJson = async <T,>(url: string, token: string): Promise<T> => {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+const fetchJson = async <T,>(url: string): Promise<T> => {
+  const res = await fetch(url, { credentials: 'include' }); // Send httpOnly cookie automatically
   if (!res.ok) throw new Error(`Request failed ${res.status}`);
   return res.json();
 };
@@ -85,7 +85,7 @@ const Sparkline: React.FC<{ values: number[]; color?: string; height?: number }>
 
 const number = (v: any, d = 0) => typeof v === 'number' ? v.toFixed(d) : '-';
 
-const AnalyticsDashboard: React.FC<{ token: string }> = ({ token }) => {
+const AnalyticsDashboard: React.FC = () => {
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [trends, setTrends] = useState<TrendsResponse | null>(null);
   const [distribution, setDistribution] = useState<DistributionResponse | null>(null);
@@ -102,15 +102,15 @@ const AnalyticsDashboard: React.FC<{ token: string }> = ({ token }) => {
     try {
       setLoading(true); setError(null);
       const [s, t, d] = await Promise.all([
-        fetchJson<SummaryResponse>(`${API_BASE}/summary`, token),
-        fetchJson<TrendsResponse>(`${API_BASE}/trends?range=${range}`, token),
-        fetchJson<DistributionResponse>(`${API_BASE}/distribution/materials?field=${field}`, token)
+        fetchJson<SummaryResponse>(`${API_BASE}/summary`),
+        fetchJson<TrendsResponse>(`${API_BASE}/trends?range=${range}`),
+        fetchJson<DistributionResponse>(`${API_BASE}/distribution/materials?field=${field}`)
       ]);
       setSummary(s); setTrends(t); setDistribution(d);
     } catch (e: any) {
       setError(e.message || 'Failed to load analytics');
     } finally { setLoading(false); }
-  }, [token, range, field]);
+  }, [range, field]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -132,7 +132,7 @@ const AnalyticsDashboard: React.FC<{ token: string }> = ({ token }) => {
   const pollExportStatus = useCallback((jobId: number, type: string) => {
     const poll = async () => {
       try {
-        const response = await fetch(`/api/exports/${jobId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const response = await fetch(`/api/exports/${jobId}`, { credentials: 'include' });
         if (!response.ok) throw new Error('Failed to check export status');
         const raw = await response.json();
         // Map backend fields (resultUrl, errorMessage) -> frontend expectations
@@ -183,7 +183,7 @@ const AnalyticsDashboard: React.FC<{ token: string }> = ({ token }) => {
       }
     };
     poll();
-  }, [token, getProgressForStatus, showSuccess, showWarning, showErrorDialog, exportJobs, activeStatuses]);
+  }, [getProgressForStatus, showSuccess, showWarning, showErrorDialog, exportJobs, activeStatuses]);
 
   const startExport = useCallback(async (type: 'materials_csv' | 'orders_csv' | 'projects_csv') => {
     // Prevent duplicate if active
@@ -196,9 +196,9 @@ const AnalyticsDashboard: React.FC<{ token: string }> = ({ token }) => {
       const response = await fetch('/api/exports', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           type,
           params: { format: exportFormat, compression: exportCompression }
@@ -221,7 +221,7 @@ const AnalyticsDashboard: React.FC<{ token: string }> = ({ token }) => {
         errorCode: 'EXPORT_START'
       });
     }
-  }, [token, exportFormat, exportCompression, pollExportStatus, exportJobs, showWarning, showErrorDialog, activeStatuses]);
+  }, [exportFormat, exportCompression, pollExportStatus, exportJobs, showWarning, showErrorDialog, activeStatuses]);
 
   // Keyboard shortcuts
   useEffect(() => {

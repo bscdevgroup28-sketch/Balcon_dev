@@ -1,5 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Project } from '../../types/project';
+import integratedAPI from '../../services/integratedAPI';
 
 interface ProjectsState {
   projects: Project[];
@@ -20,6 +21,29 @@ const initialState: ProjectsState = {
   currentPage: 1,
   totalPages: 0,
 };
+
+// Async thunks for fetching projects
+export const fetchProjects = createAsyncThunk(
+  'projects/fetchProjects',
+  async (params?: { status?: string; search?: string; limit?: number; offset?: number }) => {
+    const response = await integratedAPI.getProjects(params);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to fetch projects');
+    }
+    return response.data;
+  }
+);
+
+export const fetchProjectById = createAsyncThunk(
+  'projects/fetchProjectById',
+  async (id: string) => {
+    const response = await integratedAPI.getProject(id);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to fetch project');
+    }
+    return response.data;
+  }
+);
 
 const projectsSlice = createSlice({
   name: 'projects',
@@ -63,6 +87,42 @@ const projectsSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      // fetchProjects
+      .addCase(fetchProjects.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchProjects.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.projects = action.payload?.projects || [];
+        state.totalCount = action.payload?.total || 0;
+        // Calculate pagination if provided (some endpoints don't have pagination)
+        const meta = (action.payload as any)?.meta;
+        if (meta) {
+          state.currentPage = meta.page || 1;
+          state.totalPages = meta.totalPages || 1;
+        }
+      })
+      .addCase(fetchProjects.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || 'Failed to fetch projects';
+      })
+      // fetchProjectById
+      .addCase(fetchProjectById.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchProjectById.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.currentProject = action.payload;
+      })
+      .addCase(fetchProjectById.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message || 'Failed to fetch project';
+      });
   },
 });
 

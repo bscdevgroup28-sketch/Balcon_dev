@@ -34,15 +34,23 @@ import ResponsiveCardGrid from '../../components/dashboard/ResponsiveCardGrid';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
 import { fetchAnalyticsSummary, fetchAnalyticsTrends } from '../../store/slices/analyticsSlice';
+import { fetchProjects } from '../../store/slices/projectsSlice';
+import { fetchUsers } from '../../store/slices/usersSlice';
 import Sparkline from '../../components/charts/Sparkline';
 
 const OfficeManagerDashboard: React.FC = () => {
   const dispatch = useDispatch();
-  const { trends, loadingTrends } = useSelector((s: RootState) => s.analytics);
+  const { trends, loadingTrends, summary, loadingSummary } = useSelector((s: RootState) => s.analytics);
+  const { projects, isLoading: projectsLoading } = useSelector((s: RootState) => s.projects);
+  const { users, isLoading: usersLoading } = useSelector((s: RootState) => s.users);
+  
   useEffect(() => {
     dispatch(fetchAnalyticsSummary() as any);
     dispatch(fetchAnalyticsTrends('30d') as any);
+    dispatch(fetchProjects({ limit: 50 }) as any);
+    dispatch(fetchUsers({ limit: 50 }) as any);
   }, [dispatch]);
+  
   const trendSeries = useMemo(() => {
     const pts = trends?.points || [];
     return {
@@ -51,36 +59,51 @@ const OfficeManagerDashboard: React.FC = () => {
       ordersDelivered: pts.map((p: any) => Number(p.ordersDelivered) || 0),
     };
   }, [trends]);
-  // Mock data for Office Manager specific metrics
+  
+  // Calculate metrics from real data
   const adminMetrics = {
-    pendingQuotes: 12,
-    activeProjects: 8,
-    overdueInvoices: 3,
-    newLeads: 15,
-    staffSchedule: 95, // percentage filled
-    documentsPending: 7
+    pendingQuotes: summary?.quotesPending || projects.filter((p: any) => p.status === 'quoted').length,
+    activeProjects: summary?.activeProjects || projects.filter((p: any) => p.status === 'active' || p.status === 'in_progress').length,
+    overdueInvoices: 0, // TODO: Add invoice tracking in future iteration
+    newLeads: summary?.leadsCount || 0,
+    staffSchedule: Math.round((users.filter((u: any) => u.isActive).length / Math.max(users.length, 1)) * 100),
+    documentsPending: 0 // TODO: Add document tracking in future iteration
   };
 
-  const recentActivities = [
-    { id: 1, type: 'quote', description: 'Quote #QT-2025-045 submitted to Johnson Construction', time: '2 hours ago', status: 'pending' },
-    { id: 2, type: 'invoice', description: 'Invoice #INV-2025-089 overdue by 5 days', time: '3 hours ago', status: 'overdue' },
-    { id: 3, type: 'lead', description: 'New lead: Downtown Office Complex renovation', time: '4 hours ago', status: 'new' },
-    { id: 4, type: 'schedule', description: 'Team A schedule updated for next week', time: '6 hours ago', status: 'completed' }
-  ];
+  // Generate recent activities from projects (last 4 updates)
+  const recentActivities = projects
+    .slice()
+    .sort((a: any, b: any) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
+    .slice(0, 4)
+    .map((p: any, idx: number) => ({
+      id: idx + 1,
+      type: p.status === 'quoted' ? 'quote' : p.status === 'completed' ? 'completed' : 'project',
+      description: `${p.name || 'Project'} - ${p.status || 'updated'}`,
+      time: p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : 'Unknown',
+      status: p.status || 'pending'
+    }));
 
-  const pendingTasks = [
-    { id: 1, task: 'Process insurance claim for Project #BC-2025-023', priority: 'high', deadline: 'Today' },
-    { id: 2, task: 'Schedule client meeting for Heritage Mall project', priority: 'medium', deadline: 'Tomorrow' },
-    { id: 3, task: 'Review and approve timesheet submissions', priority: 'medium', deadline: 'Aug 14' },
-    { id: 4, task: 'Update project documentation for compliance audit', priority: 'low', deadline: 'Aug 16' }
-  ];
+  // Generate pending tasks from active projects
+  const pendingTasks = projects
+    .filter((p: any) => p.status === 'active' || p.status === 'in_progress' || p.status === 'quoted')
+    .slice(0, 4)
+    .map((p: any, idx: number) => ({
+      id: idx + 1,
+      task: `Follow up on ${p.name || 'project'}`,
+      priority: p.status === 'quoted' ? 'high' : 'medium',
+      deadline: p.dueDate || p.estimatedCompletion || 'TBD'
+    }));
 
-  const staffOverview = [
-    { name: 'Mike Chen', role: 'Project Manager', status: 'Available', projects: 3 },
-    { name: 'Sarah Williams', role: 'Team Leader', status: 'On Site', projects: 2 },
-    { name: 'David Rodriguez', role: 'Technician', status: 'Available', projects: 1 },
-    { name: 'Lisa Thompson', role: 'Team Leader', status: 'Meeting', projects: 4 }
-  ];
+  // Generate staff overview from users
+  const staffOverview = users
+    .filter((u: any) => u.role !== 'user' && u.role !== 'customer')
+    .slice(0, 4)
+    .map((u: any) => ({
+      name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
+      role: (u.role || 'user').replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+      status: u.isActive ? 'Available' : 'Unavailable',
+      projects: projects.filter((p: any) => p.userId === u.id || p.assignedSalesRepId === u.id).length
+    }));
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -318,7 +341,7 @@ const OfficeManagerDashboard: React.FC = () => {
                     <Card variant="outlined" sx={{ p: 2 }}>
                       <Box display="flex" alignItems="center" mb={2}>
                         <Avatar sx={{ mr: 2, bgcolor: '#7b1fa2' }}>
-                          {staff.name.split(' ').map(n => n[0]).join('')}
+                          {staff.name.split(' ').map((n: string) => n[0]).join('')}
                         </Avatar>
                         <Box>
                           <Typography variant="subtitle1" fontWeight="bold">

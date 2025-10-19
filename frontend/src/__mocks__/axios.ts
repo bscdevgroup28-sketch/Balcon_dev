@@ -1,6 +1,6 @@
 // Manual mock for axios to avoid ESM import issues
-const axios = {
-  create: jest.fn(() => axios),
+const axiosMock: any = {
+  create: jest.fn(() => axiosMock),
   get: jest.fn(() => Promise.resolve({ data: {} })),
   post: jest.fn(() => Promise.resolve({ data: {} })),
   put: jest.fn(() => Promise.resolve({ data: {} })),
@@ -29,4 +29,4 @@ const axios = {
   isAxiosError: jest.fn(() => false),
 };
 
-export default axios;
+export default axiosMock;

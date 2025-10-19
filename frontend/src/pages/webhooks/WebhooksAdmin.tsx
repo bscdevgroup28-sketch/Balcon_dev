@@ -15,7 +15,7 @@ interface Delivery { id: number; subscriptionId: number; eventType: string; stat
 
 const eventOptions = [ 'export.started', 'export.completed', 'export.failed' ];
 
-const WebhooksAdmin: React.FC<{ token: string }> = ({ token }) => {
+const WebhooksAdmin: React.FC = () => {
   const { showSuccess, showError, showWarning } = useNotification();
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -31,11 +31,11 @@ const WebhooksAdmin: React.FC<{ token: string }> = ({ token }) => {
   const fetchSubs = useCallback(async () => {
     setLoadingSubs(true);
     try {
-      const res = await fetch('/api/webhooks', { headers: { Authorization: `Bearer ${token}` }});
+      const res = await fetch('/api/webhooks', { credentials: 'include' }); // Use httpOnly cookie
       if (!res.ok) throw new Error('Failed to load subscriptions');
       setSubs(await res.json());
     } catch (e:any) { showWarning(e.message, 'Load Subscriptions'); } finally { setLoadingSubs(false); }
-  }, [token, showWarning]);
+  }, [showWarning]);
 
   const fetchDeliveries = useCallback( async () => {
     setLoadingDeliv(true);
@@ -43,11 +43,11 @@ const WebhooksAdmin: React.FC<{ token: string }> = ({ token }) => {
       const params = new URLSearchParams();
       if (deliveryFilterStatus) params.set('status', deliveryFilterStatus);
       if (deliveryFilterEvent) params.set('eventType', deliveryFilterEvent);
-      const res = await fetch(`/api/webhooks/deliveries?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` }});
+      const res = await fetch(`/api/webhooks/deliveries?${params.toString()}`, { credentials: 'include' }); // Use httpOnly cookie
       if (!res.ok) throw new Error('Failed to load deliveries');
       setDeliveries(await res.json());
     } catch (e:any) { showWarning(e.message, 'Load Deliveries'); } finally { setLoadingDeliv(false); }
-  }, [token, deliveryFilterStatus, deliveryFilterEvent, showWarning]);
+  }, [deliveryFilterStatus, deliveryFilterEvent, showWarning]);
 
   useEffect(() => { fetchSubs(); }, [fetchSubs]);
   useEffect(() => { fetchDeliveries(); }, [fetchDeliveries]);
@@ -56,7 +56,7 @@ const WebhooksAdmin: React.FC<{ token: string }> = ({ token }) => {
     if (!newUrl) { showWarning('Target URL required', 'Create Subscription'); return; }
     setCreating(true);
     try {
-      const res = await fetch('/api/webhooks', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ eventType: newEvent, targetUrl: newUrl }) });
+      const res = await fetch('/api/webhooks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ eventType: newEvent, targetUrl: newUrl }) });
       if (!res.ok) throw new Error('Failed to create subscription');
       const created = await res.json();
       setSubs(prev => [created, ...prev]);
@@ -67,7 +67,7 @@ const WebhooksAdmin: React.FC<{ token: string }> = ({ token }) => {
 
   const toggleActive = async (s: Subscription) => {
     try {
-      const res = await fetch(`/api/webhooks/${s.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ isActive: !s.isActive }) });
+      const res = await fetch(`/api/webhooks/${s.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ isActive: !s.isActive }) });
       if (!res.ok) throw new Error('Toggle failed');
       setSubs(prev => prev.map(p => p.id === s.id ? { ...p, isActive: !p.isActive } : p));
       showSuccess(!s.isActive ? 'Subscription enabled' : 'Subscription disabled');
@@ -76,7 +76,7 @@ const WebhooksAdmin: React.FC<{ token: string }> = ({ token }) => {
 
   const rotateSecret = async (s: Subscription) => {
     try {
-      const res = await fetch(`/api/webhooks/${s.id}/rotate-secret`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }});
+      const res = await fetch(`/api/webhooks/${s.id}/rotate-secret`, { method: 'POST', credentials: 'include' });
       if (!res.ok) throw new Error('Rotate failed');
       const js = await res.json();
       showSuccess('Secret rotated');
@@ -87,7 +87,7 @@ const WebhooksAdmin: React.FC<{ token: string }> = ({ token }) => {
 
   const retryDelivery = async (d: Delivery) => {
     try {
-      const res = await fetch(`/api/webhooks/deliveries/${d.id}/retry`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }});
+      const res = await fetch(`/api/webhooks/deliveries/${d.id}/retry`, { method: 'POST', credentials: 'include' });
       if (!res.ok) throw new Error('Retry failed');
       showSuccess('Retry enqueued');
       fetchDeliveries();
