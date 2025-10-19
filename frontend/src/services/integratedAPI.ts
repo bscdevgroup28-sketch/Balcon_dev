@@ -11,11 +11,9 @@ interface APIResponse<T = any> {
 
 class IntegratedAPIService {
   private baseURL: string;
-  private authToken: string | null = null;
 
   constructor() {
     this.baseURL = API_BASE_URL;
-    this.authToken = localStorage.getItem('authToken');
     
     // Initialize WebSocket connection
     this.initializeWebSocket();
@@ -27,21 +25,10 @@ class IntegratedAPIService {
       'Content-Type': 'application/json',
     };
 
-    if (this.authToken) {
-      headers['Authorization'] = `Bearer ${this.authToken}`;
-    }
+    // JWT sent via httpOnly cookie automatically
+    // No Authorization header needed
 
     return headers;
-  }
-
-  private setAuthToken(token: string) {
-    this.authToken = token;
-    localStorage.setItem('authToken', token);
-  }
-
-  private clearAuthToken() {
-    this.authToken = null;
-    localStorage.removeItem('authToken');
   }
 
   // Generic API call method
@@ -53,6 +40,7 @@ class IntegratedAPIService {
       const url = `${this.baseURL}${endpoint}`;
       const response = await fetch(url, {
         ...options,
+        credentials: 'include', // ✅ Enable cookies
         headers: {
           ...this.getAuthHeaders(),
           ...options.headers,

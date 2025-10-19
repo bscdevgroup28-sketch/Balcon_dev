@@ -36,14 +36,13 @@ class WebSocketService {
   private reconnectInterval = 1000;
   private isConnecting = false;
   private listeners: { [event: string]: Function[] } = {};
-  private token: string | null = null;
 
   constructor() {
     this.setupEventListeners();
   }
 
-  // Connect to Socket.IO server
-  connect(token: string): Promise<void> {
+  // Connect to Socket.IO server (JWT sent via httpOnly cookie)
+  connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.socket && this.socket.connected) {
         resolve();
@@ -56,15 +55,12 @@ class WebSocketService {
       }
 
       this.isConnecting = true;
-      this.token = token;
 
       try {
-        // Connect to Socket.IO server
-  const serverUrl = SOCKET_BASE_URL;
-  this.socket = io(serverUrl, {
-          auth: {
-            token: token
-          },
+        // Connect to Socket.IO server with cookie credentials
+        const serverUrl = SOCKET_BASE_URL;
+        this.socket = io(serverUrl, {
+          withCredentials: true, // ✅ Enable cookies for auth
           transports: ['websocket', 'polling'],
           timeout: 20000,
           forceNew: true
@@ -234,11 +230,9 @@ class WebSocketService {
     console.log(`🔄 Attempting Socket.IO reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
 
     setTimeout(() => {
-      if (this.token) {
-        this.connect(this.token).catch(error => {
-          console.error('Reconnection failed:', error);
-        });
-      }
+      this.connect().catch(error => {
+        console.error('Reconnection failed:', error);
+      });
     }, delay);
   }
 

@@ -21,7 +21,6 @@ interface User {
 // Auth state interface
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -30,7 +29,7 @@ interface AuthState {
 // Auth actions
 type AuthAction =
   | { type: 'LOGIN_START' }
-  | { type: 'LOGIN_SUCCESS'; payload: { user: User; token: string } }
+  | { type: 'LOGIN_SUCCESS'; payload: { user: User } }
   | { type: 'LOGIN_FAILURE'; payload: string }
   | { type: 'LOGOUT' }
   | { type: 'UPDATE_USER'; payload: User }
@@ -40,7 +39,6 @@ type AuthAction =
 // Initial state
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('authToken'),
   isAuthenticated: false,
   isLoading: false,
   error: null,
@@ -59,7 +57,6 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return {
         ...state,
         user: action.payload.user,
-        token: action.payload.token,
         isAuthenticated: true,
         isLoading: false,
         error: null,
@@ -68,7 +65,6 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return {
         ...state,
         user: null,
-        token: null,
         isAuthenticated: false,
         isLoading: false,
         error: action.payload,
@@ -77,7 +73,6 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return {
         ...state,
         user: null,
-        token: null,
         isAuthenticated: false,
         isLoading: false,
         error: null,
@@ -132,37 +127,34 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Auto-login on app start if token exists
+  // Auto-login on app start by checking /profile endpoint
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        try {
-          const response = await integratedAPI.getCurrentUser();
-          if (response.success && response.data) {
-            dispatch({
-              type: 'LOGIN_SUCCESS',
-              payload: { user: response.data, token },
-            });
+      dispatch({ type: 'SET_LOADING', payload: true });
+      try {
+        // If httpOnly cookie exists, this will succeed
+        const response = await integratedAPI.getCurrentUser();
+        if (response.success && response.data) {
+          dispatch({
+            type: 'LOGIN_SUCCESS',
+            payload: { user: response.data },
+          });
 
-            // Connect to WebSocket after successful auto-login
-            try {
-              await webSocketService.connect(token);
-              console.log('🔌 WebSocket connected after auto-login');
-            } catch (error) {
-              console.error('Failed to connect to WebSocket on auto-login:', error);
-            }
-          } else {
-            localStorage.removeItem('authToken');
-            dispatch({ type: 'LOGOUT' });
+          // Connect to WebSocket (will use cookie auth)
+          try {
+            await webSocketService.connect();
+            console.log('🔌 WebSocket connected after auto-login');
+          } catch (error) {
+            console.error('Failed to connect to WebSocket on auto-login:', error);
           }
-        } catch (error) {
-          localStorage.removeItem('authToken');
+        } else {
           dispatch({ type: 'LOGOUT' });
-        } finally {
-          dispatch({ type: 'SET_LOADING', payload: false });
         }
+      } catch (error) {
+        // No valid cookie or session expired
+        dispatch({ type: 'LOGOUT' });
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
 
@@ -181,13 +173,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           type: 'LOGIN_SUCCESS',
           payload: {
             user: response.data.user,
-            token: response.data.token,
           },
         });
 
-        // Connect to WebSocket after successful login
+        // Connect to WebSocket after successful login (uses cookie auth)
         try {
-          await webSocketService.connect(response.data.token);
+          await webSocketService.connect();
           console.log('🔌 WebSocket connected after login');
         } catch (error) {
           console.error('Failed to connect to WebSocket:', error);
@@ -230,7 +221,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           type: 'LOGIN_SUCCESS',
           payload: {
             user: response.data.user,
-            token: response.data.token,
           },
         });
         return true;
@@ -253,7 +243,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   const logout = async (): Promise<void> => {
     try {
-      await integratedAPI.logout();
+      await integratedAPI.logout(); // Backend clears httpOnly cookie
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -261,7 +251,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       webSocketService.disconnect();
       console.log('🔌 WebSocket disconnected on logout');
 
-      localStorage.removeItem('authToken');
+      // No need to clear localStorage - token is in httpOnly cookie
       dispatch({ type: 'LOGOUT' });
     }
   };

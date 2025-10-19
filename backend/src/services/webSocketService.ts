@@ -66,7 +66,15 @@ export class WebSocketService {
   private setupMiddleware(): void {
     this.io.use(async (socket: any, next) => {
       try {
-        const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+        // Try Authorization header first (backward compatibility)
+        let token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
+        
+        // ✅ Fallback to httpOnly cookie
+        if (!token && socket.handshake.headers.cookie) {
+          const cookieParser = require('cookie');
+          const cookies = cookieParser.parse(socket.handshake.headers.cookie);
+          token = cookies.accessToken;
+        }
 
         if (!token) {
           return next(new Error('Authentication token required'));

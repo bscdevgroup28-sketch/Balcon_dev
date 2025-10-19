@@ -299,8 +299,9 @@ class PWAService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          // JWT sent via httpOnly cookie automatically
         },
+        credentials: 'include', // ✅ Enable cookies
         body: JSON.stringify(subscription)
       });
 

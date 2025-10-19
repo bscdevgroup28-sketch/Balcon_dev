@@ -8,15 +8,14 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // ✅ Enable cookies (httpOnly JWT)
 });
 
-// Request interceptor to add auth token
+// Request interceptor for CSRF token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // JWT token now sent automatically via httpOnly cookies
+    // No manual Authorization header needed
     // Attach CSRF token for unsafe methods when cookies are used
     const method = (config.method || 'get').toLowerCase();
     if (['post','put','patch','delete'].includes(method)) {

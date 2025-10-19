@@ -107,7 +107,8 @@ router.post('/login', bruteForceProtector, validate({ body: loginSchema }), asyn
           lastLoginAt: user.lastLoginAt,
           mustChangePassword: (user as any).mustChangePassword === true
         },
-        accessToken
+        accessToken // ⚠️ KEEP for backward compatibility with tests
+        // NOTE: Also available as httpOnly cookie for XSS protection
       }
     });
 
@@ -241,7 +242,8 @@ router.post('/refresh', async (req: Request, res: Response) => {
       success: true,
       message: 'Token refreshed successfully',
       data: {
-        accessToken: result.accessToken
+        accessToken: result.accessToken // ⚠️ KEEP for backward compatibility
+        // NOTE: Also available as httpOnly cookie for XSS protection
       }
     });
 
